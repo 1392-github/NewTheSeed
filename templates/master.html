@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+     integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+     crossorigin="anonymous" referrerpolicy="no-referrer">
+    <!--<link rel="stylesheet" href="master.css">-->
+    <style>
+        body
+        {
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #head
+        {
+            padding: 0 100px;
+            background-color: #8080ff;
+            width: 100%;
+            height: 42px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+        }
+        #wiki_name
+        {
+            line-height: 42px;
+            text-align: center;
+            color: white;
+        }
+        #search *
+        {
+            margin: 0;
+            padding: 0;
+            height: 42px;
+            box-sizing: border-box;
+            min-width: 42px;
+            border-radius: 0;
+            border: #808080 solid 1px;
+            box-shadow: none;
+            line-height: 40px;
+        }
+        /*#search *:not([name="search_query"])
+        {
+            box-sizing: content-box;
+        }*/
+        #search [name="search_query"]
+        {
+            padding: 4px 8px;
+            box-sizing: border-box;
+        }
+        #search
+        {
+            display: flex;
+        }
+        i
+        {
+            border: 0 !important;
+        }
+    </style>
+    <title>{{ wiki_title }}</title>
+</head>
+<body>
+    <!-- 메인 헤더 -->
+    <div id="head">
+        <!-- 왼쪽 -->
+        <div>
+            <div id="wiki_name">{{ wiki_name }}</div>
+        </div>
+        <!-- 오른쪽 -->
+        <div>
+            <form id="search" action="/search" method="get"> <!-- 검색 창 -->
+                <button>
+                    <i class="fa-solid fa-shuffle"></i>
+                </button>
+                <input type="text" name="search_query">
+                <button type="submit">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+                <button>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% block content %}{% endblock %}
+    <!-- 푸터 -->
+    <div id="foot">
+        
+    </div>
+</body>
+</html>
