@@ -1,0 +1,49 @@
+{% extends "master.html" %}
+
+{% block css %}
+    <style>
+        h1, h2
+        {
+            color: #303030;
+            margin: 0;
+            display: inline;
+        }
+        form textarea
+        {
+            width: 95%;
+            margin: 0.5% 0 0 2.5%;
+            height: 60vh;
+        }
+        form *
+        {
+            margin-top: 0px;
+            margin-left: 2.5%;
+        }
+        a
+        {
+            text-decoration: none;
+        }
+        #ctn_header
+        {
+            margin: 5px 50px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="ctn_header">
+        <a href="/w/{{ doc_title }}"><h1>{{ doc_title }}</h1></a>&nbsp;
+        <h2>(r{{ doc_rev }} 편집)</h2>
+    </div>
+    <div id="ctn_data">
+        <form action="/edit_form" method="post">
+            <input type="hidden" name="doc_name" value="{{ doc_title }}">
+            <textarea name="value">{{ doc_data }}</textarea>
+            <input type="submit" value="저장">
+        </form>
+    </div>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

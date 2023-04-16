@@ -1,0 +1,21 @@
+{% extends "master.html" %}
+
+{% block css %}
+    <style>
+        #ctn_data
+        {
+            margin: 5px 50px;
+            font-size: 2rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="ctn_data">
+        {{ l|safe }}
+    </div>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

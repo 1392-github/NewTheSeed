@@ -14,6 +14,10 @@
             margin: 0;
             background-color: #f0f0f0;
         }
+        #head div:first-child
+        {
+            display: flex;
+        }
         #head
         {
             padding: 0 100px;
@@ -24,11 +28,13 @@
             display: flex;
             justify-content: space-between;
         }
-        #wiki_name
+        #wiki_name, #head div:first-child a
         {
             line-height: 42px;
             text-align: center;
             color: white;
+            margin-right: 50px;
+            text-decoration: none;
         }
         #search *
         {
@@ -59,36 +65,50 @@
         {
             border: 0 !important;
         }
+        #foot div
+        {
+            margin-left: 50px;
+        }
     </style>
+    {% block css %}{% endblock %}
     <title>{{ wiki_title }}</title>
 </head>
 <body>
-    <!-- 메인 헤더 -->
     <div id="head">
-        <!-- 왼쪽 -->
         <div>
             <div id="wiki_name">{{ wiki_name }}</div>
+            <a href="/license">LICENSE</a>
         </div>
-        <!-- 오른쪽 -->
         <div>
             <form id="search" action="/search" method="get"> <!-- 검색 창 -->
-                <button>
+                <button type="button">
                     <i class="fa-solid fa-shuffle"></i>
                 </button>
                 <input type="text" name="search_query">
                 <button type="submit">
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </button>
-                <button>
+                <button type="button">
                     <i class="fa-solid fa-arrow-right"></i>
                 </button>
             </form>
         </div>
     </div>
-    {% block content %}{% endblock %}
+    <div id="content">
+        {% block content %}{% endblock %}
+    </div>
     <!-- 푸터 -->
     <div id="foot">
-        
+        <hr>
+        <div>
+            The Wiki Engine 1
+        </div>
     </div>
+    <script>
+        document.querySelector("#head div:nth-child(2) form button:nth-child(4)").addEventListener("click", function () {
+            location.href = `/w/${encodeURI(document.querySelector("#head div:nth-child(2) form input").value)}`
+        })
+    </script>
+    {% block js %}{% endblock %}
 </body>
 </html>
