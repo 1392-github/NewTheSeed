@@ -11,7 +11,7 @@ def hash(path):
 def save_db():
     with open('data.json', 'w', encoding='UTF-8') as f:
         json.dump(db, f, indent=4, ensure_ascii=False)
-bypass_pure_check = ['data.db', 'pure.json']
+'''bypass_pure_check = ['data.db', 'pure.json']
 with open('pure.json') as f:
     md5t = json.load(f)
 print("순정 검사 시작")
@@ -22,7 +22,7 @@ for f in md5t:
         print(f"순정 MD5 - {md5t[f]}, 검사된 MD5 - {hash(f)}")
         print("엔진을 직접 수정했거나, 다운로드 중 손상된 것 같습니다")
         print("직접 수정한 변경사항 손실 방지를 위해 업데이트 기능이 비활성화됩니다")
-        break
+        break'''
 # DB 로딩
 try:
     with open('data.json') as f:
