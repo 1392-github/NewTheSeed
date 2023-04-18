@@ -11,7 +11,6 @@ def hash(path):
 def save_db():
     with open('data.json', 'w', encoding='UTF-8') as f:
         json.dump(db, f, indent=4, ensure_ascii=False)
-bypass_pure_check = ['data.db', 'pure.json']
 with open('pure.json') as f:
     md5t = json.load(f)
 print("순정 검사 시작")
@@ -29,9 +28,10 @@ try:
         db = json.load(f)
 except:
     db = {}
-initial_table = ['document'] # 기본 테이블
+print(db)
+initial_table = ['document']
 for t in initial_table:
-    if db not in initial_table:
+    if t not in db:
         db[t] = {}
 print(db)
 app = Flask(__name__)
@@ -87,4 +87,4 @@ def commit():
     conn.commit()
     conn.close()
     return redirect("/")
-app.run(debug=True)
+app.run(debug=False)
