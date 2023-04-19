@@ -1,0 +1,42 @@
+{% extends "master.html" %}
+
+{% block css %}
+<style>
+    #content
+    {
+        margin: 20px 50px;
+    }
+    #content form input, #content form input:focus
+    {
+        border-radius: 0;
+        display: block;
+        border-color: #000000;
+        border-style: solid;
+        margin: 3px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>관리자 설정</h1>
+<form action="/owner_settings_form" method="post">
+    <label>
+        위키 호스트 <input type="text" name="host" value="{{ wiki_host }}">
+    </label>
+    <label>
+        위키 포트 <input type="text" name="port" value="{{ wiki_port }}">
+    </label>
+    <label>
+        디버그 모드 {% if debug %}
+        <input type="checkbox" name="debug" checked>
+        {% else %}
+        <input type="checkbox" name="debug">
+        {% endif %}
+    </label>
+    <input type="submit" value="저장">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

@@ -11,7 +11,7 @@ def hash(path):
 def save_db():
     with open('data.json', 'w', encoding='UTF-8') as f:
         json.dump(db, f, indent=4, ensure_ascii=False)
-with open('pure.json') as f:
+'''with open('pure.json') as f:
     md5t = json.load(f)
 print("순정 검사 시작")
 for f in md5t:
@@ -21,7 +21,7 @@ for f in md5t:
         print(f"순정 MD5 - {md5t[f]}, 검사된 MD5 - {hash(f)}")
         print("엔진을 직접 수정했거나, 다운로드 중 손상된 것 같습니다")
         print("직접 수정한 변경사항 손실 방지를 위해 업데이트 기능이 비활성화됩니다")
-        break
+        break'''
 # DB 로딩
 try:
     with open('data.json') as f:
@@ -29,11 +29,18 @@ try:
 except:
     db = {}
 print(db)
-initial_table = ['document']
+initial_table = ['document', 'other']
 for t in initial_table:
     if t not in db:
         db[t] = {}
 print(db)
+if 'host' not in db['other']:
+    db['other']['host'] = input('위키 호스트 입력 -> ')
+if 'port' not in db['other']:
+    db['other']['port'] = input('위키 포트 입력 -> ')
+if 'debug' not in db['other']:
+    db['other']['debug'] = False
+save_db()
 app = Flask(__name__)
 @app.route("/")
 def redirect_frontpage():
@@ -80,11 +87,26 @@ def license():
     with open("license.html", encoding='utf-8') as f:
         license = f.read()
     return render_template("license.html", wiki_title = "Wiki", wiki_name = "Wiki", l = license)
-
+@app.route("/owner_settings")
+def owner_settings():
+    if request.remote_addr != '127.0.0.1':
+        return '', 403
+    return render_template("owner_settings.html", wiki_title = "Wiki", wiki_name = "Wiki",
+                           wiki_host = db['other']['host'], wiki_port = db['other']['port'], debug = db['other']['debug'])
+@app.route("/owner_settings_form", methods = ['POST'])
+def owner_settings_save():
+    db['other']['host'] = request.form['host']
+    db['other']['port'] = request.form['port']
+    if request.form.get('debug'):
+        db['other']['debug'] = True
+    else:
+        db['other']['debug'] = False
+    save_db()
+    return redirect('/')
 #@app.route("/commit")
 def commit():
     print("COMMIT")
     conn.commit()
     conn.close()
     return redirect("/")
-app.run(debug=False)
+app.run(debug=db['other']['debug'], host=db['other']['host'], port=db['other']['port'])
