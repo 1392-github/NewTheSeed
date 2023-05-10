@@ -13,3 +13,5 @@ DB는 JSON을 사용합니다
 - [ ] namumark 지원
 - [ ] ACL 기능 (기본)
 - [ ] ACL 기능 (세부)
+## PR 시 주의사항
+Pull Request 시 반드시 data.json (DB 파일)은 빼 주세요
