@@ -6,7 +6,7 @@
     {
         margin: 20px 50px;
     }
-    #content form input, #content form input:focus
+    #content form input, #content form input:focus, #content form select, #content form select:focus
     {
         border-radius: 0;
         display: block;
@@ -26,6 +26,57 @@
     <label>
         위키 포트 <input type="text" name="port" value="{{ wiki_port }}">
     </label>
+    <label>
+        소유자 계정명 <input type="text" name="owner" value="{{ wiki_owner }}">
+    </label>
+    <fieldset>
+        <legend>API 정책</legend>
+        <label>
+            API 토큰 발급 방식 설정
+            <select>
+                <option value="api_0_allowed">항상 허용</option>
+                <option value="api_0_request">API 승인 필요</option>
+                <option value="api_0_disabled">API 비활성화</option>
+            </select>
+        </label>
+        <label>
+            문서 읽기 (RAW)
+            <select>
+                <option value="api_1_allowed_without_key">API 키 불필요</option>
+                <option value="api_1_allowed">API 키 필요 (기본 승인)</option>
+                <option value="api_1_request">API 키 필요 (기본 미승인)</option>
+                <option value="api_1_disabled">API 비활성화</option>
+            </select>
+        </label>
+        <label>
+            문서 읽기 (렌더링된 값)
+            <select>
+                <option value="api_2_allowed_without_key">API 키 불필요</option>
+                <option value="api_2_allowed">API 키 필요 (기본 승인)</option>
+                <option value="api_2_request">API 키 필요 (기본 미승인)</option>
+                <option value="api_2_disabled">API 비활성화</option>
+            </select>
+        </label>
+        <label>
+            문서 역사 조회
+            <select>
+                <option value="api_3_allowed_without_key">API 키 불필요</option>
+                <option value="api_3_allowed">API 키 필요 (기본 승인)</option>
+                <option value="api_3_request">API 키 필요 (기본 미승인)</option>
+                <option value="api_3_disabled">API 비활성화</option>
+            </select>
+        </label>
+        <label>
+            문서 수정
+            <select>
+                <option value="api_4_allowed_without_key">API 키 불필요</option>
+                <option value="api_4_allowed">API 키 필요 (기본 승인)</option>
+                <option value="api_4_request">API 키 필요 (기본 미승인)</option>
+                <option value="api_4_disabled">API 비활성화</option>
+            </select>
+        </label>
+        
+    </fieldset>
     <label>
         디버그 모드 {% if debug %}
         <input type="checkbox" name="debug" checked>

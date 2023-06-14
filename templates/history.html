@@ -1,0 +1,22 @@
+{% extends "master.html" %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<ul>
+    {% for i in range(history_len) %}
+    <li>
+        {{ h[i]["date"]}} (<a href="/w/{{ doc_name }}?rev={{ i }}">보기</a> | <a href="/raw/{{ doc_name }}?rev={{ i }}">RAW</a> | <a href="/revert/{{ doc_name }}?rev={{ i }}">이 리버전으로 되돌리기</a>)
+        <span style="font-weight: 700;">r{{i}}</span> ({% if h[i]["length"] == 0}<span style="color: gray">0</span>{% elif h[i]["length"] > 0 %}<span style="color: green">+{{ h[i]["length"] }}</span>{% else %}<span style="color: red">{{ h[i]["length"] }}</span>{% endif %}
+        {{ h[i]["contributor"] }}
+        (<span style="color: gray;">{{ h[i]["edit_comment"] }}</span>)
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "master.html" %}
+
+{% block css %}
+<style>
+    #content a
+    {
+        display: block;
+    }
+    table
+    {
+        border: 1px solid #444444;
+        border-collapse: collapse;
+    }
+    th, td
+    {
+        border: 1px solid #444444;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<ul>
+    <table>
+        <tr>
+            <th>사용자명</th>
+            <td>{{ user_name }}</td>
+        </tr>
+        <tr>
+            <th>IP/계정</th>
+            {% if login %}
+            <td>계정</td>
+            {% else %}
+            <td>IP</td>
+            {% endif %}
+        </tr>
+    </table>
+    {% if login %}
+    <li><a href="/logout">로그아웃</a></li>
+    <li>a</li>
+    {% else %}
+    <li><a href="/login">로그인</a></li>
+    <li><a href="/signup">회원가입</a></li>
+    {% endif %}
+</ul>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}
