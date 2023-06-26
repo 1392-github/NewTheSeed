@@ -1,0 +1,33 @@
+{% extends "master.html" %}
+
+{% block css %}
+<style>
+    textarea
+    {
+        width: 100%;
+        display: block;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>SQL Shell</h1>
+SQL Shell로 데이터 조작시, 주의하시기 바랍니다
+<form method="post">
+    <textarea readonly name="prev" style="height: 30vh;">{{ prev_sql }}</textarea>
+    <textarea placeholder="SQL 문 입력" name="sql" style="height: 10vh;"></textarea>
+    <input type="submit" value="실행"><input type="button" id="reset" value="이전 내용 지우기">
+    <br>
+    쿼리 결과
+    <textarea readonly style="height: 10vh;">{{ result }}</textarea>
+</form>
+{% endblock %}
+
+{% block js %}
+<script>
+    document.querySelector("#reset").addEventListener("click", function () {
+        document.forms[1]["prev"].value = ""
+    })
+</script>
+{% endblock %}

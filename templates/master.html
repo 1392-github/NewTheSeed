@@ -92,6 +92,9 @@
             <div id="wiki_name">
                 <a href="/">{{ wiki_name }}</a></div>
             <a href="/license">LICENSE</a>
+            {% if isowner %}
+            <a href="/owner_tool">관리 도구</a>
+            {% endif %}
         </div>
         <div>
             <form id="search" action="/search" method="get"> <!-- 검색 창 -->
@@ -118,7 +121,7 @@
     <div id="foot">
         <hr>
         <div>
-            The Wiki Engine 4
+            The Wiki Engine 5
         </div>
     </div>
     <script>
