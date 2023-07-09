@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS "doc_name" (
 	"id"	INTEGER,
 	"name"	TEXT,
 	"history_seq"	INTEGER,
+	"discuss_seq"	TEXT,
 	PRIMARY KEY("ID" AUTOINCREMENT)
 );
 CREATE TABLE IF NOT EXISTS "history" (
@@ -25,4 +26,10 @@ CREATE TABLE IF NOT EXISTS "user" (
 	"password"	TEXT,
 	"isip"	INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT)
+);
+CREATE TABLE IF NOT EXISTS "discuss" (
+	"doc_id"	INTEGER,
+	"name"	TEXT,
+	"user"	INTEGER,
+	"status"	INTEGER
 );

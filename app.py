@@ -8,7 +8,7 @@ import secrets
 import socket
 import datetime
 
-version = 5
+version = 6
 
 def hash(path):
     f = open(path, 'rb')
@@ -61,6 +61,19 @@ def isowner():
 		where name = "owner"
 	)
 )''', (str(session['id']))).fetchone()[0] == 1
+def ipuser():
+    c.execute('''insert into user (name, isip)
+select ?, 1
+where not exists (
+	select *
+	from user
+	where name = ?
+	and isip = 1
+)''', (request.remote_addr, request.remote_addr))
+    return c.execute('''select id
+from user
+where name = ?
+and isip = 1''', (request.remote_addr,)).fetchone()[0]
 # DB 로딩
 db = sqlite3.connect("data.db", isolation_level=None, check_same_thread=False)
 c = db.cursor()
@@ -84,6 +97,9 @@ if int(db_version) > version:
         os.exit(0)
 
 # DB 변환 코드
+if int(db_version) < 6:
+    print("버전 5 → 6 변환중...")
+    c.execute("alter table doc_name add discuss_seq TEXT")
 
 c.execute('''update config
 set value = ?
@@ -125,15 +141,26 @@ def master(t):
 @app.route("/w/<path:doc_title>")
 def doc_read(doc_title):
     try:
-        d = c.execute('''select content
+        rev = request.args.get('rev')
+        if rev == None:
+            d = c.execute('''select content
 from history
 where doc_id = (
-	select id
-	from doc_name
-	where name = ?
+select id
+from doc_name
+where name = ?
 )
 group by doc_id
 having rev = max(rev)''', (doc_title,)).fetchone()[0]
+        else:
+            d = c.execute('''select content
+from history
+where doc_id = (
+select id
+from doc_name
+where name = ?
+)
+and rev = ?''', (doc_title,rev)).fetchone()[0]
         #d = db['document'][doc_title]["content"]
         if d == None:
             raise Exception
@@ -150,6 +177,40 @@ having rev = max(rev)''', (doc_title,)).fetchone()[0]
 @app.route("/raw/<path:doc_title>")
 def doc_raw(doc_title):
     try:
+        rev = request.args.get('rev')
+        if rev == None:
+            d = c.execute('''select content
+from history
+where doc_id = (
+select id
+from doc_name
+where name = ?
+)
+group by doc_id
+having rev = max(rev)''', (doc_title,)).fetchone()[0]
+        else:
+            d = c.execute('''select content
+from history
+where doc_id = (
+select id
+from doc_name
+where name = ?
+)
+and rev = ?''', (doc_title,rev)).fetchone()[0]
+        #d = db['document'][doc_title]["content"]
+        if d == None:
+            raise Exception
+        code = 200
+        if d == None:
+            raise Exception
+        code = 200
+    except:
+        d = ""
+        code = 404
+    return rt("document_raw.html", doc_title=doc_title, doc_data=d), code
+@app.route("/edit/<path:doc_title>")
+def doc_edit(doc_title):
+    try:
         d = c.execute('''select content
 from history
 where doc_id = (
@@ -159,40 +220,21 @@ where doc_id = (
 )
 group by doc_id
 having rev = max(rev)''', (doc_title,)).fetchone()[0]
-        #d = db['document'][doc_title]["content"]
-        if d == None:
-            raise Exception
-        code = 200
-    except:
-        d = f'''<h2>오류! 이 문서는 존재하지 않습니다</h2>
-<a href="/edit/{doc_title}" style="border: 1px solid #808080;
-            padding: 5px 13px;
-            color: unset;
-            text-decoration: none;
-            line-height: 23px;">새 문서 만들기</a>'''
-        code = 404
-    return rt("document_raw.html", doc_title=doc_title, doc_data=d), code
-@app.route("/edit/<path:doc_title>")
-def doc_edit(doc_title):
-    try:
-        d = db['document'][doc_title]["content"]
     except:
         d = ""
-    return rt("document_edit.html", doc_title=doc_title, doc_data=d, doc_rev="1")
+    try:
+        r = c.execute('''select history_seq - 1
+from doc_name
+where name = ?''', (doc_title,)).fetchone()[0]
+    except:
+        r = "0"
+    
+    return rt("document_edit.html", doc_title=doc_title, doc_data=d, doc_rev=r)
 
 @app.route("/edit_form", methods = ['POST'])
 def doc_edit_form():
     doc_name = request.form["doc_name"]
     value = request.form["value"]
-    """if c.execute('''select exists (
-	select *
-	from doc_name
-	where name = ?
-)''', (doc_name,)).fetchone()[0] == 0:
-        c.execute('''
-        insert into doc_name (name)
-values("Test Document 2")'''
-                  )"""
         
         
     
@@ -205,24 +247,13 @@ where doc_id = (
 	where name = ?
 )
 group by doc_id
-having rev = max(rev)''', (doc_title,)).fetchone()[0]
+having rev = max(rev)''', (doc_name,)).fetchone()[0]
     except:
         prev_content = ""
     if 'id' in session:
         i = session['id']
     else:
-        c.execute('''insert into user (name, isip)
-select ?, 1
-where not exists (
-	select *
-	from user
-	where name = ?
-	and isip = 1
-)''', (request.remote_addr, request.remote_addr))
-        i = c.execute('''select id
-from user
-where name = ?
-and isip = 1''', (request.remote_addr,)).fetchone()[0]
+        i = ipuser()
     run_sqlscript("doc_edit.sql", (doc_name, value, 0, i, ('"' + request.form["edit_comment"] + '"') if request.form["edit_comment"] != "" else "NULL", str(datetime.datetime.now()), len(value) - len(prev_content)), [4])
     db.commit()
     return redirect(f"/w/{doc_name}")
@@ -300,7 +331,20 @@ def logout():
     return redirect('/')
 @app.route("/history/<doc_name>")
 def history(doc_name):
-    return rt("history.html", history=db['document'][doc_name]['history'])
+    h = c.execute('''select name, datetime, length, rev, edit_comment
+from (
+	select author, edit_comment, datetime, length, rev
+	from history
+	where doc_id = (
+		select id
+		from doc_name
+		where name = ?
+	)
+),
+user
+where author = id
+order by rev desc''', (doc_name,)).fetchall()
+    return rt("history.html", history=h, doc_name=doc_name)
 @app.route("/sql")
 def sqldump():
     if not isowner():
@@ -326,6 +370,9 @@ def owner_tool():
     if not isowner():
         return '', 403
     return rt("owner_tool.html")
+@app.route("/delete/<doc_name>")
+def delete(doc_name):
+    return rt("document_delete.html", doc_title = doc_name, admin=isowner())
 #app.run(debug=db['other']['debug'], host=db['other']['host'], port=db['other']['port'])
 config = c.execute('''select name, value
 from config

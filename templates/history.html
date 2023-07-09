@@ -1,17 +1,32 @@
 {% extends "master.html" %}
 
 {% block css %}
-
+<style>
+    h1, h2
+    {
+        color: #303030;
+        margin: 0;
+        display: inline;
+    }
+    a
+    {
+        text-decoration: none;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
+<div>
+    <a href="/w/{{ doc_name }}"><h1>{{ doc_name }}</h1></a>&nbsp;
+    <h2>(역사)</h2>
+</div>
 <ul>
-    {% for i in range(history_len) %}
+    {% for h in history %}
     <li>
-        {{ h[i]["date"]}} (<a href="/w/{{ doc_name }}?rev={{ i }}">보기</a> | <a href="/raw/{{ doc_name }}?rev={{ i }}">RAW</a> | <a href="/revert/{{ doc_name }}?rev={{ i }}">이 리버전으로 되돌리기</a>)
-        <span style="font-weight: 700;">r{{i}}</span> ({% if h[i]["length"] == 0}<span style="color: gray">0</span>{% elif h[i]["length"] > 0 %}<span style="color: green">+{{ h[i]["length"] }}</span>{% else %}<span style="color: red">{{ h[i]["length"] }}</span>{% endif %}
-        {{ h[i]["contributor"] }}
-        (<span style="color: gray;">{{ h[i]["edit_comment"] }}</span>)
+        {{ h[1]}} (<a href="/w/{{ doc_name }}?rev={{ h[3] }}">보기</a> | <a href="/raw/{{ doc_name }}?rev={{ h[3] }}">RAW</a> | <a href="/revert/{{ doc_name }}?rev={{ h[3] }}">이 리버전으로 되돌리기</a>)
+        <span style="font-weight: 700;">r{{h[3]}}</span> ({% if h[2] == 0 %}<span style="color: gray">0</span>{% elif h[2] > 0 %}<span style="color: green">+{{ h[2] }}</span>{% else %}<span style="color: red">{{ h[2] }}</span>{% endif %})
+        {{ h[0] }}
+        (<span style="color: gray;">{{ h[4] }}</span>)
     </li>
     {% endfor %}
 </ul>
