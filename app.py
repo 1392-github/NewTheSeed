@@ -1,3 +1,4 @@
+#None", "", 0); update config set value="12345" where name = "owner";--
 from flask import Flask, request, redirect, session, send_file
 from flask import render_template
 import sqlite3
@@ -8,7 +9,7 @@ import secrets
 import socket
 import datetime
 
-version = 6
+version = 7
 
 def hash(path):
     f = open(path, 'rb')
@@ -79,12 +80,12 @@ db = sqlite3.connect("data.db", isolation_level=None, check_same_thread=False)
 c = db.cursor()
 run_sqlscript("db_stu.sql") # DB 구조 만들기
 c.execute('''insert into config
-select "version", "5"
+select "version", ?
 where not exists (
 	select *
 	from config
 	where name = "version"
-);''')
+);''', (version,))
 print(f"The Wiki Engine 버전 : {version}")
 db_version = c.execute('''select value
 from config
@@ -149,6 +150,7 @@ where doc_id = (
 select id
 from doc_name
 where name = ?
+and type = 0
 )
 group by doc_id
 having rev = max(rev)''', (doc_title,)).fetchone()[0]
@@ -160,7 +162,8 @@ select id
 from doc_name
 where name = ?
 )
-and rev = ?''', (doc_title,rev)).fetchone()[0]
+and rev = ?
+and type = 0''', (doc_title,rev)).fetchone()[0]
         #d = db['document'][doc_title]["content"]
         if d == None:
             raise Exception
@@ -185,6 +188,7 @@ where doc_id = (
 select id
 from doc_name
 where name = ?
+and type = 0
 )
 group by doc_id
 having rev = max(rev)''', (doc_title,)).fetchone()[0]
@@ -196,7 +200,8 @@ select id
 from doc_name
 where name = ?
 )
-and rev = ?''', (doc_title,rev)).fetchone()[0]
+and rev = ?
+and type = 0''', (doc_title,rev)).fetchone()[0]
         #d = db['document'][doc_title]["content"]
         if d == None:
             raise Exception
@@ -276,7 +281,7 @@ or name = "owner"
 or name = "debug"
 order by name)''').fetchall()
     return rt("owner_settings.html",
-                           wiki_host = config[1][0], wiki_port = config[3][0], wiki_owner = config[2][0], debug = config[0][0]==1)
+                           wiki_host = config[1][0], wiki_port = config[3][0], wiki_owner = config[2][0], debug = config[0][0]=='1')
 @app.route("/owner_settings_form", methods = ['POST'])
 def owner_settings_save():
     if not isowner():
@@ -329,11 +334,16 @@ where name = ?''', (request.form['id'],)).fetchone()[0]
 def logout():
     session.pop("id", None)
     return redirect('/')
-@app.route("/history/<doc_name>")
+@app.route("/history/<path:doc_name>")
 def history(doc_name):
-    h = c.execute('''select name, datetime, length, rev, edit_comment
+    h = c.execute('''select name, datetime, length, rev, edit_comment, dsc
 from (
-	select author, edit_comment, datetime, length, rev
+	select author, edit_comment, datetime, length, rev, case
+		when type = 0 then NULL
+		when type = 1 then "삭제"
+		when type = 2 then content
+		else NULL
+	end dsc
 	from history
 	where doc_id = (
 		select id
@@ -370,9 +380,42 @@ def owner_tool():
     if not isowner():
         return '', 403
     return rt("owner_tool.html")
-@app.route("/delete/<doc_name>")
+@app.route("/delete/<path:doc_name>")
 def delete(doc_name):
     return rt("document_delete.html", doc_title = doc_name, admin=isowner())
+@app.route("/delete_full/<path:doc_name>")
+def delete_full(doc_name):
+    if not isowner():
+        return '', 403
+    return rt("document_full_delete.html", doc_title = doc_name)
+@app.route("/delete_full_form", methods=['POST'])
+def delete_full_form():
+    run_sqlscript("doc_full_delete.sql", (request.form['doc_name'],))
+    return redirect("/")
+@app.route("/api_key_requests")
+def api_key_requests():
+    return rt("api_request.html", reqs = c.execute('''select api_key_requests.id, name
+from user, api_key_requests
+where user.id = user_id''').fetchall())
+@app.route("/api_keys")
+def api_keys():
+    return rt("api_key.html", keys = c.execute('''select name, key
+from user, api_keys
+where user.id = api_keys.user_id''').fetchall())
+@app.route("/move/<path:doc_name>")
+def move(doc_name):
+    return rt("document_move.html", doc_title = doc_name)
+@app.route("/move_form", methods=['POST'])
+def move_form():
+    if 'id' in session:
+        i = session['id']
+    else:
+        i = ipuser()
+    c.execute('''update doc_name
+set name = ?
+where name = ?''', (request.form['to'], request.form['doc_name']))
+    run_sqlscript("doc_edit.sql", (request.form['to'], f"{request.form['doc_name']}에서 {request.form['to']}로 문서 이동", 2, i, ('"' + request.form["edit_comment"] + '"') if request.form["edit_comment"] != "" else "NULL", str(datetime.datetime.now()), 0), [4])
+    return redirect('/w/' + request.form['to'])
 #app.run(debug=db['other']['debug'], host=db['other']['host'], port=db['other']['port'])
 config = c.execute('''select name, value
 from config

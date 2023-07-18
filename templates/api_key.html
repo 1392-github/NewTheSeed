@@ -1,0 +1,32 @@
+{% extends "master.html" %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<h1>API 키 관리</h1>
+<table class="border">
+    <tr>
+        <th>사용자 이름</th>
+        <th>키</th>
+        <th>삭제</th>
+    </tr>
+    {% for r in keys %}
+    <tr>
+        <td>{{r[0]}}</td>
+        <td>{{r[1]}}</td>
+        <td>
+            <form action="/api_key_delete" method="post">
+                <input type="hidden" name="id" value="{{r[1]}}">
+                <input type="submit" value="삭제">
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

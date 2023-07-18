@@ -1,0 +1,41 @@
+{% extends "master.html" %}
+
+{% block css %}
+<style>
+    #content form
+    {
+        display: inline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>API 키 요청</h1>
+<table class="border">
+    <tr>
+        <th>사용자 이름</th>
+        <th>승인/거절</th>
+    </tr>
+    {% for r in reqs %}
+    <tr>
+        <td>{{r[1]}}</td>
+        <td>
+            <form action="/api_request_accept_or_decline" method="post">
+                <input type="hidden" name="id" value="{{r[0]}}">
+                <input type="hidden" name="result" value="accept">
+                <input type="submit" value="승인">
+            </form>
+            <form action="/api_request_accept_or_decline" method="post">
+                <input type="hidden" name="id" value="{{r[0]}}">
+                <input type="hidden" name="result" value="decline">
+                <input type="submit" value="거절">
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

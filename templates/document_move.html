@@ -1,0 +1,54 @@
+{% extends "master.html" %}
+
+{% block css %}
+    <style>
+        h1, h2
+        {
+            color: #303030;
+            margin: 0;
+            display: inline;
+        }
+        a
+        {
+            text-decoration: none;
+        }
+        #ctn_header
+        {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        #ctn_header div:last-child
+        {
+            display: flex;
+            height: 35px;
+        }
+        input[type="text"]
+        {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="ctn_header">
+        <div>
+            <a href="/w/{{ doc_title }}"><h1>{{ doc_title }}</h1></a>&nbsp;
+            <h2>(이동)</h2>
+        </div>
+    </div>
+    <div id="ctn_data">
+        이 문서를 이동합니다
+        <form action="/move_form" method="post">
+            <input type="hidden" name="doc_name" value="{{ doc_title }}">
+            <input type="text" name="to" placeholder="대상 문서">
+            <input type="text" name="edit_comment" placeholder="편집 요약">
+            <input type="submit" value="이동">
+        </form>
+    </div>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

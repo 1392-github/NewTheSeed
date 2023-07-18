@@ -1,0 +1,50 @@
+{% extends "master.html" %}
+
+{% block css %}
+    <style>
+        h1, h2
+        {
+            color: #303030;
+            margin: 0;
+            display: inline;
+        }
+        a
+        {
+            text-decoration: none;
+        }
+        #ctn_header
+        {
+            display: flex;
+            justify-content: space-between;
+        }
+        #ctn_header div:last-child
+        {
+            display: flex;
+            height: 35px;
+        }
+        #ctn_header div:last-child a
+        {
+            border: 1px solid #808080;
+            padding: 5px 13px;
+            color: unset;
+            text-decoration: none;
+            line-height: 23px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="ctn_header">
+        <div>
+            <a href="/w/{{ doc_title }}"><h1>{{ doc_title }}</h1></a>&nbsp;
+            <h2>[부제목]</h2>
+        </div>
+    </div>
+    <div id="ctn_data">
+        
+    </div>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

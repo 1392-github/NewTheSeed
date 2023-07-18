@@ -1,0 +1,22 @@
+{% extends "master.html" %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+{{ doc_title }} 문서를 완전 삭제합니다
+완전 삭제 시 다음과 같은 항목이 삭제됩니다
+<ul>
+    <li>문서 역사</li>
+</ul>
+일반적인 삭제는 <a href="/delete/{{ doc_title }}">여기</a>로 이동해 주세요
+<form action="/delete_full_form" method="post">
+    <input type="hidden" name="doc_name" value="{{ doc_title }}">
+    <input type="submit" value="확인">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

@@ -29,7 +29,18 @@ CREATE TABLE IF NOT EXISTS "user" (
 );
 CREATE TABLE IF NOT EXISTS "discuss" (
 	"doc_id"	INTEGER,
+	"disc_id"	INTEGER,
 	"name"	TEXT,
 	"user"	INTEGER,
 	"status"	INTEGER
+);
+CREATE TABLE IF NOT EXISTS "api_key_requests" (
+	"id"	INTEGER,
+	"user_id"	INTEGER,
+	PRIMARY KEY("id" AUTOINCREMENT)
+);
+CREATE TABLE IF NOT EXISTS "api_keys" (
+	"user_id"	INTEGER,
+	"key"	TEXT,
+	PRIMARY KEY("user_id")
 );
