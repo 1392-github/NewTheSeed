@@ -10,3 +10,6 @@ where name = "owner";
 update config
 set value = "{3}"
 where name = "debug";
+update config
+set value = "{4}"
+where name = "get_api_key";

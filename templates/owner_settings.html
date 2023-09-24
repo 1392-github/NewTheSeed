@@ -32,13 +32,14 @@
     <fieldset>
         <legend>API 정책</legend>
         <label>
-            API 토큰 발급 방식 설정
-            <select>
-                <option value="api_0_allowed">항상 허용</option>
-                <option value="api_0_request">API 승인 필요</option>
-                <option value="api_0_disabled">API 비활성화</option>
+            API 키 발급 방식 설정
+            <select name="apitoken">
+                <option value="allowed" {% if token == 'allowed' %}selected{% endif %}>항상 허용</option>
+                <option value="request" {% if token == 'request' %}selected{% endif %}>API 승인 필요</option>
+                <option value="disabled" {% if token == 'disabled' %}selected{% endif %}>API 비활성화</option>
             </select>
         </label>
+        <!--
         <label>
             문서 읽기 (RAW)
             <select>
@@ -74,8 +75,30 @@
                 <option value="api_4_request">API 키 필요 (기본 미승인)</option>
                 <option value="api_4_disabled">API 비활성화</option>
             </select>
+        </label>-->
+        {% for a in keys %}
+        <label>
+            {{a[0]}}
+            <select name="api_{{a[1]}}">
+                {% if a[2] == 0 %}
+                <option value="allowed_without_key" selected>API 키 불필요</option>
+                {% else %}
+                <option value="allowed_without_key">API 키 불필요</option>
+                {% endif %}
+                {% if a[2] == 1 %}
+                <option value="allowed" selected>API 키 필요 (기본 승인)</option>
+                {% else %}
+                <option value="allowed">API 키 필요 (기본 승인)</option>
+                {% endif %}
+                {% if a[2] == 2 %}
+                <option value="request" selected>API 키 필요 (기본 미승인)</option>
+                {% else %}
+                <option value="request">API 키 필요 (기본 미승인)</option>
+                {% endif %}
+                <!--<option value="disabled">API 비활성화</option>-->
+            </select>
         </label>
-        
+        {% endfor %}
     </fieldset>
     <label>
         디버그 모드 {% if debug %}

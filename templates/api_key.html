@@ -10,12 +10,14 @@
     <tr>
         <th>사용자 이름</th>
         <th>키</th>
+        <th>권한 관리</th>
         <th>삭제</th>
     </tr>
     {% for r in keys %}
     <tr>
         <td>{{r[0]}}</td>
         <td>{{r[1]}}</td>
+        <td><a href="/api_perm/{{r[1]}}">권한 관리</a></td>
         <td>
             <form action="/api_key_delete" method="post">
                 <input type="hidden" name="id" value="{{r[1]}}">

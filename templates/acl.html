@@ -26,17 +26,14 @@
         {
             margin-top: 10px;
         }
-        /*
-        #ctn_header div:last-child a
+        /*#ctn_header div:last-child a
         {
             border: 1px solid #808080;
             padding: 5px 13px;
             color: unset;
             text-decoration: none;
             line-height: 23px;
-        }
-        (우측 메뉴 포함시에 한함)
-        */
+        }*/
     </style>
 {% endblock %}
 
@@ -44,11 +41,35 @@
     <div id="ctn_header">
         <div>
             <a href="/w/{{ doc_title }}"><h1>{{ doc_title }}</h1></a>&nbsp;
-            <h2>[부제목]</h2>
+            <h2>(ACL)</h2>
         </div>
     </div>
     <div id="ctn_data">
-        
+        <form action="/set_acl" method="post">
+            {% for acl in aclcs %}
+            <label>{{acl[0]}}
+                {% if hasperm %}
+                <select name="{{acl[1]}}">
+                {% else %}
+                <select disabled>
+                {% endif %}
+                    {% for c in acls %}
+                        {% if s == c %}
+                            <option value="{{c}}" selected>{{c}}</option>
+                        {% else %}
+                            <option value="{{c}}">{{c}}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </label>
+            <br>
+            {% endfor %}
+            {% if hasperm %}
+            <input type="submit" value="저장">
+            {% else %}
+            <input type="submit" value="저장" disabled>
+            {% endif %}
+        </form>
     </div>
 {% endblock %}
 

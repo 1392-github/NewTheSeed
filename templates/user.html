@@ -15,7 +15,33 @@
     {
         border: 1px solid #444444;
     }
+    #apiconfirm
+        {
+            position: absolute;
+            top: 40%;
+            left: 30%;
+            width: 40%;
+            height: 20%;
+            box-sizing: border-box;
+            background-color: #ffffff;
+            z-index: 1;
+            display: grid;
+            grid-template-rows: 3fr 1fr;
+            grid-template-columns: 1fr 1fr;
+            padding: 1%;
+        }
 </style>
+{% endblock %}
+
+{% block outcontent %}
+{% if api %}
+<div id="apiconfirm" style="display: none;">
+    <div style="grid-column: 1 / 3; grid-row: 1 / 2;">API 키를 요청하겠습니까?</div>
+    <a href="/getkey" style="grid-column: 1 / 2; grid-row: 2 / 3; background-color: #8080ff; line-height: calc(17vh/4); text-align: center; color: white; text-decoration: none;">네</a>
+    <a href="javascript:hideConfirm()" style="grid-column: 2 / 3; grid-row: 2 / 3; background-color: #808080; line-height: calc(17vh/4); text-align: center; color: white; text-decoration: none;">아니요</a>
+</div>
+<div id="gray" style="background-color: #000000; width: 100%; height: 100%; opacity: 0.5; position: absolute; display: none;"></div>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -36,6 +62,13 @@
     </table>
     {% if login %}
     <li><a href="/logout">로그아웃</a></li>
+    {% if api %}
+    {% if key==None %}
+    <li><a href="javascript:showConfirm()">API 키 요청</a></li>
+    {% else %}
+    <li>API 키 : {{ key }}</li>
+    {% endif %}
+    {% endif %}
     {% else %}
     <li><a href="/login">로그인</a></li>
     <li><a href="/signup">회원가입</a></li>
@@ -44,5 +77,16 @@
 {% endblock %}
 
 {% block js %}
-
+{% if api %}
+<script>
+    function hideConfirm() {
+        document.querySelector("#apiconfirm").style.display = "none"
+        document.querySelector("#gray").style.display = "none"
+    }
+    function showConfirm() {
+        document.querySelector("#apiconfirm").style.display = "grid"
+        document.querySelector("#gray").style.display = "block"
+    }
+</script>
+{% endif %}
 {% endblock %}

@@ -1,5 +1,5 @@
 #None", "", 0); update config set value="12345" where name = "owner";--
-from flask import Flask, request, redirect, session, send_file
+from flask import Flask, request, redirect, session, send_file, abort
 from flask import render_template
 import sqlite3
 import json
@@ -9,7 +9,12 @@ import secrets
 import socket
 import datetime
 
-version = 7
+version = 8
+
+keyl = {'문서 읽기' : 'read_doc',
+        '문서 편집':'write_doc'
+}
+# 함수 정의 부분 시작
 
 def hash(path):
     f = open(path, 'rb')
@@ -29,23 +34,6 @@ def run_sqlscript(filename, args = (), no_replace = []):
         c.executescript(f.read().format(*args))
     
     return c.fetchall()
-'''with open('pure.json') as f:
-    md5t = json.load(f)
-print("순정 검사 시작")
-for f in md5t:
-    print(f"순정 검사 중 - {f}")
-    if hash(f) != md5t[f]:
-        print("경고! 순정 버전이 아닙니다")
-        print(f"순정 MD5 - {md5t[f]}, 검사된 MD5 - {hash(f)}")
-        print("엔진을 직접 수정했거나, 다운로드 중 손상된 것 같습니다")
-        print("직접 수정한 변경사항 손실 방지를 위해 업데이트 기능이 비활성화됩니다")
-        break'''
-def rt(t, **kwargs):
-    k = kwargs
-    k['wiki_title'] = "TheWiki"
-    k['wiki_name'] = "TheWiki"
-    k['isowner'] = isowner()
-    return render_template(t, **k)
 '''owner 권한 체크
 /sql, /sqlshell, /owner_settings 에서 사용
 권한이 있으면 True, 없으면 False'''
@@ -61,7 +49,7 @@ def isowner():
 		from config
 		where name = "owner"
 	)
-)''', (str(session['id']))).fetchone()[0] == 1
+)''', (str(session['id']),)).fetchone()[0] == 1
 def ipuser():
     c.execute('''insert into user (name, isip)
 select ?, 1
@@ -75,6 +63,75 @@ where not exists (
 from user
 where name = ?
 and isip = 1''', (request.remote_addr,)).fetchone()[0]
+def hasacl(cond):
+    if 'id' in session:
+        user = session['id']
+    else:
+        user = ipuser()
+    if cond == 'any' or cond == 'any_with_ban':
+        return True
+    if cond == 'member':
+        return c.execute('''select isip
+from user
+where id = ?''').fetchone()[0] == '0'
+    if cond == 'admin' or cond == 'owner':
+        return isowner()
+
+'''with open('pure.json') as f:
+    md5t = json.load(f)
+print("순정 검사 시작")
+for f in md5t:
+    print(f"순정 검사 중 - {f}")
+    if hash(f) != md5t[f]:
+        print("경고! 순정 버전이 아닙니다")
+        print(f"순정 MD5 - {md5t[f]}, 검사된 MD5 - {hash(f)}")
+        print("엔진을 직접 수정했거나, 다운로드 중 손상된 것 같습니다")
+        print("직접 수정한 변경사항 손실 방지를 위해 업데이트 기능이 비활성화됩니다")
+        break'''
+# API 키 요구여부 확인 및 키에 연결된 사용자 가져오기
+# 유효하지 않은 키인경우 None 반환
+# API 키가 None인 경우, 키가 필요없으면 IP에 해당하는 ID 반환, 키가 필요하면 None 반환
+def key_req(name, key):
+    try:
+        policy = c.execute('''select case value
+when 0 then 0
+when 1 then 1
+when 2 then 1
+end
+from api_policy
+where name = ?''',(name,)).fetchone()[0]
+    except:
+        policy = 1
+    if key == None:
+        if policy == 0:
+            return ipuser()
+        else:
+            return None
+    if c.execute('''select exists (
+    select *
+    from api_keys
+    where key = ?
+)''', (key,)).fetchone()[0]==0:
+        return None
+    perm = c.execute('''select value
+from api_key_perm
+where key = ?
+and name = ?''', (key, name)).fetchone()[0]
+    if perm == 0:
+        return None
+    
+    return c.execute('''select user_id
+from api_keys
+where key = ?''', (key,)).fetchone()[0]
+def rt(t, **kwargs):
+    k = kwargs
+    k['wiki_title'] = "TheWiki"
+    k['wiki_name'] = "TheWiki"
+    k['isowner'] = isowner()
+    return render_template(t, **k)
+
+# 함수 정의 끝, 초기화 부분 시작
+
 # DB 로딩
 db = sqlite3.connect("data.db", isolation_level=None, check_same_thread=False)
 c = db.cursor()
@@ -99,8 +156,15 @@ if int(db_version) > version:
 
 # DB 변환 코드
 if int(db_version) < 6:
-    print("버전 5 → 6 변환중...")
-    c.execute("alter table doc_name add discuss_seq TEXT")
+    # discuss_seq 컬럼 추가
+    c.execute("alter table doc_name add discuss_seq INTEGER")
+if int(db_version) < 8:
+    # discuss_seq 컬럼의 데이터 타입 오류 수정
+    c.executescript('''alter table doc_name drop column discuss_seq;
+                       alter table doc_name add column discuss_seq INTEGER;''')
+    # config에 get_api_key 추가
+    c.execute("insert into config values('get_api_key', 'disabled')")
+
 
 c.execute('''update config
 set value = ?
@@ -129,8 +193,60 @@ if c.execute('''select exists (
 	where name = "debug"
 );''').fetchone()[0] == 0:
     c.execute('insert into config values("debug", "0")')
+if c.execute('''select exists (
+	select *
+	from config
+	where name = "get_api_key"
+);''').fetchone()[0] == 0:
+    c.execute('insert into config values("get_api_key", "disabled")')
+
 app = Flask(__name__)
 app.secret_key = "32948j1928741ajdsfsdajfkl"
+# 초기화 부분 끝, API 부분 시작
+@app.route("/api/read_doc", methods=['POST'])
+def api_read_doc():
+    t = key_req('read_doc', request.json.get('key', None))
+    if t == None:
+        abort(403)
+    try:
+        d = c.execute('''select content
+from history
+where doc_id = (
+select id
+from doc_name
+where name = ?
+and type = 0
+)
+group by doc_id
+having rev = max(rev)''', (request.json['name'],)).fetchone()[0]
+    except:
+        return {'content':None}
+    return {'content':d}
+@app.route("/api/edit_doc", methods=['POST'])
+def api_edit_doc():
+    doc_name = request.json["name"]
+    value = request.json["value"]
+        
+        
+    
+    try:
+        prev_content = c.execute('''select content
+from history
+where doc_id = (
+	select id
+	from doc_name
+	where name = ?
+)
+group by doc_id
+having rev = max(rev)''', (doc_name,)).fetchone()[0]
+    except:
+        prev_content = ""
+    i = key_req('write_doc', request.json.get('key', None))
+    if i == None:
+        abort(403)
+    run_sqlscript("doc_edit.sql", (doc_name, value, 0, i, ('"' + (request.json.get('edit_comment', "None").replace('"', '""')) + '"') if request.json.get("edit_comment", None) != "" else "NULL", str(datetime.datetime.now()), len(value) - len(prev_content)), [4])
+    return {}
+# API 부분 끝, 주 페이지 시작
 @app.route("/")
 def redirect_frontpage():
     return redirect("/w/FrontPage")
@@ -259,7 +375,7 @@ having rev = max(rev)''', (doc_name,)).fetchone()[0]
         i = session['id']
     else:
         i = ipuser()
-    run_sqlscript("doc_edit.sql", (doc_name, value, 0, i, ('"' + request.form["edit_comment"] + '"') if request.form["edit_comment"] != "" else "NULL", str(datetime.datetime.now()), len(value) - len(prev_content)), [4])
+        run_sqlscript("doc_edit.sql", (doc_name, value, 0, i, ('"' + request.form["edit_comment"].replace('"', '""') + '"') if request.form["edit_comment"] != "" else "NULL", str(datetime.datetime.now()), len(value) - len(prev_content)), [4])
     db.commit()
     return redirect(f"/w/{doc_name}")
 @app.route("/license")
@@ -270,7 +386,7 @@ def license():
 @app.route("/owner_settings")
 def owner_settings():
     if not isowner():
-        return '', 403
+        abort(403)
     config = c.execute('''select value
 from (
 select name, value
@@ -279,27 +395,74 @@ where name = "host"
 or name = "port"
 or name = "owner"
 or name = "debug"
+or name = "get_api_key"
 order by name)''').fetchall()
+    
+    keys = []
+    for i in keyl:
+        a = c.execute('''select value
+from api_policy
+where name = ?''', (keyl[i],)).fetchone()
+        try:
+            keys.append([i, keyl[i], a[0]])
+        except:
+            keys.append([i, keyl[i], 2])
     return rt("owner_settings.html",
-                           wiki_host = config[1][0], wiki_port = config[3][0], wiki_owner = config[2][0], debug = config[0][0]=='1')
+                           wiki_host = config[2][0], wiki_port = config[4][0], wiki_owner = config[3][0], debug = config[0][0]=='1', token = config[1][0],
+              keys = keys)
 @app.route("/owner_settings_form", methods = ['POST'])
 def owner_settings_save():
     if not isowner():
-        return '', 403
+        abort(403)
     if request.form.get('debug'):
         dbg = "1"
     else:
         dbg = "0"
-    run_sqlscript("save_owner_settings.sql", (request.form['host'], request.form['port'], request.form['owner'], dbg))
+    run_sqlscript("save_owner_settings.sql", (request.form['host'], request.form['port'], request.form['owner'], dbg, request.form['apitoken']))
+    apis = [(x[4:], request.form.to_dict()[x]) for x in request.form.to_dict() if x[:4] == "api_"]
+    print(apis)
+    #db.autocommit = False
+    c.execute('BEGIN')
+    c.execute('DELETE FROM api_policy')
+    for api in apis:
+        if api[1] not in ['allowed_without_key', 'allowed', 'request']:
+            c.execute('ROLLBACK')
+            #db.autocommit = True
+            abort(400)
+            return
+        else:
+            c.execute('''insert into api_policy
+select ?, case ?
+	when 'allowed_without_key' then 0
+	when 'allowed' then 1
+	when 'request' then 2
+end''', (api[0], api[1]))
+    else:
+        c.execute('COMMIT')
+        #db.autocommit = True
     return redirect('/')
 @app.route("/user")
 def user():
     if 'id' in session:
-        return rt("user.html", user_name = c.execute('''select name
+        try:
+            api = c.execute('''select exists (
+	select *
+	from config
+	where name = 'get_api_key'
+	and value <> 'disabled'
+)''').fetchone()[0]==1
+            
+            key = c.execute('''select key
+from api_keys
+where user_id = ?''', (session["id"],)).fetchone()
+            return rt("user.html", user_name = c.execute('''select name
 from user
-where id = ?''', (session["id"],)).fetchone()[0], login=True)
+where id = ?''', (session["id"],)).fetchone()[0], login=True, api=api, key=None if key==None else key[0])
+        except:
+            session.pop("id", None)
+            return rt("user.html", user_name = request.remote_addr, login=False, api=False)
     else:
-        return rt("user.html", user_name = request.remote_addr, login=False)
+        return rt("user.html", user_name = request.remote_addr, login=False, api=False)
 @app.route("/login")
 def login():
     return rt("login.html")
@@ -358,7 +521,7 @@ order by rev desc''', (doc_name,)).fetchall()
 @app.route("/sql")
 def sqldump():
     if not isowner():
-        return '', 403
+        abort(403)
     with open("dump.sql", "w") as f:
         for l in db.iterdump():
             f.write("%s\n" % l)
@@ -366,7 +529,7 @@ def sqldump():
 @app.route("/sql_shell", methods=['GET', 'POST'])
 def sqlshell():
     if not isowner():
-        return '', 403
+        abort(403)
     if request.method == "GET":
         return rt("sql_shell.html", prev_sql = "", result = "")
     else:
@@ -378,7 +541,7 @@ def sqlshell():
 @app.route("/owner_tool")
 def owner_tool():
     if not isowner():
-        return '', 403
+        abort(403)
     return rt("owner_tool.html")
 @app.route("/delete/<path:doc_name>")
 def delete(doc_name):
@@ -386,7 +549,7 @@ def delete(doc_name):
 @app.route("/delete_full/<path:doc_name>")
 def delete_full(doc_name):
     if not isowner():
-        return '', 403
+        abort(403)
     return rt("document_full_delete.html", doc_title = doc_name)
 @app.route("/delete_full_form", methods=['POST'])
 def delete_full_form():
@@ -394,11 +557,15 @@ def delete_full_form():
     return redirect("/")
 @app.route("/api_key_requests")
 def api_key_requests():
+    if not isowner():
+        abort(403)
     return rt("api_request.html", reqs = c.execute('''select api_key_requests.id, name
 from user, api_key_requests
 where user.id = user_id''').fetchall())
 @app.route("/api_keys")
 def api_keys():
+    if not isowner():
+        abort(403)
     return rt("api_key.html", keys = c.execute('''select name, key
 from user, api_keys
 where user.id = api_keys.user_id''').fetchall())
@@ -416,6 +583,84 @@ set name = ?
 where name = ?''', (request.form['to'], request.form['doc_name']))
     run_sqlscript("doc_edit.sql", (request.form['to'], f"{request.form['doc_name']}에서 {request.form['to']}로 문서 이동", 2, i, ('"' + request.form["edit_comment"] + '"') if request.form["edit_comment"] != "" else "NULL", str(datetime.datetime.now()), 0), [4])
     return redirect('/w/' + request.form['to'])
+@app.route("/acl/<path:doc_name>")
+def acl(doc_name):
+    return rt("acl.html", aclcs = [
+        ('문서 편집','edit'),
+        ('문서 이동','move'),
+        ('문서 삭제','delete'),
+        ('ACL','acl')
+        ], acls = [
+            'any',
+            'any_with_ban',
+            'member',
+            'admin',
+            'owner'], doc_title = doc_name, hasperm = False)
+@app.route("/api_request_accept_or_decline", methods=['POST'])
+def api_request_accept_or_decline():
+    if not isowner():
+        abort(403)
+    if request.form['result'] == 'accept':
+        k = secrets.token_hex(64)
+        c.execute('''insert into api_keys
+select user_id, ?
+from api_key_requests
+where id = ?''', (k, request.form['id']))
+        c.execute('''insert into api_key_perm
+select ?, name, case value
+	when 0 then 1
+	when 1 then 1
+	when 2 then 0
+	end
+from api_policy''', (k,))
+    c.execute('''delete from api_key_requests
+where id=?''', (request.form['id']))
+    return redirect('/')
+@app.route("/api_perm/<key>", methods=['GET', 'POST'])
+def api_perm(key):
+    if not isowner():
+        abort(403)
+    if request.method == 'POST':
+        c.execute('DELETE FROM api_key_perm WHERE key=?', (key,))
+        for k in keyl:
+            if request.form.get(keyl[k]):
+                c.execute('''insert into api_key_perm
+values(?,?,1)''', (key, keyl[k]))
+            else:
+                c.execute('''insert into api_key_perm
+values(?,?,0)''', (key, keyl[k]))
+        return redirect('/')
+    tmp = []
+    for k in keyl:
+        try:
+            p = c.execute('''select value
+    from api_key_perm
+    where key = ?
+    and name = ?''', (key, keyl[k])).fetchone()[0]
+        except:
+            p = 0
+        tmp.append([k, keyl[k], p])
+    return rt('api_perm.html', ps=tmp, key=key)
+@app.route("/getkey")
+def getkey():
+    if 'id' not in session:
+        abort(403)
+    api = c.execute('''select exists (
+	select *
+	from config
+	where name = 'get_api_key'
+	and value <> 'disabled'
+)''').fetchone()[0]==1
+    if not api:
+        abort(403)
+    c.execute('''insert into api_key_requests (user_id)
+values(?)''', (session['id'],))
+    return redirect('/')
+@app.route("/api_key_delete", methods=['POST'])
+def api_key_delete():
+    c.execute('delete from api_keys where key=?', (request.form['id'],))
+    c.execute('delete from api_key_perm where key=?', (request.form['id'],))
+    return redirect('/')
 #app.run(debug=db['other']['debug'], host=db['other']['host'], port=db['other']['port'])
 config = c.execute('''select name, value
 from config
