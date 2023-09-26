@@ -9,10 +9,11 @@ import secrets
 import socket
 import datetime
 
-version = 8
+version = 9
 
 keyl = {'문서 읽기' : 'read_doc',
-        '문서 편집':'write_doc'
+        '문서 편집':'write_doc',
+        '랜덤 문서':'randompage'
 }
 # 함수 정의 부분 시작
 
@@ -168,7 +169,7 @@ if int(db_version) < 8:
 
 c.execute('''update config
 set value = ?
-where name = "version"''', str(version)) # 변환 후 버전 재설정
+where name = "version"''', (str(version),)) # 변환 후 버전 재설정
 if c.execute('''select exists (
 	select *
 	from config
@@ -246,6 +247,13 @@ having rev = max(rev)''', (doc_name,)).fetchone()[0]
         abort(403)
     run_sqlscript("doc_edit.sql", (doc_name, value, 0, i, ('"' + (request.json.get('edit_comment', "None").replace('"', '""')) + '"') if request.json.get("edit_comment", None) != "" else "NULL", str(datetime.datetime.now()), len(value) - len(prev_content)), [4])
     return {}
+@app.route("/api/randompage", methods=['POST'])
+def api_randompage():
+    if key_req('randompage', request.json.get('key', None)) == None:
+        abort(403)
+    c.execute('select name from doc_name order by random() limit 1')
+    r = c.fetchone()[0]
+    return {'name':r}
 # API 부분 끝, 주 페이지 시작
 @app.route("/")
 def redirect_frontpage():
@@ -375,8 +383,8 @@ having rev = max(rev)''', (doc_name,)).fetchone()[0]
         i = session['id']
     else:
         i = ipuser()
-        run_sqlscript("doc_edit.sql", (doc_name, value, 0, i, ('"' + request.form["edit_comment"].replace('"', '""') + '"') if request.form["edit_comment"] != "" else "NULL", str(datetime.datetime.now()), len(value) - len(prev_content)), [4])
-    db.commit()
+    run_sqlscript("doc_edit.sql", (doc_name, value, 0, i, ('"' + request.form["edit_comment"].replace('"', '""') + '"') if request.form["edit_comment"] != "" else "NULL", str(datetime.datetime.now()), len(value) - len(prev_content)), [4])
+    #db.commit()
     return redirect(f"/w/{doc_name}")
 @app.route("/license")
 def license():
@@ -661,6 +669,11 @@ def api_key_delete():
     c.execute('delete from api_keys where key=?', (request.form['id'],))
     c.execute('delete from api_key_perm where key=?', (request.form['id'],))
     return redirect('/')
+@app.route("/random")
+def random():
+    c.execute('select name from doc_name order by random() limit 1')
+    r = c.fetchone()[0]
+    return redirect('/w/{0}'.format(r))
 #app.run(debug=db['other']['debug'], host=db['other']['host'], port=db['other']['port'])
 config = c.execute('''select name, value
 from config
