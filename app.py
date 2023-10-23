@@ -682,8 +682,11 @@ def random():
 def ban():
     if not isowner():
         abort(403)
+    if request.method == 'POST':
+        c.execute("update user set ban=case ? when '0' then case when cast(? as integer)<=0 then ? else strftime('%s','now')+? end else strftime('%s',?) end where name=?", (request.form['method'],request.form['time'],request.form['time'],request.form['time'],request.form['time'],request.form['user']))
+        c.execute("update user set reason=? where name=?", (request.form['reason'],request.form['user']))
+        return redirect('/')
     return rt("ban.html")
-#app.run(debug=db['other']['debug'], host=db['other']['host'], port=db['other']['port'])
 config = c.execute('''select name, value
 from config
 where name = "host"
