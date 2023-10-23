@@ -9,7 +9,7 @@ import secrets
 import socket
 import datetime
 
-version = 9
+version = 10
 
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
@@ -165,7 +165,11 @@ if int(db_version) < 8:
                        alter table doc_name add column discuss_seq INTEGER;''')
     # config에 get_api_key 추가
     c.execute("insert into config values('get_api_key', 'disabled')")
-
+if int(db_version) < 10:
+    # ban, reason 컬럼 추가
+    c.executescript('''alter table user add ban;
+alter table user add reason;
+update user set ban=0;''')
 
 c.execute('''update config
 set value = ?
@@ -481,8 +485,8 @@ def signup():
 def signup_form():
     if request.form['pw'] != request.form['pw2']:
         return rt("wrong_password2.html")
-    c.execute('''insert into user (name, password, isip)
-values (?,?,0)''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest()))
+    c.execute('''insert into user (name, password, isip, ban)
+values (?,?,0,0)''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest()))
     return redirect('/')
 @app.route("/login_form", methods=['POST'])
 def login_form():
@@ -674,6 +678,11 @@ def random():
     c.execute('select name from doc_name order by random() limit 1')
     r = c.fetchone()[0]
     return redirect('/w/{0}'.format(r))
+@app.route("/ban", methods=['GET','POST'])
+def ban():
+    if not isowner():
+        abort(403)
+    return rt("ban.html")
 #app.run(debug=db['other']['debug'], host=db['other']['host'], port=db['other']['port'])
 config = c.execute('''select name, value
 from config

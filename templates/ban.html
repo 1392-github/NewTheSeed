@@ -1,0 +1,30 @@
+{% extends "master.html" %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<h1>사용자 차단</h1>
+<form method="post">
+    <label>차단 기한 방식
+        <select>
+            <option value="0">차단 기한 설정</option>
+            <option value="1">차단이 끝나는 날짜 설정</option>
+        </select>
+    </label><br>
+    <label>차단 기한
+        <input type="number" min="-2" name="unit" value="0">
+        <input type="datetime-local" name="unit" disabled style="display: none" step="1">
+    </label><br>
+    <label>차단 사유 <input type="text" name="reason" value="없음"></label><br>
+    "차단 기한 설정"방식의 경우 차단 기한을 -1로 설정할시 무기한 차단, -2로 설정할시 경고, -1과 -2 이외의 0 이하 값으로 설정할시 차단 해제가 됩니다<br>
+    "차단이 끝나는 날짜 설정"방식의 경우 1969년12월31일 오후 11시59분59초로 설정할시 무기한 차단, 1969년12월31일 오후11시59분58초로 설정할시 경고, 그 외의 이미 지난 날짜로 설정할시 차단 해제가 됩니다
+    <br>
+    <input type="submit" value="확인">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}
