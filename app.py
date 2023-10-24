@@ -1,5 +1,4 @@
 #select (case when ban<0 or ban>strftime('%s','now') then ban else 
-where 
 #None", "", 0); update config set value="12345" where name = "owner";--
 from flask import Flask, request, redirect, session, send_file, abort
 from flask import render_template
@@ -54,6 +53,8 @@ def isowner():
 	)
 )''', (str(session['id']),)).fetchone()[0] == 1
 def ipuser():
+    if 'id' in session:
+        return int(session['id'])
     c.execute('''insert into user (name, isip)
 select ?, 1
 where not exists (
@@ -129,7 +130,9 @@ where key = ?''', (key,)).fetchone()[0]
 # 차단 여부 확인 (None : 차단안됨, -1 : 영구차단, -2 : 경고)
 def isban():
     if 'id' in session:
-        
+        return c.execute("select case when ban<0 or ban>strftime('%s','now') then ban else 0 end from user where id=?", (session['id'],)).fetchone()[0]
+    else:
+        return c.execute("select case when ban<0 or ban>strftime('%s','now') then ban else 0 end from user where id=?", (ipuser(),)).fetchone()[0]
 def rt(t, **kwargs):
     k = kwargs
     k['wiki_title'] = "TheWiki"
@@ -235,6 +238,17 @@ having rev = max(rev)''', (request.json['name'],)).fetchone()[0]
     return {'content':d}
 @app.route("/api/edit_doc", methods=['POST'])
 def api_edit_doc():
+    if 'id' in session:
+        i = session['id']
+    else:
+        i = ipuser()
+    if isban() != 0:
+        if isban() == -2:
+            return rt("banned.html", warn=True, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        elif isban() == -1:
+            return rt("banned.html", warn=False, time=None, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        else:
+            return rt("banned.html", warn=False, time=datetime.datetime.fromtimestamp(isban()).strftime('%Y-%m-%d %p %I:%M:%S'), reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
     doc_name = request.json["name"]
     value = request.json["value"]
         
@@ -349,6 +363,18 @@ and type = 0''', (doc_title,rev)).fetchone()[0]
     return rt("document_raw.html", doc_title=doc_title, doc_data=d), code
 @app.route("/edit/<path:doc_title>")
 def doc_edit(doc_title):
+    if 'id' in session:
+        i = session['id']
+    else:
+        i = ipuser()
+    print(i)
+    if isban() != 0:
+        if isban() == -2:
+            return rt("banned.html", warn=True, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        elif isban() == -1:
+            return rt("banned.html", warn=False, time=None, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        else:
+            return rt("banned.html", warn=False, time=datetime.datetime.fromtimestamp(isban()).strftime('%Y-%m-%d %p %I:%M:%S'), reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
     try:
         d = c.execute('''select content
 from history
@@ -393,6 +419,13 @@ having rev = max(rev)''', (doc_name,)).fetchone()[0]
         i = session['id']
     else:
         i = ipuser()
+    if isban() != 0:
+        if isban() == -2:
+            return rt("banned.html", warn=True, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        elif isban() == -1:
+            return rt("banned.html", warn=False, time=None, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        else:
+            return rt("banned.html", warn=False, time=datetime.datetime.fromtimestamp(isban()).strftime('%Y-%m-%d %p %I:%M:%S'), reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
     run_sqlscript("doc_edit.sql", (doc_name, value, 0, i, ('"' + request.form["edit_comment"].replace('"', '""') + '"') if request.form["edit_comment"] != "" else "NULL", str(datetime.datetime.now()), len(value) - len(prev_content)), [4])
     #db.commit()
     return redirect(f"/w/{doc_name}")
@@ -563,14 +596,47 @@ def owner_tool():
     return rt("owner_tool.html")
 @app.route("/delete/<path:doc_name>")
 def delete(doc_name):
+    if 'id' in session:
+        i = session['id']
+    else:
+        i = ipuser()
+    if isban() != 0:
+        if isban() == -2:
+            return rt("banned.html", warn=True, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        elif isban() == -1:
+            return rt("banned.html", warn=False, time=None, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        else:
+            return rt("banned.html", warn=False, time=datetime.datetime.fromtimestamp(isban()).strftime('%Y-%m-%d %p %I:%M:%S'), reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
     return rt("document_delete.html", doc_title = doc_name, admin=isowner())
 @app.route("/delete_full/<path:doc_name>")
 def delete_full(doc_name):
+    if 'id' in session:
+        i = session['id']
+    else:
+        i = ipuser()
+    if isban() != 0:
+        if isban() == -2:
+            return rt("banned.html", warn=True, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        elif isban() == -1:
+            return rt("banned.html", warn=False, time=None, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        else:
+            return rt("banned.html", warn=False, time=datetime.datetime.fromtimestamp(isban()).strftime('%Y-%m-%d %p %I:%M:%S'), reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
     if not isowner():
         abort(403)
     return rt("document_full_delete.html", doc_title = doc_name)
 @app.route("/delete_full_form", methods=['POST'])
 def delete_full_form():
+    if 'id' in session:
+        i = session['id']
+    else:
+        i = ipuser()
+    if isban() != 0:
+        if isban() == -2:
+            return rt("banned.html", warn=True, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        elif isban() == -1:
+            return rt("banned.html", warn=False, time=None, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
+        else:
+            return rt("banned.html", warn=False, time=datetime.datetime.fromtimestamp(isban()).strftime('%Y-%m-%d %p %I:%M:%S'), reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
     run_sqlscript("doc_full_delete.sql", (request.form['doc_name'],))
     return redirect("/")
 @app.route("/api_key_requests")
@@ -693,6 +759,10 @@ def ban():
         c.execute("update user set reason=? where name=?", (request.form['reason'],request.form['user']))
         return redirect('/')
     return rt("ban.html")
+@app.route("/warn_ok")
+def warn_ok():
+    c.execute("update user set ban=0 where id=? and ban=-2", (ipuser(),))
+    return redirect('/')
 config = c.execute('''select name, value
 from config
 where name = "host"
