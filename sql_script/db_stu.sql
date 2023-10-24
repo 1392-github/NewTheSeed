@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS "user" (
 	"name"	TEXT,
 	"password"	TEXT,
 	"isip"	INTEGER,
+	"ban"	INTEGER,
+	"reason"	TEXT,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 CREATE TABLE IF NOT EXISTS "discuss" (

@@ -6,19 +6,29 @@
 
 {% block content %}
 <h1>사용자 차단</h1>
-<form method="post">
+<form name="ban" method="post">
+    <label>차단할 사용자
+        <input type="text" name="user">
+    </label>
     <label>차단 기한 방식
-        <select>
+        <select name="method">
             <option value="0">차단 기한 설정</option>
             <option value="1">차단이 끝나는 날짜 설정</option>
         </select>
     </label><br>
     <label>차단 기한
-        <input type="number" min="-2" name="unit" value="0">
-        <input type="datetime-local" name="unit" disabled style="display: none" step="1">
+        <input type="number" min="-2" name="time" value="0">
+        <input type="datetime-local" name="time" disabled style="display: none" step="1">
+        <a href="javascript:document.ban.time[0].value = -1">(무기한 차단)</a>
+        <a href="javascript:document.ban.time[0].value = -2">(경고)</a>
+        <a href="javascript:document.ban.time[0].value = 0">(차단 해제)</a>
+        <a href="javascript:document.ban.time[0].value = 86400">(1일)</a>
+        <a href="javascript:document.ban.time[0].value = 604800">(7일)</a>
+        <a href="javascript:document.ban.time[0].value = 2419200">(1개월)</a>
+        <a href="javascript:document.ban.time[0].value = 31536000">(1년)</a>
     </label><br>
     <label>차단 사유 <input type="text" name="reason" value="없음"></label><br>
-    "차단 기한 설정"방식의 경우 차단 기한을 -1로 설정할시 무기한 차단, -2로 설정할시 경고, -1과 -2 이외의 0 이하 값으로 설정할시 차단 해제가 됩니다<br>
+    "차단 기한 설정"방식의 경우 차단 기한을 -1로 설정할시 무기한 차단, -2로 설정할시 경고, 0으로 설정할시 차단 해제가 됩니다<br>
     "차단이 끝나는 날짜 설정"방식의 경우 1969년12월31일 오후 11시59분59초로 설정할시 무기한 차단, 1969년12월31일 오후11시59분58초로 설정할시 경고, 그 외의 이미 지난 날짜로 설정할시 차단 해제가 됩니다
     <br>
     <input type="submit" value="확인">
@@ -26,5 +36,20 @@
 {% endblock %}
 
 {% block js %}
-
+<script>
+    document.ban.method.addEventListener("change",  function () {
+        if (this.value == '0') {
+            document.querySelector("#content > form > label:nth-child(4) > input[type=number]:nth-child(1)").disabled = false
+            document.querySelector("#content > form > label:nth-child(4) > input[type=number]:nth-child(1)").style.display = "inline-block"
+            document.querySelector("#content > form > label:nth-child(4) > input[type=datetime-local]:nth-child(2)").disabled = true
+            document.querySelector("#content > form > label:nth-child(4) > input[type=datetime-local]:nth-child(2)").style.display = "none"
+        }
+        else {
+            document.querySelector("#content > form > label:nth-child(4) > input[type=number]:nth-child(1)").disabled = true
+            document.querySelector("#content > form > label:nth-child(4) > input[type=number]:nth-child(1)").style.display = "none"
+            document.querySelector("#content > form > label:nth-child(4) > input[type=datetime-local]:nth-child(2)").disabled = false
+            document.querySelector("#content > form > label:nth-child(4) > input[type=datetime-local]:nth-child(2)").style.display = "inline-block"
+        }
+    })
+</script>
 {% endblock %}
