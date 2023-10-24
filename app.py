@@ -10,7 +10,7 @@ import secrets
 import socket
 import datetime
 
-version = 10
+version = 11
 
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
@@ -31,8 +31,7 @@ def run_sqlscript(filename, args = (), no_replace = []):
         args = list(args)
         for i in range(len(args)):
             if i not in no_replace:
-                args[i] = str(args[i]).replace('"', '""') # SQL Injection 방지
-        #print(f.read().format(*args))
+                args[i] = str(args[i]).replace('"', '""')
         c.executescript(f.read().format(*args))
     
     return c.fetchall()
@@ -367,7 +366,6 @@ def doc_edit(doc_title):
         i = session['id']
     else:
         i = ipuser()
-    print(i)
     if isban() != 0:
         if isban() == -2:
             return rt("banned.html", warn=True, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
@@ -471,7 +469,6 @@ def owner_settings_save():
         dbg = "0"
     run_sqlscript("save_owner_settings.sql", (request.form['host'], request.form['port'], request.form['owner'], dbg, request.form['apitoken']))
     apis = [(x[4:], request.form.to_dict()[x]) for x in request.form.to_dict() if x[:4] == "api_"]
-    print(apis)
     #db.autocommit = False
     c.execute('BEGIN')
     c.execute('DELETE FROM api_policy')
@@ -540,7 +537,6 @@ def login_form():
         session['id'] = c.execute('''select id
 from user
 where name = ?''', (request.form['id'],)).fetchone()[0]
-        print("Session - " + str(session['id']))
         return redirect('/')
     else:
         return rt("wrong_password.html")
