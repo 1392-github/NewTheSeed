@@ -1,3 +1,5 @@
+#select (case when ban<0 or ban>strftime('%s','now') then ban else 
+where 
 #None", "", 0); update config set value="12345" where name = "owner";--
 from flask import Flask, request, redirect, session, send_file, abort
 from flask import render_template
@@ -124,6 +126,10 @@ and name = ?''', (key, name)).fetchone()[0]
     return c.execute('''select user_id
 from api_keys
 where key = ?''', (key,)).fetchone()[0]
+# 차단 여부 확인 (None : 차단안됨, -1 : 영구차단, -2 : 경고)
+def isban():
+    if 'id' in session:
+        
 def rt(t, **kwargs):
     k = kwargs
     k['wiki_title'] = "TheWiki"
@@ -167,8 +173,8 @@ if int(db_version) < 8:
     c.execute("insert into config values('get_api_key', 'disabled')")
 if int(db_version) < 10:
     # ban, reason 컬럼 추가
-    c.executescript('''alter table user add ban;
-alter table user add reason;
+    c.executescript('''alter table user add ban INTEGER;
+alter table user add reason TEXT;
 update user set ban=0;''')
 
 c.execute('''update config
