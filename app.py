@@ -10,11 +10,13 @@ import secrets
 import socket
 import datetime
 
-version = 11
+version = 12
 
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
-        '랜덤 문서':'randompage'
+        '랜덤 문서':'randompage',
+        '사용자 차단':'ban',
+        '문서 역사 보기':'history',
 }
 # 함수 정의 부분 시작
 
@@ -38,7 +40,18 @@ def run_sqlscript(filename, args = (), no_replace = []):
 '''owner 권한 체크
 /sql, /sqlshell, /owner_settings 에서 사용
 권한이 있으면 True, 없으면 False'''
-def isowner():
+def isowner(user = None):
+    if user != None:
+        return c.execute('''select exists (
+	select *
+	from user
+	where id = ?
+	and name = (
+		select value
+		from config
+		where name = "owner"
+	)
+)''', (user,)).fetchone()[0] == 1
     if 'id' not in session:
         return False
     return c.execute('''select exists (
@@ -277,6 +290,16 @@ def api_randompage():
     c.execute('select name from doc_name order by random() limit 1')
     r = c.fetchone()[0]
     return {'name':r}
+@app.route("/api/ban", methods=['POST'])
+def api_ban():
+    if key_req('ban', request.json.get('key', None)) == None:
+        abort(403)
+    print(key_req('ban', request.json.get('key', None)))
+    if not isowner(key_req('ban', request.json.get('key', None))):
+        abort(403)
+    c.execute("update user set ban=case ? when '0' then case when cast(? as integer)<=0 then ? else strftime('%s','now')+? end else strftime('%s',?) end where name=?", (request.json['method'],request.json['time'],request.json['time'],request.json['time'],request.json['time'],request.json['user']))
+    c.execute("update user set reason=? where name=?", (request.json['reason'],request.json['user']))
+    return {}
 # API 부분 끝, 주 페이지 시작
 @app.route("/")
 def redirect_frontpage():
