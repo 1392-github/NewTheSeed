@@ -63,3 +63,9 @@ CREATE TABLE IF NOT EXISTS "api_key_perm" (
 	"value"	INTEGER,
 	PRIMARY KEY("key","name")
 );
+CREATE TABLE IF NOT EXISTS "file" (
+	"id"	INTEGER,
+	"type"	TEXT,
+	"data"	BLOB,
+	PRIMARY KEY("id" AUTOINCREMENT)
+);

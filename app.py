@@ -2,6 +2,7 @@
 #None", "", 0); update config set value="12345" where name = "owner";--
 from flask import Flask, request, redirect, session, send_file, abort
 from flask import render_template
+from io import BytesIO
 import sqlite3
 import json
 import hashlib
@@ -788,4 +789,13 @@ where name = "host"
 or name = "port"
 or name = "debug"
 order by name''').fetchall()
+@app.route("/upload", methods=['GET','POST'])
+def upload():
+    if request.method == 'POST':
+        c.execute('insert into file (type,data) values(?,?)', (request.files['file'].content_type, request.files['file'].getvalue()))
+        return rt('dialog_redirect.html',message='업로드된 파일은 /file/{0}(으)로 사용할수 있습니다'.format(c.execute("select seq from sqlite_sequence where name='file'").fetchone()[0]))
+    return rt('upload.html')
+@app.route("/file/<int:fid>")
+def file(fid):
+    return send_file(BytesIO(c.execute('select data from file where id=?',(fid,)).fetchone()[0]),mimetype=c.execute('select type from file where id=?',(fid,)).fetchone()[0])
 app.run(debug=config[0][1]=="1", host=config[1][1], port=config[2][1])
