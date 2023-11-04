@@ -11,7 +11,7 @@ import secrets
 import socket
 import datetime
 
-version = 12
+version = 14
 
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
@@ -797,5 +797,8 @@ def upload():
     return rt('upload.html')
 @app.route("/file/<int:fid>")
 def file(fid):
-    return send_file(BytesIO(c.execute('select data from file where id=?',(fid,)).fetchone()[0]),mimetype=c.execute('select type from file where id=?',(fid,)).fetchone()[0])
+    try:
+        return send_file(BytesIO(c.execute('select data from file where id=?',(fid,)).fetchone()[0]),mimetype=c.execute('select type from file where id=?',(fid,)).fetchone()[0])
+    except:
+        abort(404)
 app.run(debug=config[0][1]=="1", host=config[1][1], port=config[2][1])
