@@ -11,7 +11,7 @@ import secrets
 import socket
 import datetime
 
-version = 15
+version = 16
 
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
@@ -193,6 +193,10 @@ if int(db_version) < 10:
     c.executescript('''alter table user add ban INTEGER;
 alter table user add reason TEXT;
 update user set ban=0;''')
+if int(db_version) < 16:
+    # acl 테이블 삭제 후 새로 생성
+    c.execute('drop table acl')
+    run_sqlscript('db_stu.sql')
 
 c.execute('''update config
 set value = ?

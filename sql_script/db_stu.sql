@@ -49,8 +49,11 @@ CREATE TABLE IF NOT EXISTS "api_keys" (
 CREATE TABLE IF NOT EXISTS "acl" (
 	"doc_id"	INTEGER,
 	"type"	TEXT,
+	"index"	INTEGER,
 	"value"	TEXT,
-	PRIMARY KEY("doc_id","type")
+	"yes"	TEXT,
+	"no"	TEXT,
+	PRIMARY KEY("doc_id","type","index")
 );
 CREATE TABLE IF NOT EXISTS "api_policy" (
 	"name"	TEXT,
@@ -68,4 +71,27 @@ CREATE TABLE IF NOT EXISTS "file" (
 	"type"	TEXT,
 	"data"	BLOB,
 	PRIMARY KEY("id" AUTOINCREMENT)
+);
+CREATE TABLE IF NOT EXISTS "namespace" (
+	"id"	INTEGER,
+	"name"	TEXT,
+	PRIMARY KEY("id" AUTOINCREMENT)
+);
+CREATE TABLE IF NOT EXISTS "nsacl" (
+	"doc_id"	INTEGER,
+	"type"	TEXT,
+	"index"	INTEGER,
+	"value"	TEXT,
+	"yes"	TEXT,
+	"no"	TEXT,
+	PRIMARY KEY("doc_id","type","index")
+);
+CREATE TABLE IF NOT EXISTS "permacl" (
+	"doc_id"	INTEGER,
+	"type"	TEXT,
+	"index"	INTEGER,
+	"value"	TEXT,
+	"yes"	TEXT,
+	"no"	TEXT,
+	PRIMARY KEY("doc_id","type","index")
 );
