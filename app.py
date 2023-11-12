@@ -11,7 +11,7 @@ import secrets
 import socket
 import datetime
 
-version = 14
+version = 15
 
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
@@ -151,6 +151,7 @@ def rt(t, **kwargs):
     k['wiki_title'] = "TheWiki"
     k['wiki_name'] = "TheWiki"
     k['isowner'] = isowner()
+    k['version'] = version
     return render_template(t, **k)
 
 # 함수 정의 끝, 초기화 부분 시작
@@ -453,9 +454,7 @@ having rev = max(rev)''', (doc_name,)).fetchone()[0]
     return redirect(f"/w/{doc_name}")
 @app.route("/license")
 def license():
-    with open("license.html", encoding='utf-8') as f:
-        license = f.read()
-    return rt("license.html", l = license)
+    return rt("license.html")
 @app.route("/owner_settings")
 def owner_settings():
     if not isowner():
@@ -547,6 +546,7 @@ def signup_form():
         return rt("wrong_password2.html")
     c.execute('''insert into user (name, password, isip, ban)
 values (?,?,0,0)''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest()))
+    run_sqlscript("doc_edit.sql", ("사용자:{0}".format(request.form['id']), '', 0, c.execute("select seq from sqlite_sequence where name = 'user'").fetchone()[0], "NULL", str(datetime.datetime.now()), 0), [4])
     return redirect('/')
 @app.route("/login_form", methods=['POST'])
 def login_form():
