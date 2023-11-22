@@ -1,5 +1,3 @@
-#select (case when ban<0 or ban>strftime('%s','now') then ban else 
-#None", "", 0); update config set value="12345" where name = "owner";--
 from flask import Flask, request, redirect, session, send_file, abort
 from flask import render_template
 from io import BytesIO
@@ -11,7 +9,7 @@ import secrets
 import socket
 import datetime
 
-version = 16
+version = (15,1)
 
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
@@ -161,46 +159,68 @@ db = sqlite3.connect("data.db", isolation_level=None, check_same_thread=False)
 c = db.cursor()
 run_sqlscript("db_stu.sql") # DB 구조 만들기
 c.execute('''insert into config
-select "version", ?
+select "majorversion", ?
 where not exists (
 	select *
 	from config
-	where name = "version"
-);''', (version,))
-print(f"The Wiki Engine 버전 : {version}")
-db_version = c.execute('''select value
+	where name = "majorversion"
+);''', (version[0],))
+c.execute('''insert into config
+select "minorversion", ?
+where not exists (
+	select *
+	from config
+	where name = "minorversion"
+);''', (version[0],))
+if version[1] == 0:
+    print(f"The Wiki Engine 버전 : {version[0]}")
+else:
+    print(f"The Wiki Engine 버전 : {version[0]}.{version[1]}")
+db_version0 = c.execute('''select value
 from config
-where name = "version";''').fetchone()[0]
-print(f"DB 버전 : {db_version}")
-if int(db_version) > version:
+where name = "majorversion";''').fetchone()[0]
+db_version1 = c.execute('''select value
+from config
+where name = "minorversion";''').fetchone()[0]
+db_version = (int(db_version0),int(db_version1))
+if db_version[1] == 0:
+    print(f"DB 버전 : {db_version[0]}")
+else:
+    print(f"DB 버전 : {db_version[0]}.{db_version[1]}")
+if db_version > version:
     print("경고 : 상위 버전 The Wiki Engine의 DB입니다")
     print("DB 손상 위험이 있을 수도 있습니다")
     if input("그래도 계속 진행하려면 Y를 입력해주세요 -> ") != "Y":
         os.exit(0)
 
 # DB 변환 코드
-if int(db_version) < 6:
+if db_version < (6,0):
     # discuss_seq 컬럼 추가
     c.execute("alter table doc_name add discuss_seq INTEGER")
-if int(db_version) < 8:
+if db_version < (8,0):
     # discuss_seq 컬럼의 데이터 타입 오류 수정
     c.executescript('''alter table doc_name drop column discuss_seq;
                        alter table doc_name add column discuss_seq INTEGER;''')
     # config에 get_api_key 추가
     c.execute("insert into config values('get_api_key', 'disabled')")
-if int(db_version) < 10:
+if db_version < (10,0):
     # ban, reason 컬럼 추가
     c.executescript('''alter table user add ban INTEGER;
 alter table user add reason TEXT;
 update user set ban=0;''')
-if int(db_version) < 16:
+if db_version < (15,1):
     # acl 테이블 삭제 후 새로 생성
     c.execute('drop table acl')
     run_sqlscript('db_stu.sql')
+    c.execute("delete from config where name='version'")
+    c.execute("insert into config values('version',999)")
 
 c.execute('''update config
 set value = ?
-where name = "version"''', (str(version),)) # 변환 후 버전 재설정
+where name = "magorversion"''', (str(version[0]),)) # 변환 후 버전 재설정
+c.execute('''update config
+set value = ?
+where name = "minorversion"''', (str(version[1]),))
 if c.execute('''select exists (
 	select *
 	from config
