@@ -22,10 +22,17 @@
         <a href="javascript:document.ban.time[0].value = -1">(무기한 차단)</a>
         <a href="javascript:document.ban.time[0].value = -2">(경고)</a>
         <a href="javascript:document.ban.time[0].value = 0">(차단 해제)</a>
-        <a href="javascript:document.ban.time[0].value = 86400">(1일)</a>
+        <a href="javascript:document.ban.time[0].value = 86400">(하루)</a>
+        <a href="javascript:document.ban.time[0].value = 259200">(3일)</a>
+        <a href="javascript:document.ban.time[0].value = 432000">(5일)</a>
         <a href="javascript:document.ban.time[0].value = 604800">(7일)</a>
-        <a href="javascript:document.ban.time[0].value = 2419200">(1개월)</a>
-        <a href="javascript:document.ban.time[0].value = 31536000">(1년)</a>
+        <a href="javascript:document.ban.time[0].value = 1209600">(2주)</a>
+        <a href="javascript:document.ban.time[0].value = 1814400">(3주)</a>
+        <a href="javascript:document.ban.time[0].value = 2419200">(4주)</a>
+        <a href="javascript:document.ban.time[0].value = {% if timemode == 'theseed' %}4838400{% else %}5256000{% endif %}">(2개월)</a>
+        <a href="javascript:document.ban.time[0].value = {% if timemode == 'theseed' %}7257600{% else %}7884000{% endif %}">(3개월)</a>
+        <a href="javascript:document.ban.time[0].value = {% if timemode == 'theseed' %}14515200{% else %}15768000{% endif %}">(6개월)</a>
+        <a href="javascript:document.ban.time[0].value = {% if timemode == 'theseed' %}29030400{% else %}31536000{% endif %}">(1년)</a>
     </label><br>
     <label>차단 사유 <input type="text" name="reason" value="없음"></label><br>
     "차단 기한 설정"방식의 경우 차단 기한을 -1로 설정할시 무기한 차단, -2로 설정할시 경고, 0으로 설정할시 차단 해제가 됩니다<br>

@@ -1,0 +1,82 @@
+{% extends "master.html" %}
+
+{% block css %}
+<style>
+    h1
+    {
+        color: #303030;
+        margin: 0;
+    }
+    #content
+    {
+        margin: 20px 50px;
+    }
+    #content form input:not(.inline), #content form input:focus:not(.inline), #content form select:not(.inline), #content form select:focus:not(.inline)
+    {
+        border-radius: 0;
+        display: block;
+        border-color: #000000;
+        border-style: solid;
+        margin: 3px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>관리자 설정 (고급)</h1>
+<form method="post">
+    {% if save %}
+    <div class="alert">저장되었습니다.</div>
+    {% endif %}
+    <table>
+        <thead>
+            <tr>
+                <th>Key</th>
+                <th>Value</th>
+                <th>Delete</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr id="template" style="display: none;">
+                <td></td>
+                <td><input type="text"></td>
+                <td><button type="button" class="danger delete">삭제</button></td>
+            </tr>
+            {% for s in settings %}
+            <tr>
+                <td>{{ s[0] }}</td>
+                <td><input type="text" name="{{ s[0] }}" value="{{ s[1] }}"></td>
+                <td><button type="button" class="danger delete">삭제</button></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <label>Key : <input type="text" id="key" class="inline"></label><br>
+    <label>Value : <input type="text" id="value" class="inline"></label><br>
+    <button type="button" id="add" class="ok">추가</button><br><br>
+    <button type="submit"class="ok">저장</button>
+</form>
+{% endblock %}
+
+{% block js %}
+<script>
+    function del() {
+        this.parentNode.parentNode.remove();
+    }
+    var template = document.getElementById("template");
+    var keyInput = document.getElementById("key");
+    var valueInput = document.getElementById("value");
+    document.getElementById("add").addEventListener("click", function () {
+        var node = template.cloneNode(true);
+        node.removeAttribute("id");
+        node.removeAttribute("style");
+        document.getElementsByTagName("tbody")[0].appendChild(node);
+        node.children[0].textContent = keyInput.value;
+        var valInp = node.querySelector(":nth-child(2) input");
+        valInp.name = keyInput.value;
+        valInp.value = valueInput.value;
+        node.querySelector(":nth-child(3) button").addEventListener("click", del)
+    })
+    document.querySelectorAll(".delete").forEach(n => n.addEventListener("click", del));
+</script>
+{% endblock %}

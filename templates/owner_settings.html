@@ -39,43 +39,6 @@
                 <option value="disabled" {% if token == 'disabled' %}selected{% endif %}>API 비활성화</option>
             </select>
         </label>
-        <!--
-        <label>
-            문서 읽기 (RAW)
-            <select>
-                <option value="api_1_allowed_without_key">API 키 불필요</option>
-                <option value="api_1_allowed">API 키 필요 (기본 승인)</option>
-                <option value="api_1_request">API 키 필요 (기본 미승인)</option>
-                <option value="api_1_disabled">API 비활성화</option>
-            </select>
-        </label>
-        <label>
-            문서 읽기 (렌더링된 값)
-            <select>
-                <option value="api_2_allowed_without_key">API 키 불필요</option>
-                <option value="api_2_allowed">API 키 필요 (기본 승인)</option>
-                <option value="api_2_request">API 키 필요 (기본 미승인)</option>
-                <option value="api_2_disabled">API 비활성화</option>
-            </select>
-        </label>
-        <label>
-            문서 역사 조회
-            <select>
-                <option value="api_3_allowed_without_key">API 키 불필요</option>
-                <option value="api_3_allowed">API 키 필요 (기본 승인)</option>
-                <option value="api_3_request">API 키 필요 (기본 미승인)</option>
-                <option value="api_3_disabled">API 비활성화</option>
-            </select>
-        </label>
-        <label>
-            문서 수정
-            <select>
-                <option value="api_4_allowed_without_key">API 키 불필요</option>
-                <option value="api_4_allowed">API 키 필요 (기본 승인)</option>
-                <option value="api_4_request">API 키 필요 (기본 미승인)</option>
-                <option value="api_4_disabled">API 비활성화</option>
-            </select>
-        </label>-->
         {% for a in keys %}
         <label>
             {{a[0]}}
@@ -107,10 +70,11 @@
         <input type="checkbox" name="debug">
         {% endif %}
     </label>
-    <input type="submit" value="저장">
+    <a href="/admin/extension">확장기능 설정</a><br>
+    <a href="/admin/config/advanced">고급 모드</a>
+    <input type="submit" class="ok" value="저장">
 </form>
 {% endblock %}
 
 {% block js %}
-
 {% endblock %}

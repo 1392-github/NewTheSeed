@@ -1,0 +1,165 @@
+{% extends "master.html" %}
+
+{% block css %}
+<style>
+    h1
+    {
+        color: #303030;
+        margin: 0;
+    }
+    #aclgroup_list_container
+    {
+        display: flex;
+        flex-wrap: wrap;
+    }
+    #aclgroup_list_container > *
+    {
+        border: gray 1px solid;
+        padding: 5px 10px;
+    }
+    #content form input[type=text]
+    {
+        width: 50%;
+    }
+    thead th
+    {
+        text-align: left;
+    }
+    .current *
+    {
+        color: black;
+    }
+</style>
+{% endblock %}
+
+{% block outcontent %}
+<div id="create_aclgroup" class="modal">
+    <h2 class="nomargin">ACL그룹 생성</h2>
+    <form action="/aclgroup/new_group" method="post">
+        <label>그룹 이름 : <input type="text" name="group"></label><br>
+        <label>읽기 권한(미완) : <input type="text" name="read" value="any"></label><br>
+        <label>추가 권한(미완) : <input type="text" name="add" value="admin"></label><br>
+        <label>삭제 권한(미완) : <input type="text" name="delete" value="admin"></label><br>
+        <label>경고 문구(미완) : <input type="text" name="warn"></label><br>
+        <label>사용자명 CSS(미완) : <input type="text" name="css"></label><br>
+        <input type="submit" class="ok" value="추가"><button type="button" class="normal" onclick="closeModal('create_aclgroup')">취소</button>
+    </form>
+</div>
+{% if delete_perm %}
+<div id="delete_aclgroup_user" class="modal">
+    <h2 class="nomargin">ACL 요소 제거</h2>
+    <form action="/aclgroup/delete" method="post" class="refresh-on-submit" name="delete_form">
+        <input type="hidden" name="id">
+        ID : <span id="delete_id"></span><br>
+        <label>메모 : <input type="text" name="note"></label>
+        <div style="margin-top: 1em"><input type="submit" value="삭제" class="ok"><button type="button" class="normal" onclick="closeModal('delete_aclgroup_user')">취소</button></div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1>ACLGroup</h1>
+<div id="aclgroup_list_container">
+    {% for g in groups %}
+    <div{% if g == current %} class="current"{% endif %}>
+        <a href="/aclgroup?group={{g}}">{{g}}</a>
+        {% if newgroup_perm %}
+        <form action="/aclgroup/delete_group" method="post" style="display: inline;" class="confirm" data-msg="삭제하시겠습니까?">
+            <input type="hidden" name="group" value="{{g}}">
+            <input type="submit" value="×" class="button_like_link">
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+    <button type="button" class="button_like_link" onclick="openModal('create_aclgroup')">+</button>
+</div>
+<form method="post" name="aclgroupadd">
+    <input type="hidden" name="group" value="{{ current }}">
+    <select name="mode">
+        <option value="ip">아이피</option>
+        <option value="user">사용자 이름</option>
+    </select>
+    <input type="text" name="value"><br>
+    <label>메모 : <input type="text" name="note"></label><br>
+    <label>기간 : <input type="number" name="dur" id="dur" min="0" placeholder="초 단위, 무기한 = 0"></label>
+    <div style="color: red; display: none;" id="adderror"></div>
+    <a href="javascript:document.getElementById('dur').value = 0">(영구)</a>
+    <a href="javascript:document.getElementById('dur').value = 86400">(하루)</a>
+    <a href="javascript:document.getElementById('dur').value = 259200">(3일)</a>
+    <a href="javascript:document.getElementById('dur').value = 432000">(5일)</a>
+    <a href="javascript:document.getElementById('dur').value = 604800">(7일)</a>
+    <a href="javascript:document.getElementById('dur').value = 1209600">(2주)</a>
+    <a href="javascript:document.getElementById('dur').value = 1814400">(3주)</a>
+    <a href="javascript:document.getElementById('dur').value = 2419200">(4주)</a>
+    <a href="javascript:document.getElementById('dur').value = {% if timemode == 'theseed' %}4838400{% else %}5256000{% endif %}">(2개월)</a>
+    <a href="javascript:document.getElementById('dur').value = {% if timemode == 'theseed' %}7257600{% else %}7884000{% endif %}">(3개월)</a>
+    <a href="javascript:document.getElementById('dur').value = {% if timemode == 'theseed' %}14515200{% else %}15768000{% endif %}">(6개월)</a>
+    <a href="javascript:document.getElementById('dur').value = {% if timemode == 'theseed' %}29030400{% else %}31536000{% endif %}">(1년)</a><br><br>
+    <input type="submit" class="ok" value="추가"{% if not add_perm %} disabled{% endif %}>
+</form>
+<table style="width: 100%;">
+    <colgroup>
+        <col style="width: 150px">
+        <col style="width: 150px">
+        <col>
+        <col style="width: 200px">
+        <col style="width: 160px">
+        <col style="width: 60px">
+    </colgroup>
+    <thead>
+        <th>ID</th>
+        <th>대상</th>
+        <th>메모</th>
+        <th>생성일</th>
+        <th>만료일</th>
+        <th>작업</th>
+    </thead>
+    <tbody>
+        {% for c in record %}
+        <tr>
+            <td>{{c[0]}}</td>
+            <td>{{c[1]}}</td>
+            <td>{{c[2]}}</td>
+            <td>{{c[3]}}</td>
+            <td>{{c[4]}}</td>
+            <td><button type="button" class="danger delete" data-id="{{c[0]}}">삭제</button></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block js %}
+<script>
+    var adderror = document.getElementById("adderror");
+    document.getElementsByTagName("tbody")[0].addEventListener("click", function (e) {
+        if (e.target.classList.contains("delete")) {
+            openModal("delete_aclgroup_user");
+            var id = e.target.dataset.id;
+            document.delete_form.id.value = id;
+            document.getElementById("delete_id").textContent = id;
+        }
+    })
+    document.aclgroupadd.addEventListener("submit", function (e) {
+        e.preventDefault();
+        fetch(this.action, {method: this.method, body: new FormData(this)})
+        .then(function (r) {
+            if (r.ok) {
+                location.reload()
+            }
+            else {
+                if (r.status === 400 && r.headers.get("Content-Type").startsWith("text/plain")) {
+                    r.text().then(function (err) {
+                        adderror.textContent = err;
+                    })
+                }
+                else {
+                    adderror.textContent = `Request failed with status code ${r.status}`;
+                }
+                adderror.style.display = "block";
+            }
+        })
+    })
+</script>
+{% endblock %}

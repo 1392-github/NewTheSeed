@@ -7,13 +7,14 @@
 {% block content %}
 <h1>관리 도구</h1>
 <ul>
-    <li><a href="/owner_settings">관리자 설정</a></li>
+    <li><a href="/admin/config">관리자 설정</a></li>
     <li><a href="/sql">SQL 덤프</a></li>
     <li><a href="/sql_shell">SQL 셀</a></li>
     <li><a href="/api_key_requests">API 키 요청</a></li>
     <li><a href="/api_keys">API 키 관리</a></li>
-    <li><a href="/ban">사용자 차단</a></li>
-    
+    <li><a href="/admin/suspend_account">사용자 차단</a></li>
+    <li><a href="/aclgroup">ACLGroup</a></li>
+    <li><a href="/BlockHistory">차단 내역</a></li>
 </ul>
 {% endblock %}
 

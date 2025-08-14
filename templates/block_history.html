@@ -1,0 +1,44 @@
+{% extends "master.html" %}
+
+{% block css %}
+<style>
+    li {
+        list-style-type: none;
+        border-top: 1px solid #e0e0e0;
+    }
+    li:last-child {
+        border-bottom: 1px solid #e0e0e0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="title">차단 내역</h1>
+<ul>
+{% for l in log %}
+<li>
+{% if l[0] == 1 %}
+<div>{{l[1]}} 사용자가 {{l[2]}} {% if l[3] %}IP{% else %}사용자{% endif %}를 <span style="font-weight: bold;">{{l[5]}}</span> ACL 그룹에 {% if l[7] == "0초" %}영구적으로{% else %}{{l[7]}} 동안{% endif %} 등록함 <span style="color: #777;">#{{l[4]}}</span></div>
+<div style="color: #777;">{{l[6]}} ({{l[9]}})</div>
+{% elif l[0] == 2 %}
+<div>{{l[1]}} 사용자가 {{l[2]}} {% if l[3] %}IP{% else %}사용자{% endif %}를 <span style="font-weight: bold;">{{l[5]}}</span> ACL 그룹에서 제거함 <span style="color: #777;">#{{l[4]}}</span></div>
+<div style="color: #777;">{{l[6]}} ({{l[9]}})</div>
+{% elif l[0] == 3 %}
+<div>{{l[1]}} 사용자가 {{l[2]}} 사용자의 권한 설정</div>
+<div style="color: #777;">{{l[8]}}</div>
+<div style="color: #777;">{{l[6]}}{% if note_ext %} ({{l[9]}}){% endif %}</div>
+{% elif l[0] == 4 %}
+<div>{{l[1]}} 사용자가 {{l[2]}} 사용자의 로그인 기록 조회</div>
+<div style="color: #777;">{{l[6]}}{% if note_ext %} ({{l[9]}}){% endif %}</div>
+{% elif l[0] == 5 %}
+<div>{{l[1]}} 사용자가 {{l[2]}} 사용자의 기여를 일괄 되돌림</div>
+<div style="color: #777;">{{l[6]}} ({{l[9]}})</div>
+{% endif %}
+</li>
+{% endfor %}
+</ul>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

@@ -1,15 +1,15 @@
 update config
-set value = "{0}"
+set value = ?1
 where name = "host";
 update config
-set value = "{1}"
+set value = ?2
 where name = "port";
 update config
-set value = "{2}"
+set value = ?3
 where name = "owner";
 update config
-set value = "{3}"
+set value = ?4
 where name = "debug";
 update config
-set value = "{4}"
+set value = ?5
 where name = "get_api_key";

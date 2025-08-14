@@ -1,0 +1,25 @@
+{% extends "master.html" %}
+
+{% block css %}
+<style>
+    h1
+    {
+        color: #303030;
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>TWE 자체 확장 기능</h1>
+<form method="post">
+    {% for i in ext %}
+    <label>{{ ext[i] }}<input type="checkbox" name="{{ i }}"{% if i in ena %} checked{% endif %}></label><br>
+    {% endfor %}
+    <input type="submit" value="확인">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}
