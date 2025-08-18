@@ -72,7 +72,9 @@
         {% endif %}
     </div>
     {% endfor %}
+    {% if newgroup_perm %}
     <button type="button" class="button_like_link" onclick="openModal('create_aclgroup')">+</button>
+    {% endif %}
 </div>
 <form method="post" name="aclgroupadd">
     <input type="hidden" name="group" value="{{ current }}">
@@ -123,7 +125,7 @@
             <td>{{c[2]}}</td>
             <td>{{c[3]}}</td>
             <td>{{c[4]}}</td>
-            <td><button type="button" class="danger delete" data-id="{{c[0]}}">삭제</button></td>
+            <td><button type="button" class="danger delete" data-id="{{c[0]}}" {% if not delete_perm %} disabled{% endif %}>삭제</button></td>
         </tr>
         {% endfor %}
     </tbody>

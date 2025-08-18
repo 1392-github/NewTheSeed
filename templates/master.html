@@ -108,15 +108,23 @@
         {
             background-color: #0275d8;
         }
-        .alert
+        .alert, .error
         {
             width: 100%;
-            background-color: #aacdec;
             border-width: 1px;
-            border-color: #c9c9c9;
             border-radius: .25rem;
             border-style: solid;
             padding: 12px;
+        }
+        .alert
+        {
+            background-color: #aacdec;
+            border-color: #c9c9c9;
+        }
+        .error
+        {
+            background-color: #f2938c;
+            border-color: #d83933;
         }
         .block
         {
@@ -191,7 +199,7 @@
                 <a href="/">{{ wiki_name }}</a></div>
             <a href="/license">LICENSE</a>
             {% if isowner %}
-            <a href="/owner_tool">관리 도구</a>
+            <a href="/admin_tool">관리 도구</a>
             {% endif %}
         </div>
         <div>

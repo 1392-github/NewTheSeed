@@ -14,7 +14,7 @@ if sys.version_info < (3, 9):
     if input("경고! NewTheSeed는 Python 3.9 미만의 Python 버전은 지원하지 않으며, 이로 인해 발생하는 버그(보안취약점 포함)는 수정되지 않습니다. 계속하려면 y를 입력해주세요. -> ") != "y":
         sys.exit()
 # 상수 데이터들
-version = 16
+version = 17
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -35,7 +35,6 @@ default_config = {
     "version": str(version),
     "host": "0.0.0.0",
     "port": lambda : input('위키 포트 입력 -> '),
-    "owner": lambda : input('위키 소유자 입력 -> '),
     "debug": "0",
     "get_api_key": "disabled",
     "secret_key": lambda : gen_random_str(64),
@@ -45,8 +44,16 @@ default_config = {
     "wiki_title": "NewTheSeed",
     "wiki_name": "NewTheSeed",
     "keep_login_time": "2678400",
-    "aclgroup_note_required": "0"
+    "aclgroup_note_required": "0",
+    "grantable_permission": "grant,delete_thread,admin,aclgroup,update_thread_document,update_thread_status,update_thread_topic,nsacl,hide_thread_comment,no_force_captcha,login_history,api_access,hide_document_history_log,hide_revision,batch_revert,mark_troll_revision,disable_two_factor_login,member_info",
+    "ext_note": "0",
+    "ingore_developer_perm": "disable_two_factor_login,hideip"
 }
+first_perminssion = ["grant", "delete_thread", "admin", "aclgroup", "update_thread_document",
+                     "update_thread_status", "update_thread_topic", "nsacl", "hide_thread_comment",
+                     "no_force_captcha", "login_history", "api_access", "hide_document_history_log",
+                     "hide_revision", "batch_revert", "mark_troll_revision","member_info",
+                     "developer", "config", "aclgroup_hidelog", "skip_captcha", "database"]
 # 함수 정의 부분 시작
 
 def hash(path):
@@ -81,7 +88,7 @@ def run_sqlscript(filename, args = ()):
 '''owner 권한 체크
 /sql, /sqlshell, /owner_settings 에서 사용
 권한이 있으면 True, 없으면 False'''
-def isowner(user = None):
+"""def isowner(user = None):
     if user != None:
         return c.execute('''select exists (
 	select 1
@@ -104,7 +111,7 @@ def isowner(user = None):
 		from config
 		where name = "owner"
 	)
-)''', (str(session['id']),)).fetchone()[0] == 1
+)''', (str(session['id']),)).fetchone()[0] == 1"""
 def ipuser():
     if 'id' in session:
         return int(session['id'])
@@ -120,7 +127,7 @@ where not exists (
 from user
 where name = ?
 and isip = 1''', (request.remote_addr,)).fetchone()[0]
-def hasacl(cond):
+"""def hasacl(cond):
     if 'id' in session:
         user = session['id']
     else:
@@ -132,7 +139,7 @@ def hasacl(cond):
 from user
 where id = ?''').fetchone()[0] == '0'
     if cond == 'admin' or cond == 'owner':
-        return isowner()
+        return isowner()"""
 # API 키 요구여부 확인 및 키에 연결된 사용자 가져오기
 # 유효하지 않은 키인경우 None 반환
 # API 키가 None인 경우, 키가 필요없으면 IP에 해당하는 ID 반환, 키가 필요하면 None 반환
@@ -181,7 +188,7 @@ def rt(t, **kwargs):
     k = kwargs
     k['wiki_title'] = get_config("wiki_title")
     k['wiki_name'] = get_config("wiki_name")
-    k['isowner'] = isowner()
+    k['isowner'] = has_perm("admin")
     k['version'] = version
     k['timemode'] = get_config("time_mode")
     return render_template(t, **k)
@@ -274,6 +281,15 @@ def user_in_aclgroup(group, user = None):
         return False
     else:
         return c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE gid = ? AND user = ?)", (group, user)).fetchone()[0] == 1
+def has_perm(perm, user = None):
+    if user == None:
+        if "id" in session:
+            user = session["id"]
+        else:
+            return False
+    if perm != "developer" and has_perm("developer"):
+        return perm not in get_config("ingore_developer_perm").split(",")
+    return c.execute("SELECT EXISTS (SELECT 1 FROM perm WHERE user = ? AND perm = ?)", (user, perm)).fetchone()[0] == 1
 # 함수 정의 끝, 초기화 부분 시작
 # DB 로딩
 init = not os.path.exists("data.db")
@@ -284,7 +300,7 @@ run_sqlscript("db_stu.sql") # DB 구조 만들기
 for k in default_config:
     if c.execute("select exists (select 1 from config where name = ?)", (k,)).fetchone()[0] == 0:
         c.execute('insert into config values(?, ?)', (k, default_config[k]() if isinstance(default_config[k], types.FunctionType) else default_config[k]))
-print(f"The Wiki Engine 버전 : {version}")
+print(f"NewTheSeed 버전 : {version}")
 c.execute("UPDATE config SET name = 'version' WHERE name = 'majorversion'")
 c.execute("DELETE FROM config WHERE name = 'minorversion'")
 db_version = int(c.execute('''select value
@@ -292,7 +308,7 @@ from config
 where name = "version";''').fetchone()[0])
 print(f"DB 버전 : {db_version}")
 if db_version > version:
-    print("경고 : 상위 버전 The Wiki Engine의 DB입니다")
+    print("경고 : 상위 버전 NewTheSeed의 DB입니다")
     print("DB 손상 위험이 있을 수도 있습니다")
     if input("그래도 계속 진행하려면 Y를 입력해주세요 -> ") != "Y":
         sys.exit(0)
@@ -333,6 +349,9 @@ from api_policy''', c.execute("SELECT id FROM user WHERE isip = 0").fetchall())
 if db_version < 16 or init:
     c.execute("""INSERT INTO aclgroup (name, readperm, addperm, deleteperm, warn_msg, style)
               VALUES('차단된 사용자','admin','admin','admin','','color: gray; text-decoration: line-through;')""")
+if db_version < 17:
+    # owner 설정 삭제 및 권한 시스템으로 대체
+    c.execute("DELETE FROM config WHERE name = 'owner'")
 
 c.execute('''update config
 set value = ?
@@ -410,8 +429,8 @@ def api_ban():
     if key_req('ban', request.json.get('key', None)) == None:
         abort(403)
     print(key_req('ban', request.json.get('key', None)))
-    if not isowner(key_req('ban', request.json.get('key', None))):
-        abort(403)
+    #if not isowner(key_req('ban', request.json.get('key', None))):
+    #    abort(403)
     c.execute("update user set ban=case ? when '0' then case when cast(? as integer)<=0 then ? else strftime('%s','now')+? end else strftime('%s',?) end where name=?", (request.json['method'],request.json['time'],request.json['time'],request.json['time'],request.json['time'],request.json['user']))
     c.execute("update user set reason=? where name=?", (request.json['reason'],request.json['user']))
     return {}
@@ -567,7 +586,7 @@ def license():
     return rt("license.html")
 @app.route("/admin/config")
 def owner_settings():
-    if not isowner():
+    if not has_perm("config"):
         abort(403)
     config = c.execute('''select value
 from (
@@ -589,12 +608,12 @@ where name = ?''', (keyl[i],)).fetchone()
             keys.append([i, keyl[i], a[0]])
         except:
             keys.append([i, keyl[i], 2])
-    return rt("owner_settings.html",
+    return rt("config.html",
                            wiki_host = config[2][0], wiki_port = config[4][0], wiki_owner = config[3][0], debug = config[0][0]=='1', token = config[1][0],
               keys = keys)
 @app.route("/owner_settings_form", methods = ['POST'])
 def owner_settings_save():
-    if not isowner():
+    if not has_perm("config"):
         abort(403)
     if request.form.get('debug'):
         dbg = "1"
@@ -658,6 +677,7 @@ def signup_form():
         return rt("error.html", error="IP나 CIDR 형식의 사용자 이름은 사용이 불가능합니다.")
     if request.form['pw'] != request.form['pw2']:
         return rt("error.html", error="비밀번호가 일치하지 않습니다.")
+    first = c.execute("SELECT EXISTS (SELECT 1 FROM user)").fetchone()[0] == 0
     c.execute('''insert into user (name, password, isip, ban)
 values (?,?,0,0)''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest()))
     u = c.lastrowid
@@ -669,6 +689,8 @@ select ?, name, case value
 	when 2 then 0
 	end
 from api_policy''', (u,))
+    if first:
+        c.executemany("INSERT INTO perm VALUES(?,?)", ((u, x) for x in first_perminssion))
     return redirect('/')
 @app.route("/login_form", methods=['POST'])
 def login_form():
@@ -714,7 +736,7 @@ order by rev desc''', (doc_name,)).fetchall()
     return rt("history.html", history=h, doc_name=doc_name)
 @app.route("/sql")
 def sqldump():
-    if not isowner():
+    if not has_perm("database"):
         abort(403)
     with open("dump.sql", "w", encoding='utf-8') as f:
         for l in db.iterdump():
@@ -722,7 +744,7 @@ def sqldump():
     return send_file("dump.sql", as_attachment=True)
 @app.route("/sql_shell", methods=['GET', 'POST'])
 def sqlshell():
-    if not isowner():
+    if not has_perm("database"):
         abort(403)
     if request.method == "GET":
         return rt("sql_shell.html", prev_sql = "", result = "")
@@ -732,11 +754,9 @@ def sqlshell():
         except:
             result = "SQL 문이 잘못되었습니다"
         return rt("sql_shell.html", prev_sql = request.form["prev"] + "\n" + request.form["sql"], result = result)
-@app.route("/owner_tool")
-def owner_tool():
-    if not isowner():
-        abort(403)
-    return rt("owner_tool.html")
+@app.route("/admin_tool")
+def admin_tool():
+    return rt("admin_tool.html")
 @app.route("/delete/<path:doc_name>")
 def delete(doc_name):
     if 'id' in session:
@@ -750,7 +770,7 @@ def delete(doc_name):
             return rt("banned.html", warn=False, time=None, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
         else:
             return rt("banned.html", warn=False, time=datetime.datetime.fromtimestamp(isban()).strftime('%Y-%m-%d %p %I:%M:%S'), reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
-    return rt("document_delete.html", doc_title = doc_name, admin=isowner())
+    return rt("document_delete.html", doc_title = doc_name, admin=has_perm("manage_history"))
 @app.route("/delete_full/<path:doc_name>")
 def delete_full(doc_name):
     if 'id' in session:
@@ -764,7 +784,7 @@ def delete_full(doc_name):
             return rt("banned.html", warn=False, time=None, reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
         else:
             return rt("banned.html", warn=False, time=datetime.datetime.fromtimestamp(isban()).strftime('%Y-%m-%d %p %I:%M:%S'), reason=c.execute('select reason from user where id=?',(i,)).fetchone()[0])
-    if not isowner():
+    if not has_perm("manage_history"):
         abort(403)
     return rt("document_full_delete.html", doc_title = doc_name)
 @app.route("/delete_full_form", methods=['POST'])
@@ -791,7 +811,7 @@ from user, api_key_requests
 where user.id = user_id''').fetchall())"""
 @app.route("/api_keys")
 def api_keys():
-    if not isowner():
+    if not get_config("grant"):
         abort(403)
     return rt("api_key.html", keys = [x[0] for x in c.execute('''select name
 from user, api_keys
@@ -845,7 +865,7 @@ where id=?''', (request.form['id']))
     return redirect('/')"""
 @app.route("/api_perm/<id>", methods=['GET', 'POST'])
 def api_perm(id):
-    if not isowner():
+    if not get_config("grant"):
         abort(403)
     i = user_name_to_id(id)
     if request.method == 'POST':
@@ -885,7 +905,7 @@ def random_document():
     return redirect('/w/{0}'.format(r))
 @app.route("/admin/suspend_account", methods=['GET','POST'])
 def ban():
-    if not isowner():
+    if not has_perm("admin"):
         abort(403)
     if request.method == 'POST':
         c.execute("update user set ban=case ? when '0' then case when cast(? as integer)<=0 then ? else strftime('%s','now')+? end else strftime('%s',?) end where name=?", (request.form['method'],request.form['time'],request.form['time'],request.form['time'],request.form['time'],request.form['user']))
@@ -916,7 +936,7 @@ def file(fid):
         abort(404)
 @app.route("/admin/extension", methods = ["GET", "POST"])
 def extension_route():
-    if not isowner():
+    if not has_perm("config"):
         abort(403)
     if request.method == "POST":
         c.execute("DELETE from extension")
@@ -930,7 +950,7 @@ if config[0][1]=="1":
         app.jinja_env.cache.clear()
 @app.route("/admin/config/advanced", methods = ["GET", "POST"])
 def config_advanced():
-    if not isowner():
+    if not has_perm("config"):
         abort(403)
     if request.method == "POST":
         c.execute("DELETE FROM config")
@@ -940,7 +960,7 @@ def config_advanced():
 def aclgroup():
     delete_expired_aclgroup()
     if request.method == "POST":
-        if not isowner():
+        if not has_perm("admin"):
             abort(403)
         t = get_utime()
         if get_config("aclgroup_note_required") == "1" and request.form["note"] == "":
@@ -976,13 +996,13 @@ def aclgroup():
                       (session["id"], request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))
     groups = [x[0] for x in c.execute("SELECT name FROM aclgroup").fetchall()]
     current = request.args.get("group", groups[0] if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup)").fetchone()[0] else "")
-    return rt("aclgroup.html", groups = groups, current = current, perm = isowner(), newgroup_perm = isowner(), add_perm = isowner(), delete_perm = isowner(), record = (
+    return rt("aclgroup.html", groups = groups, current = current, newgroup_perm = has_perm("aclgroup"), add_perm = has_perm("admin"), delete_perm = has_perm("admin"), record = (
         (x[0], x[1], x[2], utime_to_str(x[3]), "영구" if x[4] == None else utime_to_str(x[4]))
         for x in c.execute("SELECT id, (CASE WHEN ip IS NULL THEN (SELECT name FROM user WHERE id = user) ELSE ip END), note, start, end FROM aclgroup_log WHERE gid = (SELECT id FROM aclgroup WHERE name = ?)", (current,)).fetchall()
     ))
 @app.route("/aclgroup/delete", methods = ["POST"])
 def aclgroup_delete():
-    if not isowner():
+    if not has_perm("admin"):
         abort(403)
     if get_config("aclgroup_note_required") == "1" and request.form["note"] == "":
         return error_400("note의 값은 필수입니다.")
@@ -994,14 +1014,14 @@ def aclgroup_delete():
     return '', 204
 @app.route("/aclgroup/new_group", methods = ["POST"])
 def aclgroup_new_group():
-    if not isowner():
+    if not has_perm("aclgroup"):
         abort(403)
     c.execute("INSERT INTO aclgroup (name, readperm, addperm, deleteperm, warn_msg, style) VALUES(?,?,?,?,?,?)",
               (request.form["group"],request.form["read"],request.form["add"],request.form["delete"],request.form["warn"],request.form["css"]))
     return redirect("/aclgroup?group={0}".format(request.form["group"]))
 @app.route("/aclgroup/delete_group", methods = ["POST"])
 def aclgroup_delete_group():
-    if not isowner():
+    if not has_perm("aclgroup"):
         abort(403)
     c.execute("DELETE FROM aclgroup WHERE name = ?", (request.form["group"],))
     return redirect("/aclgroup")
@@ -1018,5 +1038,41 @@ def block_history():
         c.execute("""SELECT type, u1.name, target_ip, u2.name, block_log.id, aclgroup.name, date, duration, grant_perm, note FROM block_log
 LEFT JOIN user AS u1 ON block_log.operator = u1.id
 LEFT JOIN user AS u2 ON block_log.target = u2.id
-LEFT JOIN aclgroup ON block_log.gid = aclgroup.id""").fetchall()], note_ext = True)
+LEFT JOIN aclgroup ON block_log.gid = aclgroup.id""").fetchall()], note_ext = get_config("ext_note") == "1")
+@app.route("/admin/grant", methods = ["GET", "POST"])
+def grant():
+    if not has_perm("grant"):
+        abort(403)
+    if request.method == "POST":
+        if not has_user(request.args.get("username", "")):
+            return error_400("사용자 이름이 올바르지 않습니다.")
+        user = user_name_to_id(request.args.get("username", ""))
+        grantable = get_config("grantable_permission").split(',')
+        placeholder = ','.join('?' * len(grantable))
+        oldperm = set(x[0] for x in c.execute(f"SELECT perm FROM perm WHERE user = ? AND perm IN ({placeholder})", [user] + grantable).fetchall())
+        c.execute(f"DELETE FROM perm WHERE user = ? AND perm IN ({placeholder})", [user] + grantable)
+        newperm = set()
+        for p in grantable:
+            if p in request.form:
+                newperm.add(p)
+        c.executemany("INSERT INTO perm VALUES(?,?)", ((user, x) for x in newperm))
+        logstr = []
+        for p in newperm - oldperm:
+            logstr.append("+" + p) 
+        for p in oldperm - newperm:
+            logstr.append("-" + p)
+        c.execute("INSERT INTO block_log (type, operator, target, date, grant_perm, note) VALUES(3,?,?,?,?,?)",
+                  (ipuser(), user, get_utime(), " ".join(logstr), request.form["note"] if get_config("ext_note") == "1" else None))
+        return '', 204
+    else:
+        user = request.args.get("username", "")
+        if user == "":
+            return rt("grant.html", user = "")
+        else:
+            if not has_user(user):
+                return rt("grant.html", user = user, error = 1)
+            else:
+                grantable = get_config("grantable_permission").split(',')
+                return rt("grant.html", user = user, grantable = grantable, vailduser = True, ext_note = get_config("ext_note") == "1",
+                        perm = set(x[0] for x in c.execute(f"SELECT perm FROM perm WHERE user = ? AND perm IN ({','.join('?' * len(grantable))})", [user_name_to_id(user)] + grantable).fetchall()))
 app.run(debug=get_config("debug")=="1", host=get_config("host"), port=int(get_config("port")))

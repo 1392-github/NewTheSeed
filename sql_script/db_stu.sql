@@ -118,4 +118,8 @@ CREATE TABLE IF NOT EXISTS "block_log" (
 	"duration"	INTEGER,
 	"grant_perm"	TEXT,
 	"note"	TEXT
-)
+);
+CREATE TABLE IF NOT EXISTS "perm" (
+	"user"	INTEGER NOT NULL,
+	"perm"	TEXT NOT NULL
+);
