@@ -1,78 +1,81 @@
 {% extends "master.html" %}
 
 {% block css %}
-    <style>
-        h1, h2
-        {
-            color: #303030;
-            margin: 0;
-            display: inline;
-        }
-        form textarea
-        {
-            width: 100%;
-            height: 60vh;
-        }
-        form input[name="edit_comment"]
-        {
-            width: 100%;
-        }
-        form *
-        {
-            margin-top: 5px;
-        }
-        a
-        {
-            text-decoration: none;
-        }
-        #ctn_header
-        {
-            display: flex;
-            justify-content: space-between;
-        }
-        #ctn_header div:last-child
-        {
-            display: flex;
-            height: 35px;
-        }
-        #ctn_header div:last-child a
-        {
-            border: 1px solid #808080;
-            padding: 5px 13px;
-            color: unset;
-            text-decoration: none;
-            line-height: 23px;
-        }
-        #ctn_header div:last-child a[href^="/delete/"]
-        {
-            border: 1px solid #d9534f;
-            background-color: #d9534f;
-            color: white;
-        }
-        
-    </style>
+<style>
+    h1, h2
+    {
+        color: #303030;
+        margin: 0;
+        display: inline;
+    }
+    form textarea
+    {
+        width: 100%;
+        height: 60vh;
+    }
+    form input[name="edit_comment"]
+    {
+        width: 100%;
+    }
+    form *
+    {
+        margin-top: 5px;
+    }
+    a
+    {
+        text-decoration: none;
+    }
+    #ctn_header
+    {
+        display: flex;
+        justify-content: space-between;
+    }
+    #ctn_header div:last-child
+    {
+        display: flex;
+        height: 35px;
+    }
+    #ctn_header div:last-child a
+    {
+        border: 1px solid #808080;
+        padding: 5px 13px;
+        color: unset;
+        text-decoration: none;
+        line-height: 23px;
+    }
+    #ctn_header div:last-child a[href^="/delete/"]
+    {
+        border: 1px solid #d9534f;
+        background-color: #d9534f;
+        color: white;
+    }
+    
+</style>
 {% endblock %}
 
 {% block content %}
-    <div id="ctn_header">
-        <div>
-            <a href="/w/{{ doc_title }}"><h1>{{ doc_title }}</h1></a>&nbsp;
-            <h2>(r{{ doc_rev }} 편집)</h2>
-        </div>
-        <div>
-            <a href="/backlink/{{ doc_title }}">역링크</a>
-            <a href="/delete/{{ doc_title }}">삭제</a>
-            <a href="/move/{{ doc_title }}">이동</a>
-        </div>
+<div id="ctn_header">
+    <div>
+        <a href="/w/{{ doc_title }}"><h1>{{ doc_title }}</h1></a>&nbsp;
+        <h2>(r{{ doc_rev }} 편집)</h2>
     </div>
-    <div id="ctn_data">
-        <form action="/edit_form" method="post">
-            <input type="hidden" name="doc_name" value="{{ doc_title }}">
-            <textarea name="value">{{ doc_data }}</textarea><br>
-            <input type="text" name="edit_comment" placeholder="편집 요약">
-            <input type="submit" value="저장">
-        </form>
+    <div>
+        <a href="/backlink/{{ doc_title }}">역링크</a>
+        <a href="/delete/{{ doc_title }}">삭제</a>
+        <a href="/move/{{ doc_title }}">이동</a>
     </div>
+</div>
+<div id="ctn_data">
+    <form action="/edit_form" method="post">
+        <input type="hidden" name="doc_name" value="{{ doc_title }}">
+        <textarea name="value">{{ doc_data }}</textarea><br>
+        <input type="text" name="edit_comment" placeholder="편집 요약">
+        {% if req_captcha %}
+        <div class="g-recaptcha" data-sitekey="{{ sitekey }}" data-callback="onCaptchaCompleted"></div>
+        {% endif %}
+        <input type="submit" class="ok" value="저장"{% if req_captcha %} id="on-captcha" style="display: none;"{% endif %}>
+    </form>
+</div>
 {% endblock %}
 
 {% block js %}

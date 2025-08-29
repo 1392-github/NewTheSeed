@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
      integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
      crossorigin="anonymous" referrerpolicy="no-referrer">
+    {% if captcha %}
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    {% endif %}
     <!--<link rel="stylesheet" href="master.css">-->
     <style>
         body
@@ -232,11 +235,14 @@
     <script>
         function closeModal(id) {
             document.getElementById(id).style.display = "none"
-            document.getElementById("modal_background").style.display = "none"
+            document.getElementById("modal_background").style.display = "none";
         }
         function openModal(id) {
             document.getElementById(id).style.display = "block"
-            document.getElementById("modal_background").style.display = "block"
+            document.getElementById("modal_background").style.display = "block";
+        }
+        function onCaptchaCompleted(token) {
+            document.getElementById("on-captcha").style.display = "block";
         }
         document.querySelector("#head div:nth-child(2) form button:nth-child(4)").addEventListener("click", function () {
             location.href = `/w/${encodeURI(document.querySelector("#head div:nth-child(2) form input").value)}`
@@ -278,6 +284,14 @@
             })
         })
     </script>
+    {% if req_captcha and captcha_time %}
+    <script>
+        setTimeout(function () {
+            document.getElementById("on-captcha").style.display = "none";
+            document.getElementsByClassName("g-recaptcha")[0].style.display = "block";
+        }, 10);
+    </script>
+    {% endif %}
     {% block js %}{% endblock %}
 </body>
 </html>

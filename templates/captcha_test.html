@@ -1,0 +1,30 @@
+{% extends "master.html" %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<h1 class="title">CAPTCHA 테스트</h1>
+{% if result == 1 %}
+CAPTCHA 인증이 성공하였습니다.<br>
+<a href="/admin/captcha_test">다시 시도하기</a>
+{% elif result == 0 %}
+CAPTCHA 인증이 실패하였습니다.<br>
+<a href="/admin/captcha_test">다시 시도하기</a>
+{% else %}
+{% if req_captcha %}
+<form method="post">
+    <div class="g-recaptcha" data-sitekey="{{ sitekey }}"></div>
+    <input type="submit" class="ok" value="테스트">
+</form>
+{% else %}
+CAPTCHA가 비활성화되어 있습니다.<br>
+<a href="/admin/captcha_test">다시 시도하기</a>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}
