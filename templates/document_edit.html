@@ -25,7 +25,7 @@
     {
         text-decoration: none;
     }
-    #ctn_header
+    /*#ctn_header
     {
         display: flex;
         justify-content: space-between;
@@ -48,34 +48,28 @@
         border: 1px solid #d9534f;
         background-color: #d9534f;
         color: white;
-    }
+    }*/
     
 </style>
 {% endblock %}
 
 {% block content %}
-<div id="ctn_header">
-    <div>
-        <a href="/w/{{ doc_title }}"><h1>{{ doc_title }}</h1></a>&nbsp;
-        <h2>(r{{ doc_rev }} 편집)</h2>
-    </div>
-    <div>
-        <a href="/backlink/{{ doc_title }}">역링크</a>
-        <a href="/delete/{{ doc_title }}">삭제</a>
-        <a href="/move/{{ doc_title }}">이동</a>
-    </div>
+{% if aclmsg is not none %}
+<div class="error">
+    <strong>[오류!]</strong> {{ aclmsg|safe }}
 </div>
-<div id="ctn_data">
-    <form action="/edit_form" method="post">
-        <input type="hidden" name="doc_name" value="{{ doc_title }}">
-        <textarea name="value">{{ doc_data }}</textarea><br>
-        <input type="text" name="edit_comment" placeholder="편집 요약">
-        {% if req_captcha %}
-        <div class="g-recaptcha" data-sitekey="{{ sitekey }}" data-callback="onCaptchaCompleted"></div>
-        {% endif %}
-        <input type="submit" class="ok" value="저장"{% if req_captcha %} id="on-captcha" style="display: none;"{% endif %}>
-    </form>
-</div>
+{% endif %}
+<form action="/edit_form" method="post">
+    <input type="hidden" name="doc_name" value="{{ raw_doc_title }}">
+    <textarea name="value"{% if aclmsg is not none %} disabled{% endif %}>{{ doc_data }}</textarea><br>
+    {% if aclmsg is none %}
+    <input type="text" name="edit_comment" placeholder="편집 요약">
+    {% if req_captcha %}
+    <div class="g-recaptcha" data-sitekey="{{ sitekey }}" data-callback="onCaptchaCompleted"></div>
+    {% endif %}
+    <input type="submit" class="ok" value="저장"{% if req_captcha %} id="on-captcha" style="display: none;"{% endif %}>
+    {% endif %}
+</form>
 {% endblock %}
 
 {% block js %}

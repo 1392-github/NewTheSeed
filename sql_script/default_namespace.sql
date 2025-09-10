@@ -1,0 +1,78 @@
+INSERT INTO namespace (id, name) VALUES(1, '문서');
+INSERT INTO namespace (id, name) VALUES(2, '틀');
+INSERT INTO namespace (id, name) VALUES(3, '파일');
+INSERT INTO namespace (id, name) VALUES(4, '분류');
+INSERT INTO namespace (id, name) VALUES(5, '사용자');
+INSERT INTO namespace (id, name) VALUES(6, '삭제된사용자');
+
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(1, 'read', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(1, 'edit', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(1, 'edit', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(1, 'move', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(1, 'delete', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(1, 'create_thread', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(1, 'create_thread', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(1, 'write_thread_comment', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(1, 'write_thread_comment', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(1, 'edit_request', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(1, 'acl', 1, 'perm', 'admin', NULL, 0, 'allow', NULL);
+
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(2, 'read', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(2, 'edit', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(2, 'edit', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(2, 'move', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(2, 'delete', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(2, 'create_thread', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(2, 'create_thread', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(2, 'write_thread_comment', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(2, 'write_thread_comment', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(2, 'edit_request', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(2, 'acl', 1, 'perm', 'admin', NULL, 0, 'allow', NULL);
+
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(3, 'read', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(3, 'edit', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(3, 'edit', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(3, 'move', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(3, 'delete', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(3, 'create_thread', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(3, 'create_thread', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(3, 'write_thread_comment', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(3, 'write_thread_comment', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(3, 'edit_request', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(3, 'acl', 1, 'perm', 'admin', NULL, 0, 'allow', NULL);
+
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(4, 'read', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(4, 'edit', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(4, 'edit', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(4, 'move', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(4, 'delete', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(4, 'create_thread', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(4, 'create_thread', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(4, 'write_thread_comment', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(4, 'write_thread_comment', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(4, 'edit_request', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(4, 'acl', 1, 'perm', 'admin', NULL, 0, 'allow', NULL);
+
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'read', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'edit', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'edit', 2, 'perm', 'admin', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'edit', 3, 'perm', 'match_username_and_document_title', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'move', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'delete', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'create_thread', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'create_thread', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'write_thread_comment', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'write_thread_comment', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'edit_request', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(5, 'acl', 1, 'perm', 'admin', NULL, 0, 'allow', NULL);
+
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(6, 'read', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(6, 'edit', 1, 'perm', 'admin', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(6, 'move', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(6, 'delete', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(6, 'create_thread', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(6, 'create_thread', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(6, 'write_thread_comment', 1, 'aclgroup', NULL, 1, 0, 'deny', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(6, 'write_thread_comment', 2, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(6, 'edit_request', 1, 'perm', 'any', NULL, 0, 'allow', NULL);
+INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire) VALUES(6, 'acl', 1, 'perm', 'admin', NULL, 0, 'allow', NULL);

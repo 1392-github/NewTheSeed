@@ -1,47 +1,11 @@
 {% extends "master.html" %}
 
 {% block css %}
-    <style>
-        h1
-        {
-            color: #303030;
-            margin: 0;
-        }
-        #ctn_header
-        {
-            display: flex;
-            justify-content: space-between;
-        }
-        #ctn_header div
-        {
-            display: flex;
-            height: 35px;
-        }
-        #ctn_header div a
-        {
-            border: 1px solid #808080;
-            padding: 5px 13px;
-            color: unset;
-            text-decoration: none;
-            line-height: 23px;
-        }
-    </style>
+
 {% endblock %}
 
 {% block content %}
-    <div id="ctn_header">
-        <h1>{{ doc_title }}</h1>
-        <div>
-            <a href="/backlink/{{ doc_title }}">역링크</a>
-            <a href="/discuss/{{ doc_title }}">토론</a>
-            <a href="/edit/{{ doc_title }}">편집</a>
-            <a href="/history/{{ doc_title }}">역사</a>
-            <a href="/acl/{{ doc_title }}">ACL</a>
-        </div>
-    </div>
-    <div id="ctn_data">
-        {{ doc_data|safe }}
-    </div>
+{{ doc_data|safe }}
 {% endblock %}
 
 {% block js %}

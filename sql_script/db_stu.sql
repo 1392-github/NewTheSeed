@@ -1,19 +1,24 @@
 CREATE TABLE IF NOT EXISTS "doc_name" (
 	"id"	INTEGER,
+	"namespace"	INTEGER,
 	"name"	TEXT,
 	"history_seq"	INTEGER,
-	"discuss_seq"	INTEGER,
-	PRIMARY KEY("id" AUTOINCREMENT)
+	PRIMARY KEY("ID" AUTOINCREMENT)
 );
 CREATE TABLE IF NOT EXISTS "history" (
 	"doc_id"	INTEGER,
 	"rev"	INTEGER,
 	"type"	INTEGER,
 	"content"	TEXT,
+	"content2"	TEXT,
+	"content3"	TEXT,
 	"author"	INTEGER,
 	"edit_comment"	TEXT,
-	"datetime"	TEXT,
-	"length"	INTEGER
+	"datetime"	INTEGER,
+	"length"	INTEGER,
+	"hide"	INTEGER NOT NULL DEFAULT 0,
+	"hidecomm"	INTEGER NOT NULL DEFAULT -1,
+	"troll"	INTEGER NOT NULL DEFAULT -1
 );
 CREATE TABLE IF NOT EXISTS "config" (
 	"name"	TEXT,
@@ -22,13 +27,9 @@ CREATE TABLE IF NOT EXISTS "config" (
 );
 CREATE TABLE IF NOT EXISTS "user" (
 	"id"	INTEGER,
-	"name"	TEXT,
+	"name"	TEXT UNIQUE,
 	"password"	TEXT,
-	"isip"	INTEGER,
-	"ban"	INTEGER,
-	"reason"	TEXT,
-	"api_key"	TEXT,
-	"api_key_enable"	INTEGER,
+	"isip"	INTEGER NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 CREATE TABLE IF NOT EXISTS "discuss" (
@@ -58,25 +59,29 @@ CREATE TABLE IF NOT EXISTS "file" (
 CREATE TABLE IF NOT EXISTS "namespace" (
 	"id"	INTEGER,
 	"name"	TEXT,
-	PRIMARY KEY("id" AUTOINCREMENT)
+	PRIMARY KEY("id")
 );
 CREATE TABLE IF NOT EXISTS "acl" (
 	"doc_id"	INTEGER,
 	"acltype"	TEXT,
-	"index"	INTEGER,
-	"condtype"	INTEGER,
+	"idx"	INTEGER,
+	"condtype"	TEXT NOT NULL,
 	"value"	TEXT,
-	"action"	TEXT,
-	PRIMARY KEY("doc_id","acltype","index")
+	"value2"	INTEGER,
+	"no"	INTEGER NOT NULL,
+	"action"	TEXT NOT NULL,
+	"expire"	INTEGER
 );
 CREATE TABLE IF NOT EXISTS "nsacl" (
 	"ns_id"	INTEGER,
 	"acltype"	TEXT,
-	"index"	INTEGER,
-	"condtype"	INTEGER,
+	"idx"	INTEGER,
+	"condtype"	TEXT NOT NULL,
 	"value"	TEXT,
-	"action"	TEXT,
-	PRIMARY KEY("ns_id","acltype","index")
+	"value2"	INTEGER,
+	"no"	INTEGER NOT NULL,
+	"action"	TEXT NOT NULL,
+	"expire"	INTEGER
 );
 CREATE TABLE IF NOT EXISTS "extension" (
 	"name"	TEXT
@@ -100,11 +105,7 @@ CREATE TABLE IF NOT EXISTS "aclgroup_log" (
 CREATE TABLE IF NOT EXISTS "aclgroup" (
 	"id"	INTEGER,
 	"name"	TEXT,
-	"readperm"	TEXT NOT NULL,
-	"addperm"	TEXT NOT NULL,
-	"deleteperm"	TEXT NOT NULL,
-	"warn_msg"	TEXT,
-	"style"	TEXT,
+	"deleted"	INTEGER NOT NULL DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 CREATE TABLE IF NOT EXISTS "block_log" (
@@ -123,3 +124,8 @@ CREATE TABLE IF NOT EXISTS "perm" (
 	"user"	INTEGER NOT NULL,
 	"perm"	TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS "data" (
+	"id"	INTEGER,
+	"value"	TEXT,
+	PRIMARY KEY("id")
+)

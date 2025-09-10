@@ -37,12 +37,10 @@
     <h2 class="nomargin">ACL그룹 생성</h2>
     <form action="/aclgroup/new_group" method="post">
         <label>그룹 이름 : <input type="text" name="group"></label><br>
-        <label>읽기 권한(미완) : <input type="text" name="read" value="any"></label><br>
-        <label>추가 권한(미완) : <input type="text" name="add" value="admin"></label><br>
-        <label>삭제 권한(미완) : <input type="text" name="delete" value="admin"></label><br>
-        <label>경고 문구(미완) : <input type="text" name="warn"></label><br>
-        <label>사용자명 CSS(미완) : <input type="text" name="css"></label><br>
         <input type="submit" class="ok" value="추가"><button type="button" class="normal" onclick="closeModal('create_aclgroup')">취소</button>
+        <div>
+            
+        </div>
     </form>
 </div>
 {% if delete_perm %}

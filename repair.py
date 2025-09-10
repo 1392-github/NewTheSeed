@@ -45,9 +45,9 @@ while True:
         if c.rowcount == 0:
             print("설정이 존재하지 않습니다.")
     elif o == "5":
-        c.execute("INSERT INTO perm VALUES(?,?)", (user_name_to_id(int(input("권한을 부여할 사용자명 -> "))), input("부여할 권한 -> ")))
+        c.execute("INSERT INTO perm VALUES(?,?)", (user_name_to_id(input("권한을 부여할 사용자명 -> ")), input("부여할 권한 -> ")))
     elif o == "6":
-        c.execute("DELETE FROM perm WHERE user = ? AND perm = ?", (user_name_to_id(int(input("권한을 회수할 사용자명 -> "))), input("회수할 권한 -> ")))
+        c.execute("DELETE FROM perm WHERE user = ? AND perm = ?", (user_name_to_id(input("권한을 회수할 사용자명 -> ")), input("회수할 권한 -> ")))
     elif o == "7":
         c.execute("UPDATE user SET password = ?2 WHERE name = ?1", (input("비밀번호를 변경할 사용자명 -> "), hashlib.sha3_512(input("변경할 비밀번호 -> ").encode()).hexdigest()))
     elif o == "999":

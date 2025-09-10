@@ -12,6 +12,10 @@
     {% endif %}
     <!--<link rel="stylesheet" href="master.css">-->
     <style>
+        *
+        {
+            box-sizing: border-box;
+        }
         body
         {
             margin: 0;
@@ -24,12 +28,12 @@
         #head
         {
             padding: 0 100px;
-            background-color: #8080ff;
             width: 100%;
             height: 42px;
             box-sizing: border-box;
             display: flex;
             justify-content: space-between;
+            background-color: {{ brand_color }};
         }
         #wiki_name, #head div:first-child a
         {
@@ -168,6 +172,7 @@
         }
         .title
         {
+            display: inline;
             color: #303030;
             margin: 0;
         }
@@ -189,6 +194,77 @@
         {
             margin: 0;
         }
+        .namespace
+        {
+            color: #666;
+        }
+        #ctn-header
+        {
+            display: flex;
+            justify-content: space-between;
+        }
+        #menu, #menu2 > div
+        {
+            display: flex;
+        }
+        #menu
+        {
+            height: 35px;
+        }
+        #menu2 > div
+        {
+            border: 1px solid black;
+            height: 40px;
+        }
+        #menu2 > div:not(:last-child)
+        {
+            margin-bottom: 10px;
+        }
+        #menu a
+        {
+            border: 1px solid #808080;
+            padding: 5px 13px;
+            color: unset;
+            text-decoration: none;
+            line-height: 23px;
+        }
+        #menu a:not(:last-child), #menu2 a:not(:last-child)
+        {
+            border-right: 0;
+        }
+        @media (max-width: 767px)
+        {
+            .modal
+            {
+                left: 0%;
+                width: 100%;
+            }
+        }
+        #menu2 a
+        {
+            padding: 8px 12px;
+            line-height: 22px;
+        }
+        #menu2 a:not(.menu2-selected)
+        {
+            color: unset;
+        }
+        .menu2-selected
+        {
+            color: {{ brand_color }};
+        }
+        #menu2
+        {
+            margin: 16px 0;
+        }
+        th, td
+        {
+            text-align: left;
+        }
+        .flex
+        {
+            display: flex;
+        }
         </style>
     {% block css %}{% endblock %}
     <title>{{ wiki_title }}</title>
@@ -206,11 +282,11 @@
             {% endif %}
         </div>
         <div>
-            <form id="search" action="/search" method="get"> <!-- 검색 창 -->
+            <form id="search" action="{{ url_for('go') }}" method="get"> <!-- 검색 창 -->
                 <button type="button">
                     <i class="fa-solid fa-shuffle"></i>
                 </button>
-                <input type="text" name="search_query">
+                <input type="text" name="q" style="padding-left: 5px;">
                 <button type="submit">
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </button>
@@ -224,7 +300,35 @@
         </div>
     </div>
     <div id="content">
-        {% block content %}{% endblock %}
+        <div id="ctn-header">
+            <div>
+                <h1 class="title">{{ title|safe }}</h1>
+                {% if subtitle is defined %}
+                <h2 class="title" style="margin-left: 8px;">({{ subtitle }})</h2>
+                {% endif %}
+            </div>
+            {% if menu is defined %}
+            <div id="menu">
+                {% for i in menu %}
+                <a href="{{ i.link }}" class="{{ i.clas }}" style="{{ i.style }}">{{ i.name }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        <div id="ctn-data">
+        {% if menu2 is defined %}
+        <div id="menu2">
+            {% for m in menu2 %}
+            <div>
+                {% for i in m %}
+                <a href="{{ i.link }}" class="{{ i.clas }}" style="{{ i.style }}">{{ i.name }}</a>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+            {% block content %}{% endblock %}
+        </div>
     </div>
     <div id="foot">
         <hr>
@@ -243,6 +347,18 @@
         }
         function onCaptchaCompleted(token) {
             document.getElementById("on-captcha").style.display = "block";
+        }
+        function callapi(href, body, then) {
+            fetch(location.href, {"method": "post",
+            "headers": {"Content-Type": "application/json"},
+            "body": JSON.stringify(body)})
+            .then(r => {
+                if (r.ok) return r.json()
+                else if (r.status == 400) return r.text().then(t => {throw new Error(t)}) 
+                else throw new Error(`Request failed with status code ${r.status}`)
+            })
+            .then(then)
+            .catch(e => {alert(e.message)})
         }
         document.querySelector("#head div:nth-child(2) form button:nth-child(4)").addEventListener("click", function () {
             location.href = `/w/${encodeURI(document.querySelector("#head div:nth-child(2) form input").value)}`

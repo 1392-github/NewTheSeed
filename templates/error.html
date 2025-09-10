@@ -11,8 +11,7 @@
 {% endblock %}
 
 {% block content %}
-<h1>오류</h1>
-{{ error }}<br>
+{{ error|safe }}<br>
 <button class="ok" onclick="history.go(-1);">뒤로</button>
 {% endblock %}
 

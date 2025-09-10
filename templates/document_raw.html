@@ -35,13 +35,13 @@
 
 {% block content %}
     <div id="ctn_header">
-        <h1>{{ doc_title }}</h1>
+        <h1>{{ doc_title|safe }}</h1>
         <div>
-            <a href="/backlink/{{ doc_title }}">역링크</a>
-            <a href="/discuss/{{ doc_title }}">토론</a>
-            <a href="/edit/{{ doc_title }}">편집</a>
-            <a href="/history/{{ doc_title }}">역사</a>
-            <a href="/acl/{{ doc_title }}">ACL</a>
+            <a href="/backlink/{{ raw_doc_title }}">역링크</a>
+            <a href="/discuss/{{ raw_doc_title }}">토론</a>
+            <a href="/edit/{{ raw_doc_title }}">편집</a>
+            <a href="/history/{{ raw_doc_title }}">역사</a>
+            <a href="/acl/{{ raw_doc_title }}">ACL</a>
         </div>
     </div>
     <div id="ctn_data">

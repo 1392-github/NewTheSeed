@@ -1,78 +1,194 @@
 {% extends "master.html" %}
 
 {% block css %}
-    <style>
-        h1, h2
-        {
-            color: #303030;
-            margin: 0;
-            display: inline;
-        }
-        a
-        {
-            text-decoration: none;
-        }
-        #ctn_header
-        {
-            display: flex;
-            justify-content: space-between;
-        }
-        #ctn_header div:last-child
-        {
-            display: flex;
-            height: 35px;
-        }
-        #ctn_data
-        {
-            margin-top: 10px;
-        }
-        /*#ctn_header div:last-child a
-        {
-            border: 1px solid #808080;
-            padding: 5px 13px;
-            color: unset;
-            text-decoration: none;
-            line-height: 23px;
-        }*/
-    </style>
+<style>
+    #main tr
+    {
+        height: 32px;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-    <div id="ctn_header">
+<h2>{{ type }}</h2>
+<table style="width: 100%">
+    <colgroup>
+        <col style="width: 60px">
+        <col>
+        <col style="width: 130px">
+        <col style="width: 200px">
+        <col style="width: 60px">
+    </colgroup>
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>Condition</th>
+            <th>Action</th>
+            <th>Expiration</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody id="main">
+        <tr id="template" hidden>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td><button type="button" class="danger">삭제</button></td>
+        </tr>
+        {% if acl %}
+        {% for i in acl %}
+        <tr>
+            <td>{{i[0]}}</td>
+            <td>{{i[1]}}</td>
+            <td>{{i[2]}}</td>
+            <td>{{i[3]}}</td>
+            <td>{% if hasperm %}<button type="button" class="danger delete" data-id="{{i[0]}}">삭제</button>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+            <td colspan="5" style="text-align: center;">
+                {% if nsacl %}
+                (규칙이 존재하지 않습니다. 모두 거부됩니다.)
+                {% else %}
+                (규칙이 존재하지 않습니다. <a href="/acl/namespace/{{ type2 }}/{{ raw_doc_name }}">이름공간 ACL</a>이 적용됩니다.)
+                {% endif %}
+            </td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
+{% if hasperm %}
+<form name="add" class="flex" style="align-items: center;">
+    <div>
+        <div>Condition</div>
         <div>
-            <a href="/w/{{ doc_title }}"><h1>{{ doc_title }}</h1></a>&nbsp;
-            <h2>(ACL)</h2>
+            <select name="condtype">
+                <option value="perm">권한</option>
+                <option value="perm_manual">권한(직접입력)</option>
+                <option value="user">사용자</option>
+                <option value="ip">아이피</option>
+                <option value="geoip">GeoIP</option>
+                <option value="aclgroup">ACLGroup</option>
+            </select>
+            <select name="cond1">
+                {% for t in perms %}
+                <option value="{{ t }}">{{ perms[t] }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="cond2" hidden>
         </div>
     </div>
-    <div id="ctn_data">
-        <form action="/set_acl" method="post">
-            {% for acl in aclcs %}
-            <label>{{acl[0]}}
-                {% if hasperm %}
-                <select name="{{acl[1]}}">
-                {% else %}
-                <select disabled>
-                {% endif %}
-                    {% for c in acls %}
-                        {% if s == c %}
-                            <option value="{{c}}" selected>{{c}}</option>
-                        {% else %}
-                            <option value="{{c}}">{{c}}</option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-            </label>
-            <br>
-            {% endfor %}
-            {% if hasperm %}
-            <input type="submit" value="저장">
-            {% else %}
-            <input type="submit" value="저장" disabled>
-            {% endif %}
-        </form>
+    <div style="width: 40px;">
+        <div>Not</div>
+        <input type="checkbox" name="not">
     </div>
+    <div>
+        <div>Action</div>
+        <select name="action">
+            <option value="allow">허용</option>
+            <option value="deny">거부</option>
+            {% if not nsacl %}<option value="gotons" selected>이름공간ACL 실행</option>{% endif %}
+        </select>
+    </div>
+    <div>
+        <div>Duration</div>
+        <input type="number" name="duration" min="0" value="0" placeholder="초 단위 (0 = 영구)">
+    </div>
+    <input type="submit" value="추가" class="ok">
+</form>
+{% endif %}
 {% endblock %}
 
 {% block js %}
-
+{% if hasperm %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+<script>
+    //var template = document.getElementById("template");
+    //var index = {{ aclc }};
+    
+    //var perms = {
+    //    {% for i in perms %}"{{ i }}": "{{ perms[i] }}",
+    //    {% endfor %}
+    //}
+    add.condtype.addEventListener("change", function () {
+        if (add.condtype.value == "perm") {
+            add.cond1.hidden = false;
+            add.cond2.hidden = true;
+        }
+        else {
+            add.cond1.hidden = true;
+            add.cond2.hidden = false;
+        }
+    });
+    add.addEventListener("submit", function (e) {
+        e.preventDefault();
+        /*r => {
+            var newNode = template.cloneNode(true)
+            newNode.hidden = false;
+            newNode.removeAttribute("id");
+            newNode.children[0].textContent = ++index;
+            newNode.children[1].textContent = 1;
+            newNode.children[2].textContent = 1;
+            newNode.children[3].textContent = 1;
+            newNode.children[4].dataset.id = index;
+            template.parentNode.appendChild(newNode);
+    }*/
+        callapi(location.href, {
+            "opcode": "add",
+            "condtype": add.condtype.value == "perm_manual" ? "perm" : add.condtype.value,
+            "cond": add.condtype.value == "perm" ? add.cond1.value : add.cond2.value,
+            "action": add.action.value,
+            "not": add.not.checked,
+            "duration": Number(add.duration.value)
+        }, () => location.reload());
+    });
+    var main = document.getElementById("main")
+    main.addEventListener("click", function (e) {
+        if (!e.target.classList.contains("delete")) return;
+        callapi(location.href, {
+            "opcode": "delete",
+            "index": Number(e.target.dataset.id)
+        }, () => location.reload())
+    })
+    {% if acl %}
+    new Sortable(main, {
+        "animation": 150,
+        "onEnd": function () {
+            var status = false;
+            var from, to;
+            for (var i = 1; i < main.children.length; i++) {
+                n = Number(main.children[i].firstElementChild.textContent.trim())
+                if (status) {
+                    if (n != i + 1) {
+                        from = n;
+                        to = i;
+                        break;
+                    }
+                }
+                if (n != i) {
+                    if (n == i + 1) {
+                        status = true;
+                    }
+                    else {
+                        from = n;
+                        to = i;
+                        break;
+                    }
+                }
+            }
+            if (from == undefined) {
+                return;
+            }
+            callapi(location.href, {
+                "opcode": "move",
+                "from": from,
+                "to": to
+            }, () => location.reload())
+        }
+    })
+    {% endif %}
+</script>
+{% endif %}
 {% endblock %}

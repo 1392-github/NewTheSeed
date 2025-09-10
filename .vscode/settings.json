@@ -1,0 +1,12 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.pythonProjects": [],
+    "editor.tabSize": 4,
+    "files.associations": {
+        "*.html": "jinja-html"
+    },
+    "[jinja-html]": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    }
+}
