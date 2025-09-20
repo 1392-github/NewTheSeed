@@ -7,7 +7,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 19
+version = 20
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -50,7 +50,8 @@ default_config = {
     "document_read_acl": "1",
     "allow_muadt_subdoc": "1",
     "username_format": r"[A-Za-z]\w{2,31}",
-    "frontpage": "FrontPage"
+    "frontpage": "FrontPage",
+    "use_x_real_ip": "0"
 }
 shared = {"grantable": None, "captcha_required": None, "username_format": None}
 acl_type = {

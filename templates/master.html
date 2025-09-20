@@ -10,6 +10,7 @@
     {% if captcha %}
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     {% endif %}
+    <script src="{{ url_for('static', filename='render.js') }}"></script>
     <!--<link rel="stylesheet" href="master.css">-->
     <style>
         *

@@ -11,6 +11,7 @@ import ipaddress
 import os
 #from data import *
 from tool import *
+from render import render_set
 
 # Development Server Config
 HOST = "0.0.0.0"
@@ -244,30 +245,22 @@ def doc_read(doc_title):
     acl = check_document_acl(docid, ns, "read", doc_title)
     if acl[0] == 0:
         return rt("document_no_read_perm.html", title=render_docname(ns, name), msg = acl[1]), 403
-    try:
-        rev = request.args.get('rev')
-        if rev is None:
-            d = c.execute("SELECT value FROM data WHERE id = ?", (docid,)).fetchone()[0]
-        else:
-            d = c.execute("SELECT content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()[0]
-        if d is None:
-            raise Exception
-        code = 200
-    except:
-        d = f'''<h2>오류! 이 문서는 존재하지 않습니다</h2>
-<a href="/edit/{doc_title}" style="border: 1px solid #808080;
-            padding: 5px 13px;
-            color: unset;
-            text-decoration: none;
-            line-height: 23px;">새 문서 만들기</a>'''
-        code = 404
-    return rt("document_read.html", title=render_docname(ns, name), raw_doc_title=doc_title, doc_data=d, menu=[
+    rev = request.args.get('rev')
+    menu = [
         Menu("역링크", f"/backlink/{doc_title}"),
         Menu("토론", f"/discuss/{doc_title}"),
         Menu("편집", f"/edit/{doc_title}"),
         Menu("역사", f"/history/{doc_title}"),
         Menu("ACL", f"/acl/{doc_title}"),
-        ]), code
+        ]
+    if rev is None:
+        d = c.execute("SELECT value FROM data WHERE id = ?", (docid,)).fetchone()
+    else:
+        d = c.execute("SELECT content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
+    if d is None or d[0] is None:
+        return rt("no_document.html", title=render_docname(ns, name), raw_doc_title=doc_title, menu=menu), 404
+    d = render_set(db, doc_title, d[0])
+    return rt("document_read.html", title=render_docname(ns, name), raw_doc_title=doc_title, doc_data=d, menu=menu)
 @app.route("/raw/<path:doc_title>")
 def doc_raw(doc_title):
     ns, name = split_ns(doc_title)
@@ -275,22 +268,14 @@ def doc_raw(doc_title):
     acl = check_document_acl(docid, ns, "read", doc_title)
     if acl[0] == 0:
         return rt("error.html", title="오류", error = acl[1]), 403
-    try:
-        rev = request.args.get('rev')
-        if rev is None:
-            d = c.execute("SELECT value FROM data WHERE id = ?", (docid,)).fetchone()[0]
-        else:
-            d = c.execute('''SELECT content FROM history WHERE doc_id = ? AND rev = ?''', (docid, rev)).fetchone()[0]
-        if d is None:
-            raise Exception
-        code = 200
-        if d is None:
-            raise Exception
-        code = 200
-    except:
-        d = ""
-        code = 404
-    return rt("document_raw.html", doc_title=render_docname(ns, name), raw_doc_title=doc_title, doc_data=d), code
+    rev = request.args.get('rev')
+    if rev is None:
+        d = c.execute("SELECT value FROM data WHERE id = ?", (docid,)).fetchone()
+    else:
+        d = c.execute("SELECT content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
+    if d is None or d[0] is None:
+        return rt("error.html", title="오류", error="문서를 찾을 수 없습니다."), 404
+    return rt("document_raw.html", doc_title=render_docname(ns, name), raw_doc_title=doc_title, doc_data=d[0])
 @app.route("/edit/<path:doc_title>")
 def doc_edit(doc_title):
     ns, name = split_ns(doc_title)
@@ -413,9 +398,9 @@ from user
 where id = ?''', (session["id"],)).fetchone()[0], login=True, api=api, key=None if key==None else key[0], api_enable=True)
         except:
             session.pop("id", None)
-            return rt("user.html", user_name = request.remote_addr, login=False, api=False)
+            return rt("user.html", user_name = getip(), login=False, api=False)
     else:
-        return rt("user.html", user_name = request.remote_addr, login=False, api=False)
+        return rt("user.html", user_name = getip(), login=False, api=False)
 @app.route("/login")
 def login():
     return rt("login.html", req_captcha = is_required_captcha("login"))
@@ -523,13 +508,22 @@ def sqlshell():
 @app.route("/admin_tool")
 def admin_tool():
     return rt("admin_tool.html")
-@app.route("/delete/<path:doc_name>")
-def delete(doc_name):
-    if 'id' in session:
-        i = session['id']
+@app.route("/delete/<path:doc_name>", methods = ["GET", "POST"])
+def delete(doc_name):    
+    i = ipuser(create = request.method == "POST")
+    ns, name = split_ns(doc_name)
+    docid = get_docid(ns, name)
+    acl = check_document_acl(docid, ns, "delete", doc_name)
+    if acl[0] == 0:
+        return rt("error.html", error = acl[1]), 403
+    if request.method == "POST":
+        data = get_doc_data(docid)
+        if data == None: return rt("error.html", error = "문서를 찾을 수 없습니다.")
+        record_history(docid, 2, None, None, None, i, request.form["note"], -len(data))
+        c.execute("UPDATE data SET value = NULL WHERE id = ?", (docid,))
+        return redirect(url_for("doc_read", doc_title = doc_name))
     else:
-        i = ipuser()
-    return rt("document_delete.html", doc_title = doc_name, admin=has_perm("manage_history"))
+        return rt("document_delete.html", title = render_docname(ns, name), subtitle = "삭제")
 @app.route("/delete_full/<path:doc_name>")
 def delete_full(doc_name):
     if 'id' in session:
@@ -895,7 +889,7 @@ def grant():
             logstr.append("+" + p) 
         for p in oldperm - newperm:
             logstr.append("-" + p)
-        c.execute("INSERT INTO block_log (type, operator, target, date, grant_perm, note) VALUES(3,?,?,?,?,?)",
+        if len(logstr) != 0: c.execute("INSERT INTO block_log (type, operator, target, date, grant_perm, note) VALUES(3,?,?,?,?,?)",
                   (ipuser(), user, get_utime(), " ".join(logstr), request.form["note"] if get_config("ext_note") == "1" else None))
         return '', 204
     else:

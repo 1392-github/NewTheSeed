@@ -43,33 +43,16 @@
             text-decoration: none;
             line-height: 23px;
         }
-        #ctn_header div:last-child a[href^="/delete_full/"]
-        {
-            border: 1px solid #d9534f;
-            background-color: #d9534f;
-            color: white;
-        }
     </style>
 {% endblock %}
 
 {% block content %}
-    <div id="ctn_header">
-        <div>
-            <a href="/w/{{ doc_title }}"><h1>{{ doc_title }}</h1></a>&nbsp;
-            <h2>(삭제)</h2>
-        </div>
-        {% if admin %}
-        <div><a href="/delete_full/{{ doc_title }}">완전 삭제 (관리자 전용)</a>
-        </div>
-        {% endif %}
-    </div>
-    <div id="ctn_data">
-        <form action="/delete_form" method="post">
-            <input type="hidden" name="doc_name" value="{{ doc_title }}">
-            이 문서를 삭제합니다
-            <input type="submit" value="확인">
-        </form>
-    </div>
+<div id="ctn_data">
+    <form method="post">
+        <label>요약<br><input type="text" name="note" style="width: 100%"></label><br>
+        <input type="submit" class="danger" value="삭제">
+    </form>
+</div>
 {% endblock %}
 
 {% block js %}

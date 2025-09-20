@@ -65,6 +65,11 @@ def run_sqlscript(filename, args = ()):
 		where name = "owner"
 	)
 )''', (str(session['id']),)).fetchone()[0] == 1"""
+def getip():
+    if get_config("use_x_real_ip") == "1":
+        return request.headers.get("X-Real-IP", request.remote_addr)
+    else:
+        return request.remote_addr
 def ipuser(create = True):
     if 'id' in session:
         return session['id']
@@ -75,11 +80,11 @@ where not exists (
 	from user
 	where name = ?
 	and isip = 1
-)''', (request.remote_addr, request.remote_addr))
+)''', (getip(), getip()))
     return c.execute('''select id
 from user
 where name = ?
-and isip = 1''', (request.remote_addr,)).fetchone()[0]
+and isip = 1''', (getip(),)).fetchone()[0]
 """def hasacl(cond):
     if 'id' in session:
         user = session['id']
@@ -141,6 +146,7 @@ def rt(t, **kwargs):
     k["captcha"] = get_config("captcha_mode") != "0"
     k["sitekey"] = get_config("captcha_sitekey")
     k["brand_color"] = get_config("brand_color")
+    if t == "error.html": k["title"] = "오류"
     return render_template(t, **k)
 def has_config(key):
     return c.execute("SELECT EXISTS (SELECT 1 FROM config WHERE name = ?)", (key,)).fetchone()[0] == 1
@@ -270,16 +276,16 @@ def captcha(action):
     mode = get_config("captcha_mode")
     if mode == "0": return True
     if has_perm("skip_captcha") or has_perm("no_force_captcha"): return True
-    shared["captcha_bypass_cnt"].setdefault(request.remote_addr, 0)
-    if shared["captcha_bypass_cnt"][request.remote_addr] > 0:
-        shared["captcha_bypass_cnt"][request.remote_addr] -= 1
+    shared["captcha_bypass_cnt"].setdefault(getip(), 0)
+    if shared["captcha_bypass_cnt"][getip()] > 0:
+        shared["captcha_bypass_cnt"][getip()] -= 1
         return True
     if mode == "2":
         if not is_required_captcha(action): return True
         if "g-recaptcha-response" not in request.form: return False
         if post("https://www.google.com/recaptcha/api/siteverify",
                     data = {"secret": get_config("captcha_secretkey"), "response": request.form["g-recaptcha-response"]}).json()["success"]:
-            shared["captcha_bypass_cnt"][request.remote_addr] = int(get_config("captcha_bypass_count"))
+            shared["captcha_bypass_cnt"][getip()] = int(get_config("captcha_bypass_count"))
             return True
         else:
             return False
@@ -308,8 +314,8 @@ def is_required_captcha(action):
         if action in shared["captcha_always"]:
             return True
         if has_config("captcha_bypass_count"):
-            shared["captcha_bypass_cnt"].setdefault(request.remote_addr, 0)
-            return shared["captcha_bypass_cnt"][request.remote_addr] <= 0
+            shared["captcha_bypass_cnt"].setdefault(getip(), 0)
+            return shared["captcha_bypass_cnt"][getip()] <= 0
         else:
             return True
     else:
@@ -435,7 +441,7 @@ def check_acl(acl, type = None, acl_tab = None, user = None, basedoc = None, doc
     # 0 : 거부, 1 : 허용, 2 : 이름공간ACL 실행
     if user is None: user = ipuser(False)
     for i in acl:
-        c = check_cond(i[0], i[1], i[2], user, request.remote_addr, basedoc, docname)
+        c = check_cond(i[0], i[1], i[2], user, getip(), basedoc, docname)
         if c[0] ^ i[3]:
             r = acl_action_key.get(i[4], 0)
             if type is None:
@@ -488,3 +494,21 @@ def get_doc_data(docid):
     if r is None:
         return None
     return r[0]
+#def get_doc_full_name(docid):
+    #r = c.execute
+def cat_namespace(namespace, name):
+    dns = int(get_config("default_namespace"))
+    colon = name.find(":")
+    show_ns = False
+    if namespace == dns:
+        if colon != -1:
+            b = name[:colon]
+            if c.execute("SELECT EXISTS (SELECT 1 FROM namespace WHERE name = ?)", (b,)).fetchone()[0]: show_ns = True
+    else:
+        show_ns = True
+    ns = c.execute("SELECT name FROM namespace WHERE id = ?", (namespace,)).fetchone()[0]
+    if show_ns:
+        r = f'{ns}:{name}'
+    else:
+        r = name
+    return r

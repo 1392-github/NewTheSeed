@@ -1,62 +1,161 @@
 '''
-(이 파일 한정) (Only this file)
-BSD 3-Clause License
-
-Copyright (c) 2017-2021, surplus-dev
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-* Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
-* Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 이 파일은 openNAMU v3.6.0-v20의 렌더러를 기반으로 합니다.
 
 출처 : https://github.com/openNAMU/openNAMU/blob/26bce3cb0073acf3f6d9f54578c99a35867aab68/route/tool/func_render_namumark.py
 
 https://github.com/openNAMU/openNAMU/blob/26bce3cb0073acf3f6d9f54578c99a35867aab68/route/tool/func.py,
-https://github.com/openNAMU/openNAMU/blob/26bce3cb0073acf3f6d9f54578c99a35867aab68/route/tool/func_tool.py를 참고하였습니다.
+https://github.com/openNAMU/openNAMU/blob/26bce3cb0073acf3f6d9f54578c99a35867aab68/route/tool/func_tool.py 를 참고하였습니다.
 '''
 
-#from .func_tool import *
+from typing import Any
+from flask import *
+from tool import *
+
 import urllib.parse
 import datetime
 import hashlib
-import flask
-from flask import Flask, request, redirect, session, send_file, abort, Response
-import random
 import string
 import re
-
-import os
 import html
-import json   
-import sqlite3
-import time
-import threading
-from typing import Any
 
-from tool import *
+# 이 아래부터
+def sha224_replace(data):
+    return hashlib.sha224(bytes(data, 'utf-8')).hexdigest()
+def get_time():
+    return str(datetime.datetime.today().strftime(get_config("time_format")))
+def url_pas(data):
+    data = re.sub(r'^\.', '\\\\.', data)
+    data = urllib.parse.quote(data)
+    data = data.replace('/','%2F')
+    return data
+def get_main_skin_set(conn, session, setting, ip):
+    return "default"
+def number_check(data, f = 0):
+    try:
+        float(data) if f == 1 else int(data)
+        return data
+    except:
+        return '1'
+def render_set(conn, doc_name = '', doc_data = '', data_type = 'view', markup = '', parameter = {}):
+    curs = conn.cursor()
+
+    # data_type in ['view', 'from', 'thread', 'api_view', 'api_thread', 'api_include', 'backlink']
+    # data_type을 list 형식으로 개편 필요할 듯
+
+    return_type = True
+    if data_type in ['api_from', 'api_view', 'api_thread', 'api_include']:
+        return_type = False
+
+    if data_type == '':
+        data_type = 'view'
+    elif data_type == 'api_view':
+        data_type = 'view'
+    elif data_type == 'api_from':
+        data_type = 'from'
+    elif data_type == 'api_thread':
+        data_type = 'thread'
+    elif data_type == 'api_include':
+        data_type = 'include'
+
+    doc_data = '' if doc_data == None else doc_data
+
+    ip = getip()
+    render_lang_data = {
+        'toc' : "목차",
+        'category' : "분류"
+    }
+
+    get_class_render = class_do_render(
+        conn,
+        render_lang_data,
+        markup,
+        parameter,
+        render_set
+    ).do_render(
+        doc_name,
+        doc_data,
+        data_type
+    )
+    if data_type == 'backlink':
+        return ''
+
+    get_class_render[0] = '<div class="opennamu_render_complete">' + get_class_render[0] + '</div>'
+
+    font_size_set_data = get_main_skin_set(conn, session, 'main_css_font_size', ip)
+    if font_size_set_data != 'default':
+        font_size_set_data = number_check(font_size_set_data)
+
+        get_class_render[0] = '' + \
+            '''<style>
+                .opennamu_render_complete {
+                    font-size: ''' + font_size_set_data + '''px !important;
+                }
+            </style>''' + \
+        '' + get_class_render[0]
+
+    """curs.execute("select data from other where name = 'namumark_compatible'")
+    db_data = curs.fetchall()
+    if db_data and db_data[0][0] != '':
+        get_class_render[0] = '' + \
+            '''<style>
+                .opennamu_render_complete {
+                    font-size: 15px !important;
+                    line-height: 1.5;
+                }
+
+                .opennamu_render_complete td {
+                    padding: 5px 10px !important;
+                    word-break: break-all;
+                }
+
+                .opennamu_render_complete summary {
+                    list-style: none !important;
+                    font-weight: bold !important;
+                }
+
+                .opennamu_render_complete .opennamu_folding {
+                    margin-bottom: 5px;
+                }
+
+                .opennamu_render_complete .opennamu_footnote {
+                    padding-bottom: 30px;
+                }
+
+                .opennamu_render_complete iframe {
+                    display: block;
+                }
+            </style>''' + \
+        '' + get_class_render[0]"""
+
+    table_set_data = get_main_skin_set(conn, session, 'main_css_table_scroll', ip)
+    if table_set_data == 'on':
+        get_class_render[0] = '<style>.table_safe { overflow-x: scroll; white-space: nowrap; }</style>' + get_class_render[0]
+
+    joke_set_data = get_main_skin_set(conn, session, 'main_css_view_joke', ip)
+    if joke_set_data == 'off':
+        get_class_render[0] = '<style>.opennamu_joke { display: none; }</style>' + get_class_render[0]
+
+    math_set_data = get_main_skin_set(conn, session, 'main_css_math_scroll', ip)
+    if math_set_data == 'on':
+        get_class_render[0] = '<style>.katex .base { overflow-x: scroll; }</style>' + get_class_render[0]
+
+    transparent_set_data = get_main_skin_set(conn, session, 'main_css_table_transparent', ip)
+    if transparent_set_data == 'on':
+        get_class_render[0] = '' + \
+            '''<style>
+                .table_safe td {
+                    background: transparent !important;
+                    color: inherit !important;
+                }
+            </style>''' + \
+        '' + get_class_render[0]
+
+    if not return_type:
+        return [get_class_render[0], get_class_render[1]]
+    else:
+        return get_class_render[0] + '<script>window.addEventListener("DOMContentLoaded", function() {' + get_class_render[1] + '});</script>'
+
+# 이 위까지는 openNAMU의 func.py 또는 func_tool.py를 그대로 또는 수정하여 가져왔습니다.
 
 class class_do_render_namumark:
     def __init__(
@@ -83,25 +182,24 @@ class class_do_render_namumark:
 
         self.lang_data = lang_data
         try:
-            self.ip = request.remote_addr
+            self.ip = getip()
         except:
             self.ip = '0.0.0.0'
 
         try:
-            if 'main_css_bold' in flask.session:
+            if 'main_css_bold' in session:
                 pass
 
-            self.flask_session = flask.session
+            self.flask_session = session
         except:
             self.flask_session = ''
 
-        """try:
-            self.darkmode = flask.request.cookies.get('main_css_darkmode', '0')
+        try:
+            self.darkmode = request.cookies.get('main_css_darkmode', '0')
             if self.darkmode == 'default':
                 self.darkmode = '0'
         except:
-            self.darkmode = '0'"""
-        self.darkmode = 0
+            self.darkmode = '0'
 
         self.data_temp_storage = {}
         self.data_temp_storage_count = 0
@@ -125,9 +223,10 @@ class class_do_render_namumark:
         self.render_data = '<back_br>\n' + self.render_data + '\n<front_br>'
         self.render_data_js = ''
 
-        self.curs.execute('select data from other where name = "link_case_insensitive"')
-        db_data = self.curs.fetchall()
-        self.link_case_insensitive = ' collate nocase' if db_data and db_data[0][0] != '' else ''
+        #self.curs.execute('select data from other where name = "link_case_insensitive"')
+        #db_data = self.curs.fetchall()
+        #self.link_case_insensitive = ' collate nocase' if db_data and db_data[0][0] != '' else ''
+        self.link_case_insensitive = ''
 
     def get_tool_lang(self, name):
         if name in self.lang_data:
@@ -792,7 +891,7 @@ class class_do_render_namumark:
                             data_text = str((date_now - date).days // 365)
                 else:
                     data_text = 'invalid date'
-
+                    
                 data_name = self.get_tool_data_storage(data_text, '', match_org.group(0))
 
                 return '<' + data_name + '></' + data_name + '>'
@@ -843,8 +942,14 @@ class class_do_render_namumark:
 
                 return '<' + data_name + '>' + match[1] + '</' + data_name + '>'
             elif name_data == 'pagecount':
+                ns = c.execute("SELECT id FROM namespace WHERE name = ?", (match[1],)).fetchone()
+                if ns is None:
+                    return str(c.execute("SELECT COUNT(value) FROM data").fetchone()[0])
+                else:
+                    return str(c.execute("SELECT COUNT(D.value) FROM data AS D JOIN doc_name AS N ON (D.id = N.id) WHERE N.namespace = ?", (ns[0],)).fetchone()[0])
                 return '0'
-            elif name_data == 'lastedit':
+            # 일단 보류
+            '''elif name_data == 'lastedit':
                 link_main = match[1]
                 data_view = ''
 
@@ -866,6 +971,8 @@ class class_do_render_namumark:
                 link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
                 link_main = html.unescape(link_main)
 
+                #self.curs.execute("select set_data from data_set where doc_name = ? and set_name = 'last_edit'", [link_main])
+                #self.curs.execute("select set_data from data_set where doc_name = ? and set_name = 'last_edit'", [link_main])
                 self.curs.execute("select set_data from data_set where doc_name = ? and set_name = 'last_edit'", [link_main])
                 db_data = self.curs.fetchall()
                 if db_data:
@@ -877,7 +984,7 @@ class class_do_render_namumark:
                 else:
                     return '0'
             else:
-                return '<macro>' + match[0] + '(' + match[1] + ')' + '</macro>'
+                return '<macro>' + match[0] + '(' + match[1] + ')' + '</macro>'''
 
         # double macro replace
         self.render_data = re.sub(r'\[([^[(\]]+)\(((?:(?!\)\]).)+)\)\]', do_render_macro_double, self.render_data)
@@ -904,12 +1011,9 @@ class class_do_render_namumark:
             elif match in ('목차', 'toc', 'tableofcontents'):
                 return '<toc_need_part>'
             elif match == 'pagecount':
-                self.curs.execute('select data from other where name = "count_all_title"')
-                db_data = self.curs.fetchall()
-                if db_data:
-                    return db_data[0][0]
-                else:
-                    return '0'
+                #self.curs.execute('select data from other where name = "count_all_title"')
+                #db_data = self.curs.fetchall()
+                return str(c.execute("SELECT COUNT(value) FROM data").fetchone()[0])
             else:
                 return '<macro>' + match_org.group(1) + '</macro>'
 
@@ -978,7 +1082,8 @@ class class_do_render_namumark:
                 link_main_org = link_main
 
                 # file link
-                if re.search(r'^(파일|file|외부|out):', link_main, flags = re.I):
+                # 추가예정
+                """if re.search(r'^(파일|file|외부|out):', link_main, flags = re.I):
                     file_width = ''
                     file_height = ''
                     file_align = ''
@@ -1130,9 +1235,10 @@ class class_do_render_namumark:
                         else:
                             data_name = self.get_tool_data_storage('', '', link_data_full)
                         
-                        self.render_data = re.sub(link_regex, '<' + data_name + '></' + data_name + '>' + link_data[2], self.render_data, 1)
+                        self.render_data = re.sub(link_regex, '<' + data_name + '></' + data_name + '>' + link_data[2], self.render_data, 1)"""
                 # category
-                elif re.search(r'^(분류|category):', link_main, flags = re.I):
+                # 추가 예정
+                """elif re.search(r'^(분류|category):', link_main, flags = re.I):
                     link_main = re.sub(r'^(분류|category):', '', link_main, flags = re.I)
 
                     category_blur = ''
@@ -1184,9 +1290,10 @@ class class_do_render_namumark:
 
                         self.data_category += '<a class="' + category_blur + ' ' + link_exist + '" title="' + link_sub + '" href="/w/category:' + link_main + '">' + link_sub + '</a>'
 
-                    self.render_data = re.sub(link_regex, '', self.render_data, 1)
+                    self.render_data = re.sub(link_regex, '', self.render_data, 1)"""
                 # inter link
-                elif re.search(r'^(?:inter|인터):([^:]+):', link_main, flags = re.I):
+                # 아마 안 쓸 듯
+                """elif re.search(r'^(?:inter|인터):([^:]+):', link_main, flags = re.I):
                     link_inter_regex = re.compile('^(?:inter|인터):([^:]+):', flags = re.I)
 
                     link_inter_name = re.search(link_inter_regex, link_main)
@@ -1252,9 +1359,9 @@ class class_do_render_namumark:
 
                         self.render_data = re.sub(link_regex, lambda x : ('<' + data_name + '>' + link_sub + '</' + data_name + '>' + add_str), self.render_data, 1)
                     else:
-                        self.render_data = re.sub(link_regex, link_data[2], self.render_data, 1)
+                    self.render_data = re.sub(link_regex, link_data[2], self.render_data, 1)"""
                 # out link
-                elif re.search(r'^https?:\/\/', link_main, flags = re.I):
+                if re.search(r'^https?:\/\/', link_main, flags = re.I):
                     link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
                     link_title = link_main
                     link_main = html.unescape(link_main)
@@ -1280,7 +1387,7 @@ class class_do_render_namumark:
                     link_inter_icon = ''
                     link_class = 'opennamu_link_out'
 
-                    self.curs.execute("select html, plus_t from html_filter where kind = 'outer_link' and plus = ?", [domain])
+                    """self.curs.execute("select html, plus_t from html_filter where kind = 'outer_link' and plus = ?", [domain])
                     db_data = self.curs.fetchall()
                     if db_data:
                         if db_data[0][1] != '':
@@ -1296,7 +1403,7 @@ class class_do_render_namumark:
                                     link_class = 'opennamu_link_inter'
                         else:
                             link_inter_icon = db_data[0][0] + ':'
-                            link_class = 'opennamu_link_inter'
+                            link_class = 'opennamu_link_inter'"""
 
                     add_str = ''
                     if link_data[2]:
@@ -1333,7 +1440,8 @@ class class_do_render_namumark:
 
                     link_exist = ''
                     if link_main != '':
-                        self.curs.execute("select title from data where title = ?" + self.link_case_insensitive, [link_main])
+                        ns, link_name = split_ns(link_main)
+                        self.curs.execute("select name from doc_name where namespace = ? and name = ?" + self.link_case_insensitive, [ns, link_name])
                         db_data = self.curs.fetchall()
                         if not db_data:
                             if not link_main in self.data_backlink:
@@ -1342,7 +1450,7 @@ class class_do_render_namumark:
                             self.data_backlink[link_main]['no'] = ''
                             link_exist = 'opennamu_not_exist_link'
                         else:
-                            link_main = db_data[0][0]
+                            link_main = cat_namespace(ns, db_data[0][0])
                             if not link_main in self.data_backlink:
                                 self.data_backlink[link_main] = {}
                         
@@ -1469,7 +1577,9 @@ class class_do_render_namumark:
                     self.data_backlink[include_name]['include'] = ''
 
                     # load include db data
-                    self.curs.execute("select data from data where title = ?", [include_name])
+                    include_ns, include_name2 = split_ns(include_name)
+                    include_docid = get_docid(include_ns, include_name2)
+                    self.curs.execute("select value from data where id = ?", [include_docid])
                     db_data = self.curs.fetchall()
                     if db_data:
                         # include link func
@@ -1629,14 +1739,14 @@ class class_do_render_namumark:
 
                 link_inter_name = ''
 
-                link_inter_regex = re.compile('^(?:inter|인터):([^:]+):', flags = re.I)
+                """link_inter_regex = re.compile('^(?:inter|인터):([^:]+):', flags = re.I)
                 inter_check = re.search(link_inter_regex, link_main)
                 if not inter_check:
                     # under page & fix url
                     link_main = self.get_tool_link_fix(link_main, 'redirect')
                 else:
                     link_inter_name = inter_check.group(1)
-                    link_main = re.sub(link_inter_regex, '', link_main)
+                    link_main = re.sub(link_inter_regex, '', link_main)"""
 
                 # sharp
                 link_main = link_main.replace('&#x27;', '<link_single>')
@@ -1653,34 +1763,36 @@ class class_do_render_namumark:
                 
                 link_main = link_main.replace('<link_single>', '&#x27;')
 
-                if not inter_check:
-                    # main link fix
-                    link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
-                    link_main = html.unescape(link_main)
+                #if not inter_check:
+                # main link fix
+                link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
+                link_main = html.unescape(link_main)
 
-                    self.curs.execute("select title from data where title = ?" + self.link_case_insensitive, [link_main])
-                    db_data = self.curs.fetchall()
-                    if not db_data:
-                        if not link_main in self.data_backlink:
-                            self.data_backlink[link_main] = {}
+                #self.curs.execute("select title from data where title = ?" + self.link_case_insensitive, [link_main])
+                ns, link_name = split_ns(link_main)
+                self.curs.execute("select name from doc_name where namespace = ? and name = ?" + self.link_case_insensitive, [ns, link_name])
+                db_data = self.curs.fetchall()
+                if not db_data:
+                    if not link_main in self.data_backlink:
+                        self.data_backlink[link_main] = {}
 
-                        self.data_backlink[link_main]['no'] = ''
-                    else:
-                        link_main = db_data[0][0]
-                        if not link_main in self.data_backlink:
-                            self.data_backlink[link_main] = {}
-
-                    self.data_backlink[link_main]['redirect'] = link_data_sharp
-
-                    link_main = url_pas(link_main)
-                    if link_main != '':
-                        link_main = '/w_from/' + link_main
-
-                    self.data_redirect = 1
-                    data_name = self.get_tool_data_storage('<a href="' + link_main + link_data_sharp + '">(GO)</a>', '', link_data_full)
-
-                    self.render_data = '<' + data_name + '></' + data_name + '>'
+                    self.data_backlink[link_main]['no'] = ''
                 else:
+                    link_main = cat_namespace(ns, db_data[0][0])
+                    if not link_main in self.data_backlink:
+                        self.data_backlink[link_main] = {}
+
+                self.data_backlink[link_main]['redirect'] = link_data_sharp
+
+                link_main = url_pas(link_main)
+                if link_main != '':
+                    link_main = '/w_from/' + link_main
+
+                self.data_redirect = 1
+                data_name = self.get_tool_data_storage('<a href="' + link_main + link_data_sharp + '">(GO)</a>', '', link_data_full)
+
+                self.render_data = '<' + data_name + '></' + data_name + '>'
+                """else:
                     self.curs.execute("select plus, plus_t from html_filter where kind = 'inter_wiki' and html = ?", [link_inter_name])
                     db_data = self.curs.fetchall()
                     if db_data:
@@ -1710,7 +1822,7 @@ class class_do_render_namumark:
                         self.render_data = '<' + data_name + '></' + data_name + '>'
                     else:
                         self.data_redirect = 1
-                        self.render_data = ''
+                        self.render_data = ''"""
             else:
                 self.data_redirect = 1
                 self.render_data = ''
@@ -2662,3 +2774,109 @@ class class_do_render_namumark:
                 'redirect' : self.data_redirect
             } # other
         ]
+        
+class class_do_render:
+    def __init__(self, conn, lang_data = {}, markup = '', parameter = {}, parent = None):
+        self.conn = conn
+
+        if lang_data == '{}':
+            lang_data = {
+                'toc' : 'toc',
+                'category' : 'category'
+            }
+
+        self.lang_data = lang_data
+        self.markup = markup
+        self.parameter = parameter
+        self.parent = parent
+
+    def generate_random_string(self, length = 32):
+        characters = string.ascii_letters + string.digits
+
+        random_string = ''.join(random.choice(characters) for _ in range(length))
+        return random_string
+
+    def do_render(self, doc_name, doc_data, data_type):
+        curs = self.conn.cursor()
+
+        doc_set = {}
+        if data_type == 'from':
+            doc_set['doc_from'] = 'O'
+            data_type = 'view'
+        else:
+            doc_set['doc_from'] = ''
+
+        if data_type == 'backlink':
+            doc_set['doc_type'] = 'view'
+        else:
+            doc_set['doc_type'] = data_type
+        
+        doc_set['doc_include'] = self.generate_random_string() + '_'
+    
+        rep_data = 'namumark'
+        
+        #if rep_data == 'namumark' or rep_data == 'namumark_beta':
+        data_end = class_do_render_namumark(
+            self.conn,
+            doc_name,
+            doc_data,
+            doc_set,
+            self.lang_data,
+            parameter = self.parameter,
+            parent = self.parent
+        )()
+        """elif rep_data == 'raw':
+            data_end = [html.escape(doc_data).replace('\n', '<br>'), '', {}]
+        else:
+            data_end = [doc_data, '', {}]"""
+
+        """if data_type == 'thread':
+            def do_thread_a_change(match):
+                data = match[2].replace('#', '')
+                data_split = data.split('-')
+                if match[1] == 'topic_a' or len(data_split) == 1:
+                    return '<a href="' + match[2] + '">' + match[2] + '</a>'
+                elif match[1] == 'topic_a_post' and len(data_split) == 3:
+                    return '<a href="/bbs/w/' + data_split[2] + '/' + data_split[1] + '#' + data_split[0] + '">#' + data_split[0] + '-' + data_split[1] + '</a>'
+                elif len(data_split) == 2:
+                    return '<a href="/thread/' + data_split[1] + '#' + data_split[0] + '">' + match[2] + '</a>'
+                else:
+                    return ''
+
+            data_end[0] = re.sub(r'&lt;(topic_a(?:_post|_thread)?)&gt;((?:(?!&lt;\/topic_a(?:_post|_thread)?&gt;).)+)&lt;\/topic_a(?:_post|_thread)?&gt;', do_thread_a_change, data_end[0])
+            data_end[0] = re.sub(r'&lt;topic_call&gt;@(?P<in>(?:(?!&lt;\/topic_call&gt;).)+)&lt;\/topic_call&gt;', '<a href="/w/user:\\g<in>">@\\g<in></a>', data_end[0])"""
+
+        """if data_type == 'backlink':
+            mode = ''
+            if re.search('^user:', doc_name):
+                mode = 'user'
+            elif re.search('^file:', doc_name):
+                mode = 'file'
+            elif re.search('^category:', doc_name):
+                mode = 'category'
+
+            curs.execute("delete from back where link = ?", [doc_name])
+            curs.execute("delete from back where title = ? and type = 'no'", [doc_name])
+
+            curs.execute("delete from data_set where doc_name = ? and set_name = 'link_count'", [doc_name])
+            curs.execute("delete from data_set where doc_name = ? and set_name = 'doc_type'", [doc_name])
+
+            backlink = data_end[2]['backlink'] if 'backlink' in data_end[2] else []
+            if backlink != []:
+                curs.executemany("insert into back (link, title, type, data values (?, ?, ?, ?)"), backlink)
+                curs.execute("delete from back where title = ? and type = 'no'", [doc_name])
+
+            link_count = 0
+            if 'link_count' in data_end[2]:
+                link_count = data_end[2]['link_count']
+
+            curs.execute("insert into data_set (doc_name, doc_rev, set_name, set_data values (?, '', 'link_count', ?)"), [doc_name, link_count])
+
+            if mode != '':
+                curs.execute("insert into data_set (doc_name, doc_rev, set_name, set_data values (?, '', 'doc_type', ?)"), [doc_name, mode]) 
+            elif 'redirect' in data_end[2] and data_end[2]['redirect'] == 1:
+                curs.execute("insert into data_set (doc_name, doc_rev, set_name, set_data values (?, '', 'doc_type', 'redirect')"), [doc_name])
+            else:
+                curs.execute("insert into data_set (doc_name, doc_rev, set_name, set_data values (?, '', 'doc_type', '')"), [doc_name])"""
+
+        return [data_end[0], data_end[1], data_end[2]]
