@@ -2,7 +2,7 @@
 Python 기반 위키 엔진 (개발중)
 아직 beta 버전입니다.
 ## 라이선스
-render.py, static/render.js, static/opennamu_main.css 파일은 openNAMU에서 가져온 것으로 BSD-3을 적용합니다. 이외의 모든 파일은 MIT를 적용합니다.
+render.py, static/render.js, static/opennamu_main.css, static/func.js 파일은 openNAMU에서 가져온 것으로 BSD-3을 적용합니다. 이외의 모든 파일은 MIT를 적용합니다.
 ## DB
 DB는 sqlite을 사용합니다.
 ## 설치 방법

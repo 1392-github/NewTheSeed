@@ -1,48 +1,48 @@
 /* 기본 전체 옵션 */
-#ctn-data video, 
-#ctn-data table, 
-#ctn-data iframe, 
-#ctn-data input, 
-#ctn-data textarea, 
-#ctn-data img, 
-#ctn-data hr, 
-#ctn-data blockquote, 
-#ctn-data pre, 
-#ctn-data iframe, 
-#ctn-data .table_safe {
+.opennamu_render_complete video, 
+.opennamu_render_complete table, 
+.opennamu_render_complete iframe, 
+.opennamu_render_complete input, 
+.opennamu_render_complete textarea, 
+.opennamu_render_complete img, 
+.opennamu_render_complete hr, 
+.opennamu_render_complete blockquote, 
+.opennamu_render_complete pre, 
+.opennamu_render_complete iframe, 
+.opennamu_render_complete .table_safe {
     max-width: 100%;
 }
 
-#ctn-data {
+.opennamu_render_complete {
     word-break: break-all;
     overflow: auto;
 }
 
 /* 텍스트 필드 */
-#ctn-data textarea,
-#ctn-data input {
+.opennamu_render_complete textarea,
+.opennamu_render_complete input {
     width: 100%;
 
     font-family: Consolas, Monaco, "Courier New", Courier, "Lucida Console", monospace;
 }
 
-#ctn-data input {
+.opennamu_render_complete input {
     box-sizing: border-box;
 }
 
-#ctn-data input[type="checkbox"], 
-#ctn-data input[type="radio"] {
+.opennamu_render_complete input[type="checkbox"], 
+.opennamu_render_complete input[type="radio"] {
     width: auto;
 }
 
 /* 테이블 */
-#ctn-data table {
+.opennamu_render_complete table {
     overflow-x: scroll;
 
     border-collapse: collapse;
 }
 
-#ctn-data td {
+.opennamu_render_complete td {
     border: 0.5px solid gainsboro;
     border-width: 0.5px;
 
@@ -50,14 +50,14 @@
 }
 
 @supports (-webkit-touch-callout: none) {
-    #ctn-data td {
+    .opennamu_render_complete td {
         border: 1px solid gainsboro;
         border-width: 1px;
     }
 }
 
 /* 폴딩 */
-#ctn-data details summary {
+.opennamu_render_complete details summary {
     cursor: pointer;
     user-select: none;
     
@@ -65,20 +65,20 @@
 }
 
 /* diff */
-#ctn-data .opennamu_diff_green {
+.opennamu_render_complete .opennamu_diff_green {
     background: #eaf2c2;
 }
 
-#ctn-data .opennamu_diff_red {
+.opennamu_render_complete .opennamu_diff_red {
     background: #fadad7;
 }
 
 /* list */
-#ctn-data ul {
+.opennamu_render_complete ul {
     padding-left: 20px;
 }
 
-#ctn-data ul li {
+.opennamu_render_complete ul li {
     margin-left: 20px;
 
     margin-top: 5px;
@@ -86,40 +86,40 @@
 }
 
 /* thread */
-#ctn-data .opennamu_comment {
+.opennamu_render_complete .opennamu_comment {
     display: inline-table;
     width: 100%;
 }
 
-#ctn-data .opennamu_comment_color_green {
+.opennamu_render_complete .opennamu_comment_color_green {
     background: palegreen;
 }
 
-#ctn-data .opennamu_comment_color_blue {
+.opennamu_render_complete .opennamu_comment_color_blue {
     background: paleturquoise;
 }
 
-#ctn-data .opennamu_comment_color_red {
+.opennamu_render_complete .opennamu_comment_color_red {
     background: pink;
 }
 
-#ctn-data .opennamu_comment_color_default {
+.opennamu_render_complete .opennamu_comment_color_default {
     background: palegoldenrod;
 }
 
-#ctn-data .opennamu_comment_color_gray {
+.opennamu_render_complete .opennamu_comment_color_gray {
     background: gainsboro;
 }
 
-#ctn-data .opennamu_comment_blind {
+.opennamu_render_complete .opennamu_comment_blind {
     display: none;
 }
 
-#ctn-data .opennamu_comment_blind_admin {
+.opennamu_render_complete .opennamu_comment_blind_admin {
     background: gainsboro;
 }
 
-#ctn-data .opennamu_comment_scroll {
+.opennamu_render_complete .opennamu_comment_scroll {
     max-height: 500px;
 
     white-space: pre-wrap;
@@ -130,35 +130,35 @@
     scrollbar-width: none;
 }
 
-#ctn-data .opennamu_comment_scroll::-webkit-scrollbar {
+.opennamu_render_complete .opennamu_comment_scroll::-webkit-scrollbar {
     display: none;
 }
 
 /* render */
 /* - link */
-#ctn-data .opennamu_not_exist_link {
+.opennamu_render_complete .opennamu_not_exist_link {
     color: red;
 }
 
-#ctn-data .opennamu_not_exist_link:hover {
+.opennamu_render_complete .opennamu_not_exist_link:hover {
     color: darkred;
 }
 
-#ctn-data .opennamu_same_link {
+.opennamu_render_complete .opennamu_same_link {
     font-weight: bold;
 }
 
-#ctn-data .opennamu_link_out,
-#ctn-data .opennamu_link_inter {
+.opennamu_render_complete .opennamu_link_out,
+.opennamu_render_complete .opennamu_link_inter {
     color: green;
 }
 
-#ctn-data .opennamu_link_out:hover,
-#ctn-data .opennamu_link_inter:hover {
+.opennamu_render_complete .opennamu_link_out:hover,
+.opennamu_render_complete .opennamu_link_inter:hover {
     color: darkgreen;
 }
 
-#ctn-data .opennamu_link_out::before {
+.opennamu_render_complete .opennamu_link_out::before {
     content: '🅴';
     
     font-weight: lighter;
@@ -167,7 +167,7 @@
 }
 
 /* - toc */
-#ctn-data .opennamu_TOC {
+.opennamu_render_complete .opennamu_TOC {
     border: 1px solid gainsboro;
     padding: 20px;
     
@@ -181,13 +181,13 @@
     margin-top: 10px;
 }
 
-#ctn-data .opennamu_TOC_title {
+.opennamu_render_complete .opennamu_TOC_title {
     font-size: 18px;
 }
 
 /* - category */
-#ctn-data .opennamu_category,
-#ctn-data .opennamu_trace {
+.opennamu_render_complete .opennamu_category,
+.opennamu_render_complete .opennamu_trace {
     border: 1px solid gainsboro;
     
     padding: 10px;
@@ -197,23 +197,23 @@
     text-overflow: ellipsis;
 }
 
-#ctn-data .opennamu_category_button,
-#ctn-data .opennamu_trace_button {
+.opennamu_render_complete .opennamu_category_button,
+.opennamu_render_complete .opennamu_trace_button {
     float: right;
     z-index: 100;
     position: relative;
 }
 
-#ctn-data .opennamu_category_blur {
+.opennamu_render_complete .opennamu_category_blur {
     filter: blur(5px);
 }
 
-#ctn-data .opennamu_category_blur:hover {
+.opennamu_render_complete .opennamu_category_blur:hover {
     filter: none;
 }
 
 /* - footnote */
-#ctn-data .opennamu_footnote {
+.opennamu_render_complete .opennamu_footnote {
     border-top: 1px solid gainsboro;
 
     padding-top: 10px;
@@ -221,37 +221,37 @@
     margin-top: 10px;
 }
 
-#ctn-data pre,
-#ctn-data .opennamu_redirect {
+.opennamu_render_complete pre,
+.opennamu_render_complete .opennamu_redirect {
     border: 1px solid gainsboro;
     
     padding: 10px;
 }
 
-#ctn-data pre {    
+.opennamu_render_complete pre {    
     white-space: pre-wrap;
 
     margin: 0;
 }
 
-#ctn-data code,
-#ctn-data pre {
+.opennamu_render_complete code,
+.opennamu_render_complete pre {
     font-family: Consolas, Monaco, "Courier New", Courier, "Lucida Console", monospace;
 }
 
-#ctn-data #syntax {
+.opennamu_render_complete #syntax {
     padding: 0;
 }
 
-#ctn-data .opennamu_textarea_500 {
+.opennamu_render_complete .opennamu_textarea_500 {
     height: 500px;
 }
 
-#ctn-data .opennamu_textarea_100 {
+.opennamu_render_complete .opennamu_textarea_100 {
     height: 100px;
 }
 
-#ctn-data .opennamu_spead_footnote {
+.opennamu_render_complete .opennamu_spead_footnote {
     color: #555;
     background-color: #efefef;
     
@@ -261,7 +261,7 @@
     font-weight: initial;
 }
 
-#ctn-data .opennamu_popup_footnote {
+.opennamu_render_complete .opennamu_popup_footnote {
     position: absolute;
 
     z-index: 10000;
@@ -281,18 +281,18 @@
 }
 
 @media(max-width: 768px) {
-    #ctn-data .opennamu_popup_footnote {
+    .opennamu_render_complete .opennamu_popup_footnote {
         max-width: 100%;
     }
 }
 
 @media(max-width: 420px) {
-    #ctn-data .table_safe {
+    .opennamu_render_complete .table_safe {
         float: none !important;
     }
 }
 
-#ctn-data hr {
+.opennamu_render_complete hr {
     margin-top: 10px;
     margin-bottom: 10px;
 
@@ -300,7 +300,7 @@
     border-top: 1px solid gainsboro;
 }
 
-#ctn-data .opennamu_render_complete {
+.opennamu_render_complete .opennamu_render_complete {
     white-space: pre-wrap;
     
     line-break: anywhere;
@@ -308,11 +308,11 @@
     display: inline;
 }
 
-#ctn-data .opennamu_render_complete img {
+.opennamu_render_complete .opennamu_render_complete img {
     vertical-align: middle;
 }
 
-#ctn-data blockquote {
+.opennamu_render_complete blockquote {
     padding: 15px;
     
     margin: 0;
@@ -331,47 +331,47 @@
 }
 
 /* 취소선 */
-#ctn-data s,
-#ctn-data strike,
-#ctn-data del {
+.opennamu_render_complete s,
+.opennamu_render_complete strike,
+.opennamu_render_complete del {
     color: gray;
 }
 
-#ctn-data s:hover,
-#ctn-data strike:hover,
-#ctn-data del:hover {
+.opennamu_render_complete s:hover,
+.opennamu_render_complete strike:hover,
+.opennamu_render_complete del:hover {
     text-decoration: none;
 }
 
 /* 최근 변경 관련 테이블 */
-#ctn-data #main_table_set {
+.opennamu_render_complete #main_table_set {
     width: 100%;
     
     text-align: center;
 }
 
-#ctn-data #main_table_width {
+.opennamu_render_complete #main_table_width {
     width: 33.3%;
 }
 
-#ctn-data #main_table_width_half {
+.opennamu_render_complete #main_table_width_half {
     width: 50%;
 }
 
-#ctn-data #main_table_width_quarter {
+.opennamu_render_complete #main_table_width_quarter {
     width: 25%;
 }
 
-#ctn-data #main_table_top_tr {
+.opennamu_render_complete #main_table_top_tr {
     background: gainsboro;
 }
 
-#ctn-data .opennamu_history_blind {
+.opennamu_render_complete .opennamu_history_blind {
     background: gainsboro;
 }
 
 /* 기타 */
-#ctn-data .main_hr {
+.opennamu_render_complete .main_hr {
     border: none;
     
     padding-top: 6px;
@@ -380,7 +380,7 @@
     margin: 0;
 }
 
-#ctn-data .mini_hr {
+.opennamu_render_complete .mini_hr {
     border: none;
     
     padding-top: 0px;
@@ -393,72 +393,72 @@
     white-space: pre-line;
 }
 
-#ctn-data .katex .base {
+.opennamu_render_complete .katex .base {
     max-width: 100%;
     overflow-x: hidden;
     overflow-y: hidden;
 }
 
-#ctn-data .opennamu_width_200 {
+.opennamu_render_complete .opennamu_width_200 {
     width: 200px;
 }
 
-#ctn-data .opennamu_list_1 {
+.opennamu_render_complete .opennamu_list_1 {
     list-style: disc;
 }
 
-#ctn-data .opennamu_list_2 {
+.opennamu_render_complete .opennamu_list_2 {
     list-style: circle;
 }
 
-#ctn-data .opennamu_list_3 {
+.opennamu_render_complete .opennamu_list_3 {
     list-style: square;
 }
 
-#ctn-data .opennamu_list_4 {
+.opennamu_render_complete .opennamu_list_4 {
     list-style: none;
 }
 
-#ctn-data .opennamu_list_4::before {
+.opennamu_render_complete .opennamu_list_4::before {
     display: inline-block;
     content: "⬦";
     width: 1.2em;
     margin-left: -1.2em;
 }
 
-#ctn-data .opennamu_list_5 {
+.opennamu_render_complete .opennamu_list_5 {
     list-style: none;
 }
 
-#ctn-data .opennamu_list_5::before {
+.opennamu_render_complete .opennamu_list_5::before {
     display: inline-block;
     content: "⬥";
     width: 1.2em;
     margin-left: -1.2em;
 }
 
-#ctn-data .opennamu_list_none {
+.opennamu_render_complete .opennamu_list_none {
     list-style: none;
 }
 
-#ctn-data .opennamu_folding {
+.opennamu_render_complete .opennamu_folding {
     margin-top: 10px;
 }
 
-#ctn-data .opennamu_recent_change {
+.opennamu_render_complete .opennamu_recent_change {
     padding-bottom: 10px;
 
     border-bottom: 2px solid gainsboro;
 }
 
 /* 이 부분 이하로는 레거시 */
-#ctn-data #topic_color {
+.opennamu_render_complete #topic_color {
     background: #bbeabb;
 }
 
 /* 외부 확장 기능 연관 */
-#ctn-data td.hljs-ln-line.hljs-ln-code,
-#ctn-data td.hljs-ln-line.hljs-ln-numbers {
+.opennamu_render_complete td.hljs-ln-line.hljs-ln-code,
+.opennamu_render_complete td.hljs-ln-line.hljs-ln-numbers {
     padding: 0px !important;
     padding-right: 10px !important;
     
@@ -467,12 +467,12 @@
     vertical-align: baseline;
 }
 
-#ctn-data .hljs-ln-n:before {
+.opennamu_render_complete .hljs-ln-n:before {
     white-space: nowrap;
 }
 
 /* SVG */
-#ctn-data .opennamu_svg {
+.opennamu_render_complete .opennamu_svg {
     width: 14px;
     display: inline-block;
 
@@ -481,11 +481,11 @@
     background-size: contain;
 }
 
-#ctn-data .opennamu_svg_tool {
+.opennamu_render_complete .opennamu_svg_tool {
     background-image: url(/views/main_css/file/icon/tool.svg);
 }
 
-#ctn-data .opennamu_svg_tabom {
+.opennamu_render_complete .opennamu_svg_tabom {
     background-image: url(/views/main_css/file/icon/thumbs-up.svg);
 }
 
@@ -493,7 +493,7 @@
     text-align: center;
 }
 
-#ctn-data .opennamu_bbs_w_post_tabom {
+.opennamu_render_complete .opennamu_bbs_w_post_tabom {
     width: 75px;
     height: 75px;
 

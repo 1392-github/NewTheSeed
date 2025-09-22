@@ -234,6 +234,11 @@ def api_randompage():
     c.execute('select name from doc_name order by random() limit 1')
     r = c.fetchone()[0]
     return {'name':r}
+@app.route("/api/preview", methods=["POST"])
+def api_preview():
+    json = request.json
+    r = render_set(db, json["name"], json["data"], "api_view")
+    return {"html": r[0], "js": r[1]}
 # API 부분 끝, 주 페이지 시작
 @app.route("/")
 def redirect_frontpage():

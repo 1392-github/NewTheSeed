@@ -10,6 +10,7 @@
     {% if captcha %}
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     {% endif %}
+    <script src="{{ url_for('static', filename='func.js') }}"></script>
     <script src="{{ url_for('static', filename='render.js') }}"></script>
     <!--<link rel="stylesheet" href="master.css">-->
     <style>
@@ -350,7 +351,7 @@
             document.getElementById("on-captcha").style.display = "block";
         }
         function callapi(href, body, then) {
-            fetch(location.href, {"method": "post",
+            fetch(href, {"method": "post",
             "headers": {"Content-Type": "application/json"},
             "body": JSON.stringify(body)})
             .then(r => {
