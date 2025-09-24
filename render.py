@@ -9,7 +9,8 @@ https://github.com/openNAMU/openNAMU/blob/26bce3cb0073acf3f6d9f54578c99a35867aab
 
 from typing import Any
 from flask import *
-from tool import *
+import tool
+import random
 
 import urllib.parse
 import datetime
@@ -22,7 +23,7 @@ import html
 def sha224_replace(data):
     return hashlib.sha224(bytes(data, 'utf-8')).hexdigest()
 def get_time():
-    return str(datetime.datetime.today().strftime(get_config("time_format")))
+    return str(datetime.datetime.today().strftime(tool.get_config("time_format")))
 def url_pas(data):
     data = re.sub(r'^\.', '\\\\.', data)
     data = urllib.parse.quote(data)
@@ -36,7 +37,7 @@ def number_check(data, f = 0):
         return data
     except:
         return '1'
-def render_set(conn, doc_name = '', doc_data = '', data_type = 'view', markup = '', parameter = {}):
+def render_set(conn, doc_name = '', doc_data = '', data_type = 'view', markup = '', parameter = {}, lastjs = True):
     curs = conn.cursor()
 
     # data_type in ['view', 'from', 'thread', 'api_view', 'api_thread', 'api_include', 'backlink']
@@ -59,7 +60,7 @@ def render_set(conn, doc_name = '', doc_data = '', data_type = 'view', markup = 
 
     doc_data = '' if doc_data == None else doc_data
 
-    ip = getip()
+    ip = tool.getip()
     render_lang_data = {
         'toc' : "목차",
         'category' : "분류"
@@ -150,6 +151,18 @@ def render_set(conn, doc_name = '', doc_data = '', data_type = 'view', markup = 
             </style>''' + \
         '' + get_class_render[0]
 
+    if lastjs:
+        get_class_render[1] += '''
+            document.querySelectorAll('details:not(.already_accordion)').forEach((el) => {
+                new Accordion(el);
+                el.classList.add('already_accordion');
+            });
+            if(window.location.hash !== '' && document.getElementById(window.location.hash.replace(/^#/, ''))) {
+                document.getElementById(window.location.hash.replace(/^#/, '')).focus();
+            }\n
+            //opennamu_do_ip_render();\n
+        '''
+    
     if not return_type:
         return [get_class_render[0], get_class_render[1]]
     else:
@@ -182,7 +195,7 @@ class class_do_render_namumark:
 
         self.lang_data = lang_data
         try:
-            self.ip = getip()
+            self.ip = tool.getip()
         except:
             self.ip = '0.0.0.0'
 
@@ -942,11 +955,11 @@ class class_do_render_namumark:
 
                 return '<' + data_name + '>' + match[1] + '</' + data_name + '>'
             elif name_data == 'pagecount':
-                ns = c.execute("SELECT id FROM namespace WHERE name = ?", (match[1],)).fetchone()
+                ns = self.curs.execute("SELECT id FROM namespace WHERE name = ?", (match[1],)).fetchone()
                 if ns is None:
-                    return str(c.execute("SELECT COUNT(value) FROM data").fetchone()[0])
+                    return str(self.curs.execute("SELECT COUNT(value) FROM data").fetchone()[0])
                 else:
-                    return str(c.execute("SELECT COUNT(D.value) FROM data AS D JOIN doc_name AS N ON (D.id = N.id) WHERE N.namespace = ?", (ns[0],)).fetchone()[0])
+                    return str(self.curs.execute("SELECT COUNT(D.value) FROM data AS D JOIN doc_name AS N ON (D.id = N.id) WHERE N.namespace = ?", (ns[0],)).fetchone()[0])
                 return '0'
             # 일단 보류
             '''elif name_data == 'lastedit':
@@ -1013,7 +1026,7 @@ class class_do_render_namumark:
             elif match == 'pagecount':
                 #self.curs.execute('select data from other where name = "count_all_title"')
                 #db_data = self.curs.fetchall()
-                return str(c.execute("SELECT COUNT(value) FROM data").fetchone()[0])
+                return str(self.curs.execute("SELECT COUNT(value) FROM data").fetchone()[0])
             else:
                 return '<macro>' + match_org.group(1) + '</macro>'
 
@@ -1440,9 +1453,11 @@ class class_do_render_namumark:
 
                     link_exist = ''
                     if link_main != '':
-                        ns, link_name = split_ns(link_main)
-                        self.curs.execute("select name from doc_name where namespace = ? and name = ?" + self.link_case_insensitive, [ns, link_name])
+                        ns, link_name = tool.split_ns(link_main)
+                        self.curs.execute("select name, id from doc_name where namespace = ? and name = ?" + self.link_case_insensitive, [ns, link_name])
                         db_data = self.curs.fetchall()
+                        if db_data and tool.get_doc_data(db_data[0][1]) is None:
+                            db_data = []
                         if not db_data:
                             if not link_main in self.data_backlink:
                                 self.data_backlink[link_main] = {}
@@ -1450,7 +1465,7 @@ class class_do_render_namumark:
                             self.data_backlink[link_main]['no'] = ''
                             link_exist = 'opennamu_not_exist_link'
                         else:
-                            link_main = cat_namespace(ns, db_data[0][0])
+                            link_main = tool.cat_namespace(ns, db_data[0][0])
                             if not link_main in self.data_backlink:
                                 self.data_backlink[link_main] = {}
                         
@@ -1520,8 +1535,8 @@ class class_do_render_namumark:
                 else:
                     return slash_add + match[2]
 
-        self.render_data = re.sub(r'(\\+)?@([ㄱ-힣a-zA-Z0-9_]+)=((?:\\@|[^@\n])+)@', do_render_include_default_sub, self.render_data)
-        self.render_data = re.sub(r'(\\+)?@([ㄱ-힣a-zA-Z0-9_]+)@', do_render_include_default_sub, self.render_data)
+        self.render_data = re.sub(r'(\\+)?@([ㄱ-ㅣ가-힣a-zA-Z0-9_]+)=((?:\\@|[^@\n])+)@', do_render_include_default_sub, self.render_data)
+        self.render_data = re.sub(r'(\\+)?@([ㄱ-ㅣ가-힣a-zA-Z0-9_]+)@', do_render_include_default_sub, self.render_data)
 
     def do_render_include(self):
         include_num = 0
@@ -1577,8 +1592,8 @@ class class_do_render_namumark:
                     self.data_backlink[include_name]['include'] = ''
 
                     # load include db data
-                    include_ns, include_name2 = split_ns(include_name)
-                    include_docid = get_docid(include_ns, include_name2)
+                    include_ns, include_name2 = tool.split_ns(include_name)
+                    include_docid = tool.get_docid(include_ns, include_name2)
                     self.curs.execute("select value from data where id = ?", [include_docid])
                     db_data = self.curs.fetchall()
                     if db_data:
@@ -1589,15 +1604,16 @@ class class_do_render_namumark:
 
                         include_data = ''
                         if self.parent:
-                            include_data_tmp = self.parent(
-                                self.conn,
-                                doc_name = self.doc_name,
-                                doc_data = db_data[0][0], 
-                                data_type = 'api_include',
-                                parameter = include_change_list
-                            )
+                            if tool.check_document_acl(include_docid, include_ns, "read", include_name2)[0] == 1:
+                                include_data_tmp = self.parent(
+                                    self.conn,
+                                    doc_name = self.doc_name,
+                                    doc_data = db_data[0][0], 
+                                    data_type = 'api_include',
+                                    parameter = include_change_list
+                                )
 
-                            include_data = include_data_tmp[0] + '<script>window.addEventListener("DOMContentLoaded", function() {' + include_data_tmp[1] + '});</script>'
+                                include_data = include_data_tmp[0] + '<script>window.addEventListener("DOMContentLoaded", function() {' + include_data_tmp[1] + '});</script>'
 
                         data_name = self.get_tool_data_storage(include_link + include_data, '', match_org)
                     else:
@@ -1769,7 +1785,7 @@ class class_do_render_namumark:
                 link_main = html.unescape(link_main)
 
                 #self.curs.execute("select title from data where title = ?" + self.link_case_insensitive, [link_main])
-                ns, link_name = split_ns(link_main)
+                ns, link_name = tool.split_ns(link_main)
                 self.curs.execute("select name from doc_name where namespace = ? and name = ?" + self.link_case_insensitive, [ns, link_name])
                 db_data = self.curs.fetchall()
                 if not db_data:
@@ -1778,7 +1794,7 @@ class class_do_render_namumark:
 
                     self.data_backlink[link_main]['no'] = ''
                 else:
-                    link_main = cat_namespace(ns, db_data[0][0])
+                    link_main = tool.cat_namespace(ns, db_data[0][0])
                     if not link_main in self.data_backlink:
                         self.data_backlink[link_main] = {}
 
@@ -2718,16 +2734,6 @@ class class_do_render_namumark:
 
         self.render_data = re.sub(r'<a fn_target="([^"]+)"', do_render_last_footnote, self.render_data)
 
-        self.render_data_js += '''
-            document.querySelectorAll('details').forEach((el) => {
-                new Accordion(el);
-            });
-            if(window.location.hash !== '' && document.getElementById(window.location.hash.replace(/^#/, ''))) {
-                document.getElementById(window.location.hash.replace(/^#/, '')).focus();
-            }\n
-            opennamu_do_ip_render();\n
-        '''
-
     def __call__(self):
         self.do_render_remark()
         self.do_render_include_default()
@@ -2797,7 +2803,7 @@ class class_do_render:
         return random_string
 
     def do_render(self, doc_name, doc_data, data_type):
-        curs = self.conn.cursor()
+        #curs = self.conn.cursor()
 
         doc_set = {}
         if data_type == 'from':
@@ -2813,7 +2819,7 @@ class class_do_render:
         
         doc_set['doc_include'] = self.generate_random_string() + '_'
     
-        rep_data = 'namumark'
+        #rep_data = 'namumark'
         
         #if rep_data == 'namumark' or rep_data == 'namumark_beta':
         data_end = class_do_render_namumark(
@@ -2830,21 +2836,21 @@ class class_do_render:
         else:
             data_end = [doc_data, '', {}]"""
 
-        """if data_type == 'thread':
+        if data_type == 'thread':
             def do_thread_a_change(match):
                 data = match[2].replace('#', '')
                 data_split = data.split('-')
                 if match[1] == 'topic_a' or len(data_split) == 1:
                     return '<a href="' + match[2] + '">' + match[2] + '</a>'
-                elif match[1] == 'topic_a_post' and len(data_split) == 3:
-                    return '<a href="/bbs/w/' + data_split[2] + '/' + data_split[1] + '#' + data_split[0] + '">#' + data_split[0] + '-' + data_split[1] + '</a>'
+                #elif match[1] == 'topic_a_post' and len(data_split) == 3:
+                #    return '<a href="/bbs/w/' + data_split[2] + '/' + data_split[1] + '#' + data_split[0] + '">#' + data_split[0] + '-' + data_split[1] + '</a>'
                 elif len(data_split) == 2:
                     return '<a href="/thread/' + data_split[1] + '#' + data_split[0] + '">' + match[2] + '</a>'
                 else:
                     return ''
 
             data_end[0] = re.sub(r'&lt;(topic_a(?:_post|_thread)?)&gt;((?:(?!&lt;\/topic_a(?:_post|_thread)?&gt;).)+)&lt;\/topic_a(?:_post|_thread)?&gt;', do_thread_a_change, data_end[0])
-            data_end[0] = re.sub(r'&lt;topic_call&gt;@(?P<in>(?:(?!&lt;\/topic_call&gt;).)+)&lt;\/topic_call&gt;', '<a href="/w/user:\\g<in>">@\\g<in></a>', data_end[0])"""
+            data_end[0] = re.sub(r'&lt;topic_call&gt;@(?P<in>(?:(?!&lt;\/topic_call&gt;).)+)&lt;\/topic_call&gt;', '<a href="/w/user:\\g<in>">@\\g<in></a>', data_end[0])
 
         """if data_type == 'backlink':
             mode = ''

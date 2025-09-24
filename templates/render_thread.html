@@ -1,0 +1,40 @@
+{% for c in comment %}
+<div class="comment-wrap">
+    <div class="comment{% if c[1] == presenter %} comment-presenter{% endif %}{% if c[2] != 0 %} comment-special{% endif %}">
+        <div class="comment-header">
+            <div class="comment-header-left">
+                <span class="comment-no" id="{{ c[0] }}">#{{ c[0] }}</span>
+                <span class="comment-author">{{ c[1]|user }}</span>
+            </div>
+            <div class="comment-header-right">
+                <span class="comment-time">{{ c[5] }}</span>
+            </div>
+        </div>
+        <div class="comment-text">
+            {# 댓글 type 목록
+            0 : 일반 댓글
+            1 : 스레드 상태를 <text>로 변경
+            2 : 스레드를 <text>에서 <text2>로 이동
+            3 : 스레드 주제를 <text>에서 <text2>로 변경
+            4 : 스레드 ACL을 <text>로 변경
+            5 : #<text> 댓글을 고정
+            6 : 댓글 고정 해제 #}
+            {% if c[2] == 0 %}
+            {{ c[3]|safe }}
+            {% elif c[2] == 1 %}
+            스레드 상태를 <b>{{c[3]}}</b>로 변경
+            {% elif c[2] == 2 %}
+            스레드를 <b>{{c[3]}}</b>에서 <b>{{c[4]}}</b>로 이동
+            {% elif c[2] == 3 %}
+            스레드 주제를 <b>{{c[3]}}</b>에서 <b>{{c[4]}}</b>로 변경
+            {% elif c[2] == 4 %}
+            스레드 ACL을 <b>{{c[3]}}</b>로 변경
+            {% elif c[2] == 5 %}
+            <a href="#{{c[3]}}">#{{c[3]}}</a> 댓글을 고정
+            {% elif c[2] == 6 %}
+            댓글 고정 해제
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endfor %}
