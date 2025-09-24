@@ -1,75 +1,14 @@
 {% extends "master.html" %}
 
 {% block css %}
-    <style>
-        h1, h2
-        {
-            color: #303030;
-            margin: 0;
-            display: inline;
-        }
-        form textarea
-        {
-            width: 100%;
-            height: 60vh;
-        }
-        form input[name="edit_comment"]
-        {
-            width: 100%;
-        }
-        form *
-        {
-            margin-top: 5px;
-        }
-        a
-        {
-            text-decoration: none;
-        }
-        /*#ctn_header
-        {
-            display: flex;
-            justify-content: space-between;
-        }
-        #ctn_header div:last-child
-        {
-            display: flex;
-            height: 35px;
-        }
-        #ctn_header div:last-child a
-        {
-            border: 1px solid #808080;
-            padding: 5px 13px;
-            color: unset;
-            text-decoration: none;
-            line-height: 23px;
-        }
-        #ctn_header div:last-child a[href^="/delete_full/"]
-        {
-            border: 1px solid #d9534f;
-            background-color: #d9534f;
-            color: white;
-        }*/
-    </style>
+
 {% endblock %}
 
 {% block content %}
-    <div id="ctn_header">
-        <div>
-            <a href="/w/{{ doc_title }}"><h1>{{ doc_title }}</h1></a>&nbsp;
-            <h2>(토론)</h2>
-        </div>
-        {% if admin %}
-        <div><a href="/delete_full/{{ doc_title }}">완전 삭제 (관리자 전용)</a>
-        </div>
-        {% endif %}
-    </div>
-    <div id="ctn_data">
-        <form action="/delete_form" method="post">
-            <input type="hidden" name="doc_name" value="{{ doc_title }}">
-            이 문서를 삭제합니다
-            <input type="submit" value="확인">
-        </form>
-    </div>
+<h2>편집 요청</h2>
+<a href="{{ url_for('discuss', doc = raw_title, state = 'closed_edit_requests') }}">[닫힌 편집 요청 보기]</a>
+<h2>토론</h2>
+<a href="{{ url_for('discuss', doc = raw_title, state = 'close') }}">[닫힌 토론 보기]</a>
 {% endblock %}
 
 {% block js %}

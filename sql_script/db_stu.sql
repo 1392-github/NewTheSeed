@@ -33,11 +33,13 @@ CREATE TABLE IF NOT EXISTS "user" (
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 CREATE TABLE IF NOT EXISTS "discuss" (
-	"doc_id"	INTEGER,
-	"disc_id"	INTEGER,
-	"name"	TEXT,
-	"user"	INTEGER,
-	"status"	INTEGER
+	"slug"	INTEGER,
+	"doc_id"	INTEGER NOT NULL,
+	"topic"	TEXT NOT NULL DEFAULT '',
+	"last"	INTEGER NOT NULL DEFAULT 0,
+	"status"	TEXT NOT NULL DEFAULT 'normal',
+	"fix_comment"	INTEGER,
+	PRIMARY KEY("slug" AUTOINCREMENT)
 );
 CREATE TABLE IF NOT EXISTS "api_policy" (
 	"name"	TEXT,

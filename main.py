@@ -165,7 +165,17 @@ ORDER BY A.doc_id""")
 if db_version < 19 or init:
     # 기본 이름공간 및 ACL 생성
     run_sqlscript("default_namespace.sql")
-    pass
+if db_version < 22:
+    c.execute("DROP TABLE discuss")
+    c.execute("""CREATE TABLE "discuss" (
+	"slug"	INTEGER,
+	"doc_id"	INTEGER NOT NULL,
+	"topic"	TEXT NOT NULL DEFAULT '',
+	"last"	INTEGER NOT NULL DEFAULT 0,
+	"status"	TEXT NOT NULL DEFAULT 'normal',
+	"fix_comment"	INTEGER,
+	PRIMARY KEY("slug" AUTOINCREMENT)
+)""")
 
 c.execute('''update config
 set value = ?
@@ -922,6 +932,14 @@ def sysman():
 @app.route("/Go")
 def go():
     return redirect(url_for("doc_read", doc_title = request.args["q"]))
+@app.route("/discuss/<path:doc>")
+def discuss(doc):
+    ns, name = split_ns(doc)
+    docid = get_docid(ns, name, request.method == "POST")
+    if request.args["state"] == "close":
+        pass
+    else:
+        return rt("discuss.html", title = render_docname(ns, name), raw_title = doc, subtitle = "토론 목록")
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request
