@@ -1,0 +1,16 @@
+{% for c in comment %}
+<div class="comment-wrap">
+    <div class="comment comment-presenter">
+        <div class="comment-header">
+            <div class="comment-header-left">
+                <span class="comment-no">#{{ c[0] }}</span>
+                <span class="comment-author">{{ c[1]|user }}</span>
+            </div>
+            <div class="comment-header-right">
+                <span class="comment-time">{{ c[5] }}</span>
+            </div>
+        </div>
+        <div class="comment-text">{{ c[3] }}</div>
+    </div>
+</div>
+{% endfor %}

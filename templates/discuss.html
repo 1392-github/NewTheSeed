@@ -8,7 +8,25 @@
 <h2>편집 요청</h2>
 <a href="{{ url_for('discuss', doc = raw_title, state = 'closed_edit_requests') }}">[닫힌 편집 요청 보기]</a>
 <h2>토론</h2>
+<ul>
+    {% for i in discuss %}
+    <li>{{ loop.index }}. <a href="{{ url_for('thread', slug = i[0])}}">{{ i[1] }}</a></li>
+    {% endfor %}
+</ul>
 <a href="{{ url_for('discuss', doc = raw_title, state = 'close') }}">[닫힌 토론 보기]</a>
+<hr>
+<h2>새 주제 생성</h2>
+<form method="post">
+    <label>
+        주제:
+        <input name="topic" class="fullwidth">
+    </label>
+    <label>
+        내용:
+        <textarea name="content" class="fullwidth" style="height: 100px"></textarea>
+    </label>
+    <input type="submit" class="ok" value="전송">
+</form>
 {% endblock %}
 
 {% block js %}

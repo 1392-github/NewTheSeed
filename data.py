@@ -7,7 +7,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 21
+version = 22
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -31,8 +31,7 @@ default_config = {
     "api_key_length": "64",
     "time_mode": "real",
     "time_format": "%Y-%m-%d %H:%M:%S",
-    "wiki_title": "NewTheSeed",
-    "wiki_name": "NewTheSeed",
+    "wiki_name": "00위키",
     "keep_login_time": "2678400",
     "aclgroup_note_required": "0",
     "grantable_permission": "grant,delete_thread,admin,aclgroup,update_thread_document,update_thread_status,update_thread_topic,nsacl,hide_thread_comment,no_force_captcha,login_history,api_access,hide_document_history_log,hide_revision,batch_revert,mark_troll_revision,disable_two_factor_login,member_info",
@@ -51,9 +50,13 @@ default_config = {
     "allow_muadt_subdoc": "1",
     "username_format": r"[A-Za-z]\w{2,31}",
     "frontpage": "FrontPage",
-    "use_x_real_ip": "0"
+    "use_x_real_ip": "0",
+    "document_license": '별도의 언급이 없는 경우 <a href="https://creativecommons.org/licenses/by/2.0">크리에이티브 커먼즈 저작자표시 2.0</a>에 따라 사용할 수 있습니다.'
 }
-shared = {"grantable": None, "captcha_required": None, "username_format": None}
+grantable = None
+captcha_bypass_cnt = {}
+captcha_required = None
+username_format = None
 acl_type = {
     "read": "읽기",
     "edit": "편집",

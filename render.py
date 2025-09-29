@@ -942,11 +942,11 @@ class class_do_render_namumark:
 
                 return '<' + data_name + '>' + match[1] + '</' + data_name + '>'
             elif name_data == 'pagecount':
-                ns = c.execute("SELECT id FROM namespace WHERE name = ?", (match[1],)).fetchone()
+                ns = self.curs.execute("SELECT id FROM namespace WHERE name = ?", (match[1],)).fetchone()
                 if ns is None:
-                    return str(c.execute("SELECT COUNT(value) FROM data").fetchone()[0])
+                    return str(self.curs.execute("SELECT COUNT(value) FROM data").fetchone()[0])
                 else:
-                    return str(c.execute("SELECT COUNT(D.value) FROM data AS D JOIN doc_name AS N ON (D.id = N.id) WHERE N.namespace = ?", (ns[0],)).fetchone()[0])
+                    return str(self.curs.execute("SELECT COUNT(D.value) FROM data AS D JOIN doc_name AS N ON (D.id = N.id) WHERE N.namespace = ?", (ns[0],)).fetchone()[0])
                 return '0'
             # 일단 보류
             '''elif name_data == 'lastedit':
@@ -1013,7 +1013,7 @@ class class_do_render_namumark:
             elif match == 'pagecount':
                 #self.curs.execute('select data from other where name = "count_all_title"')
                 #db_data = self.curs.fetchall()
-                return str(c.execute("SELECT COUNT(value) FROM data").fetchone()[0])
+                return str(self.curs.execute("SELECT COUNT(value) FROM data").fetchone()[0])
             else:
                 return '<macro>' + match_org.group(1) + '</macro>'
 

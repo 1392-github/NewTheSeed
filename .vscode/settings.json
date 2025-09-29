@@ -6,7 +6,11 @@
         "*.html": "jinja-html"
     },
     "[jinja-html]": {
+        "editor.defaultFormatter": "vscode.html-language-features",
+        "editor.detectIndentation": false,
+        "editor.formatOnType": true,
         "editor.tabSize": 4,
-        "editor.insertSpaces": true
+        "editor.insertSpaces": true,
+        "editor.autoIndent": "full"
     }
 }
