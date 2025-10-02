@@ -14,6 +14,7 @@ import os
 from requests import get, post
 import data
 from dataclasses import dataclass
+from render import render_set
 
 init = not os.path.exists("data.db")
 
@@ -116,7 +117,6 @@ where key = ?''', (key,)).fetchone()[0]
 def rt(t, **kwargs):
     k = kwargs
     k["wiki_name"] = get_config("wiki_name")
-    k["isowner"] = has_perm("admin")
     k["version"] = data.version
     k["timemode"] = get_config("time_mode")
     k["captcha"] = get_config("captcha_mode") != "0"
@@ -510,6 +510,23 @@ def id_to_ns_name(id):
     with g.db.cursor() as c:
         return c.execute("SELECT name FROM namespace WHERE id = ?", (id,)).fetchone()[0]
 def render_thread(slug):
+    from render import render_set
     with g.db.cursor() as c:
-        return rt("render_thread.html", comment = ((x[0], x[1], x[2], x[3], x[4], utime_to_str(x[5])) for x in
-        c.execute("SELECT no, author, type, text, text2, time FROM thread_comment WHERE slug = ?", (slug,)).fetchall()))
+        rc = []
+        tjs = []
+        for d in c.execute("SELECT no, author, type, text, text2, time FROM thread_comment WHERE slug = ?", (slug,)).fetchall():
+            if d[2] == 0:
+                html, js = render_set(g.db, "", d[3], "api_thread", lastjs = False)
+                tjs.append(js)
+            else:
+                html = d[3]
+            rc.append((d[0], d[1], d[2], html, d[4], utime_to_str(d[5])))
+        return rt("render_thread.html", comment = rc, presenter = get_thread_presenter(slug)), "".join(tjs)
+def write_thread_comment(slug, type, text = None, text2 = None):
+    with g.db.cursor() as c:
+        c.execute("""INSERT INTO thread_comment (slug, no, type, text, text2, author, time)
+SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), ?2, ?3, ?4, ?5, ?6""", (slug, type, text, text2, ipuser(), get_utime()))
+        c.execute("UPDATE discuss SET seq = seq + 1 WHERE slug = ?", (slug,))
+def get_thread_presenter(slug):
+    with g.db.cursor() as c:
+        return c.execute("SELECT author FROM thread_comment WHERE slug = ? AND no = 1", (slug,)).fetchone()[0]

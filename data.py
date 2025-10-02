@@ -34,7 +34,7 @@ default_config = {
     "wiki_name": "00위키",
     "keep_login_time": "2678400",
     "aclgroup_note_required": "0",
-    "grantable_permission": "grant,delete_thread,admin,aclgroup,update_thread_document,update_thread_status,update_thread_topic,nsacl,hide_thread_comment,no_force_captcha,login_history,api_access,hide_document_history_log,hide_revision,batch_revert,mark_troll_revision,disable_two_factor_login,member_info",
+    "grantable_permission": "grant,delete_thread,admin,aclgroup,update_thread_document,update_thread_status,update_thread_topic,nsacl,weak_hide_thread_comment,hide_thread_comment,pin_thread_comment,bypass_thread_status,no_force_captcha,login_history,api_access,hide_document_history_log,hide_revision,batch_revert,mark_troll_revision,disable_two_factor_login,member_info,bypass_resizing,bypass_image_size_limit",
     "ext_note": "0",
     "ingore_developer_perm": "disable_two_factor_login,hideip",
     "captcha_mode": "0",

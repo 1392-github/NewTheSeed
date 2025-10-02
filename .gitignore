@@ -1,3 +1,5 @@
+__pycache__/
+
 /data.db
 /temp.*
-__pycache__/
+/.venv

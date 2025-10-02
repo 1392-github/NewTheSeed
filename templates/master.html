@@ -324,7 +324,7 @@
             <div id="wiki_name">
                 <a href="/">{{ wiki_name }}</a></div>
             <a href="/license">LICENSE</a>
-            {% if isowner %}
+            {% if has_perm("admin") %}
             <a href="/admin_tool">관리 도구</a>
             {% endif %}
         </div>

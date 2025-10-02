@@ -1,14 +1,59 @@
 {% extends "master.html" %}
 
 {% block css %}
-
+<link rel="stylesheet" href="{{ url_for('static', filename='opennamu_main.css') }}">
 {% endblock %}
 
 {% block content %}
 <h2>{{ topic }}</h2>
 <div id="comment-list">{{ comment|safe }}</div>
+<hr>
+<h2>댓글 달기</h2>
+{% if has_perm("update_thread_status") %}
+<form method="post" class="refresh-on-submit">
+    <input type="hidden" name="opcode" value="status">
+    [ADMIN] 스레드 상태 변경
+    <select name="status">
+        {% if status != "normal" %}<option>normal</option>{% endif %}
+        {% if status != "close" %}<option>close</option>{% endif %}
+        {% if status != "pause" %}<option>pause</option>{% endif %}
+    </select>
+    <input type="submit" value="변경">
+</form>
+{% endif %}
+{% if has_perm("update_thread_document") %}
+<form method="post" class="refresh-on-submit">
+    <input type="hidden" name="opcode" value="document">
+    [ADMIN] 스레드 이동
+    <input name="value" value="{{ raw_title }}">
+    <input type="submit" value="변경">
+</form>
+{% endif %}
+{% if has_perm("update_thread_topic") %}
+<form method="post" class="refresh-on-submit">
+    <input type="hidden" name="opcode" value="topic">
+    [ADMIN] 스레드 주제 변경
+    <input name="value" value="{{ topic }}">
+    <input type="submit" value="변경">
+</form>
+{% endif %}
+<form name="comment" method="post" class="refresh-on-submit">
+    <textarea name="value" rows="7" class="fullwidth"{% if status != "normal" %} disabled{% endif %}>{% if status == "close" %}닫힌 토론입니다.{% elif status == "pause" %}pause 상태입니다.{% endif %}</textarea>
+    <div id="preview"></div>
+    <input type="submit" class="ok" value="전송"{% if status != "normal" %} disabled{% endif %}>
+    <input type="button" id="preview_button" class="ok" value="미리보기">
+</form>
 {% endblock %}
 
 {% block js %}
-
+<script>
+    preview = document.getElementById("preview")
+    document.getElementById("preview_button").addEventListener("click", function () {
+        callapi("/api/preview/thread", {"data": comment.value.value}, function (r) {
+            preview.innerHTML = r.html
+            eval(r.js)
+        })
+    })
+    {{ js }}
+</script>
 {% endblock %}

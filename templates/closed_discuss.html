@@ -5,7 +5,11 @@
 {% endblock %}
 
 {% block content %}
-
+<ul>
+    {% for i in discuss %}
+    <li>{{ loop.index }}. <a href="{{ url_for('thread', slug = i[0])}}">{{ i[1] }}</a></li>
+    {% endfor %}
+</ul>
 {% endblock %}
 
 {% block js %}

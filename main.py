@@ -5,11 +5,7 @@ from io import BytesIO
 import hashlib
 import sys
 import datetime
-import random
-import re
 import types
-import ipaddress
-import os
 import data
 import tool
 from render import render_set
@@ -30,6 +26,11 @@ try:
         commit_id = r.commit().hexsha[:7]
 except:
     commit_id = "0000000"
+try:
+    with open("robots.txt", "r", encoding="utf-8") as f:
+        robotstxt = f.read()
+except FileNotFoundError:
+    robotstxt = "User-agent: *\nAllow: /"
 app = Flask(__name__)
 with app.app_context():
     g.db = tool.getdb()
@@ -190,6 +191,7 @@ with app.app_context():
 	        "seq"	INTEGER NOT NULL DEFAULT 2,
             PRIMARY KEY("slug" AUTOINCREMENT)
         )""")
+            c.execute("DELETE FROM config WHERE name = 'wiki_title'")
 
         c.execute('''update config
         set value = ?
@@ -212,6 +214,7 @@ def teardown_request(exc):
 def render_username(user):
     name = tool.id_to_user_name(user)
     return Markup(f'<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + name)}">{escape(name)}</a>')
+app.jinja_env.globals["has_perm"] = tool.has_perm
 app.jinja_env.filters["user"] = render_username
 # 초기화 부분 끝, API 부분 시작
 """@app.route("/api/read_doc", methods=['POST'])
@@ -271,6 +274,11 @@ def api_preview():
     json = request.json
     r = render_set(g.db, json["name"], json["data"], "api_view")
     return {"html": r[0], "js": r[1]}
+@app.route("/api/preview/thread", methods=["POST"])
+def api_thread():
+    json = request.json
+    r = render_set(g.db, json["data"], "api_thread")
+    return {"html": r[0], "js": r[1]}
 # API 부분 끝, 주 페이지 시작
 @app.route("/")
 def redirect_frontpage():
@@ -298,7 +306,7 @@ def doc_read(doc_title):
         if d is None or d[0] is None:
             return tool.rt("no_document.html", title=tool.render_docname(ns, name), raw_doc_title=doc_title, menu=menu), 404
         d = render_set(g.db, doc_title, d[0])
-        return tool.rt("document_read.html", title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d, menu=menu)
+        return tool.rt("document_read.html", title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d, menu=menu), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
 @app.route("/raw/<path:doc_title>")
 def doc_raw(doc_title):
     with g.db.cursor() as c:
@@ -314,7 +322,7 @@ def doc_raw(doc_title):
             d = c.execute("SELECT content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
         if d is None or d[0] is None:
             return tool.rt("error.html", error="문서를 찾을 수 없습니다."), 404
-        return tool.rt("document_raw.html", doc_title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d[0])
+        return tool.rt("document_raw.html", doc_title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d[0]), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
 @app.route("/edit/<path:doc_title>")
 def doc_edit(doc_title):
     with g.db.cursor() as c:
@@ -355,7 +363,6 @@ def doc_edit_form():
         if prev_content is None:
             new_document = True
             prev_content = ""
-            #tool.run_sqlscript("doc_edit.sql", (docid, value, 0, i, request.form["edit_comment"], str(datetime.datetime.now()), len(value) - len(prev_content)))
         tool.record_history(docid, int(new_document), value, None, None, tool.ipuser(), request.form["edit_comment"], len(value) - len(prev_content))
         c.execute("UPDATE data SET value = ? WHERE id = ?", (value, docid))
         return redirect(f"/w/{doc_name}")
@@ -461,10 +468,10 @@ def signup_form():
             return tool.rt("error.html", error="IP나 CIDR 형식의 사용자 이름은 사용이 불가능합니다.")
         if request.form['pw'] != request.form['pw2']:
             return tool.rt("error.html", error="비밀번호가 일치하지 않습니다.")
+        first = c.execute("SELECT NOT EXISTS (SELECT 1 FROM user WHERE isip = 0)").fetchone()
         c.execute('''insert into user (name, password, isip)
     values (?,?,0)''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest()))
         u = c.lastrowid
-        #tool.run_sqlscript("doc_edit.sql", ("사용자:{0}".format(request.form['id']), '', 0, u, "NULL", str(datetime.datetime.now()), 0))
         c.execute('''insert into api_key_perm
     select ?, name, case value
         when 0 then 1
@@ -475,6 +482,8 @@ def signup_form():
         docid = tool.get_docid(int(tool.get_config("user_namespace")), request.form["id"], True)
         c.execute("UPDATE data SET value = '' WHERE id = ?", (docid,))
         tool.record_history(docid, 1, "", None, None, u, "", 0)
+        if first:
+            c.execute("INSERT INTO perm VALUES(?, 'developer')", (u,))
         return redirect('/')
 @app.route("/login_form", methods=['POST'])
 def login_form():
@@ -570,7 +579,7 @@ def delete(doc_name):
         return redirect(url_for("doc_read", doc_title = doc_name))
     else:
         return tool.rt("document_delete.html", title = tool.render_docname(ns, name), subtitle = "삭제")
-@app.route("/delete_full/<path:doc_name>")
+"""@app.route("/delete_full/<path:doc_name>")
 def delete_full(doc_name):
     if not tool.has_perm("manage_history"):
         abort(403)
@@ -580,7 +589,7 @@ def delete_full_form():
     if not tool.has_perm("manage_history"):
         abort(403)
     tool.run_sqlscript("doc_full_delete.sql", (request.form['doc_name'],))
-    return redirect("/")
+    return redirect("/")"""
 """@app.route("/api_tool.key_requests")
 def api_tool.key_requests():
     if not isowner():
@@ -982,26 +991,56 @@ def discuss(doc):
             time = tool.get_utime()
             c.execute("INSERT INTO discuss (doc_id, topic, last) VALUES(?,?,?)", (docid, request.form["topic"], time))
             slug = c.lastrowid
-            c.execute("INSERT INTO thread_comment (slug, no, text, type, author, time) VALUES(?,1,?,1,?,?)", (slug, request.form["content"], tool.ipuser(), time))
+            c.execute("INSERT INTO thread_comment (slug, no, text, type, author, time) VALUES(?,1,?,0,?,?)", (slug, request.form["content"], tool.ipuser(), time))
             return redirect(url_for("thread", slug = slug))
         else:
             state = request.args.get("state", "")
             if state == "close":
-                pass
+                return tool.rt("closed_discuss.html", title = tool.render_docname(ns, name), raw_title = doc, subtitle = "닫힌 토론", discuss = c.execute("SELECT slug, topic FROM discuss WHERE doc_id = ? AND status == 'close' ORDER BY last DESC", (docid,)).fetchall())
             else:
-                return tool.rt("discuss.html", title = tool.render_docname(ns, name), raw_title = doc, subtitle = "토론 목록", discuss = c.execute("SELECT slug, topic FROM discuss WHERE doc_id = ? AND status = 'normal' ORDER BY last DESC", (docid,)).fetchall(), menu = [
+                return tool.rt("discuss.html", title = tool.render_docname(ns, name), raw_title = doc, subtitle = "토론 목록", discuss = c.execute("SELECT slug, topic FROM discuss WHERE doc_id = ? AND status != 'close' ORDER BY last DESC", (docid,)).fetchall(), menu = [
                     tool.Menu("편집", url_for("doc_edit", doc_title = doc)),
                     tool.Menu("ACL", url_for("acl2", doc_name = doc))
                 ])
 @app.route("/thread/<int:slug>", methods = ["GET", "POST"])
 def thread(slug):
     with g.db.cursor() as c:
-        ns, name, docid, topic = c.execute("SELECT namespace, name, doc_id, topic FROM discuss JOIN doc_name ON (doc_id = id) WHERE slug = ?", (slug,)).fetchone()
+        f = c.execute("SELECT namespace, name, doc_id, topic, status FROM discuss JOIN doc_name ON (doc_id = id) WHERE slug = ?", (slug,)).fetchone()
+        if f is None:
+            abort(404)
+        ns, name, docid, topic, status = f
         fullname = tool.cat_namespace(ns, name)
         acl = tool.check_document_acl(docid, ns, "read", name)
         if acl[0] == 0:
             return tool.rt("error.html", error = acl[1]), 403
-        return tool.rt("thread.html", topic = topic, title = tool.render_docname(ns, name), subtitle = "토론", comment = tool.render_thread(slug), menu = [
+        if request.method == "POST":
+            opcode = request.form.get("opcode")
+            if opcode == "status":
+                if not tool.has_perm("update_thread_status"):
+                    abort(403)
+                st = request.form["status"]
+                if st == status or (st != "normal" and st != "close" and st != "pause"):
+                    abort(400)
+                c.execute("UPDATE discuss SET status = ? WHERE slug = ?", (st, slug))
+                tool.write_thread_comment(slug, 1, st)
+            elif opcode == "document":
+                if not tool.has_perm("update_thread_document"):
+                    abort(403)
+                c.execute("UPDATE discuss SET doc_id = ? WHERE slug = ?", (tool.get_docid(*tool.split_ns(request.form["value"]), True), slug))
+                tool.write_thread_comment(slug, 2, fullname, request.form["value"])
+            elif opcode == "topic":
+                if not tool.has_perm("update_thread_topic"):
+                    abort(403)
+            else:
+                if status != "normal":
+                    tool.error_400("invalid_status")
+                tool.write_thread_comment(slug, 0, request.form["value"])
+            #c.execute("""INSERT INTO thread_comment (slug, no, type, text, author, time)
+#SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), 0, ?2, ?3, ?4""", (slug, request.form["value"], tool.ipuser(), tool.get_utime()))
+            #c.execute("UPDATE discuss SET seq = seq + 1 WHERE slug = ?", (slug,))
+            return "", 204
+        html, js = tool.render_thread(slug)
+        return tool.rt("thread.html", topic = topic, title = tool.render_docname(ns, name), raw_title = fullname, subtitle = "토론", comment = html, js = js, status = status, menu = [
             tool.Menu("토론 목록", url_for("discuss", doc = fullname)),
             tool.Menu("ACL", url_for("acl2", doc_name = fullname))
         ])
@@ -1012,10 +1051,14 @@ def render_thread(slug):
         acl = tool.check_document_acl(docid, ns, "read", name)
         if acl[0] == 0:
             abort(403)
-        return tool.render_thread(slug)
+        html, js = tool.render_thread(slug)
+        return {"html": html, "js": js}
 @app.route("/topic/<int:slug>")
 def topic_redirect(slug):
     return redirect(url_for("thread", slug = slug))
+@app.route("/robots.txt")
+def robots():
+    return robotstxt, 200, {"Content-Type": "text/plain"}
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request
