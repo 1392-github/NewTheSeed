@@ -561,7 +561,7 @@ def sqlshell():
         return tool.rt("sql_shell.html", prev_sql = request.form["prev"] + "\n" + request.form["sql"], result = result)
 @app.route("/admin_tool")
 def admin_tool():
-    return tool.rt("admin_tool.html")
+    return tool.rt("admin_tool.html", title = "관리 도구")
 @app.route("/delete/<path:doc_name>", methods = ["GET", "POST"])
 def delete(doc_name):
     i = tool.ipuser(create = request.method == "POST")
@@ -872,7 +872,7 @@ def aclgroup():
                         (session["id"], request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))
         groups = [x[0] for x in c.execute("SELECT name FROM aclgroup WHERE deleted = 0").fetchall()]
         current = request.args.get("group", groups[0] if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE deleted = 0)").fetchone()[0] else "")
-        return tool.rt("aclgroup.html", groups = groups, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.has_perm("admin"), delete_perm = tool.has_perm("admin"), record = (
+        return tool.rt("aclgroup.html", title = "ACLGroup", groups = groups, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.has_perm("admin"), delete_perm = tool.has_perm("admin"), record = (
             (x[0], x[1], x[2], tool.utime_to_str(x[3]), "영구" if x[4] is None else tool.utime_to_str(x[4]))
             for x in c.execute("SELECT id, (CASE WHEN ip IS NULL THEN (SELECT name FROM user WHERE id = user) ELSE ip END), note, start, end FROM aclgroup_log WHERE gid = (SELECT id FROM aclgroup WHERE name = ?)", (current,)).fetchall()
         ))
@@ -918,7 +918,7 @@ def api_hasuser1(name):
 @app.route("/BlockHistory")
 def block_history():
     with g.db.cursor() as c:
-        return tool.rt("block_history.html", log = [
+        return tool.rt("block_history.html", title = "차단 내역", log = [
             (x[0], x[1], (x[3] if x[2] is None else x[2]), x[2] != None, x[4], x[5], tool.utime_to_str(x[6]), None if x[7] is None else tool.time_to_str(x[7]), x[8], x[9]) for x in
             c.execute("""SELECT type, u1.name, target_ip, u2.name, block_log.id, aclgroup.name, date, duration, grant_perm, note FROM block_log
     LEFT JOIN user AS u1 ON block_log.operator = u1.id
@@ -1026,21 +1026,35 @@ def thread(slug):
             elif opcode == "document":
                 if not tool.has_perm("update_thread_document"):
                     abort(403)
-                c.execute("UPDATE discuss SET doc_id = ? WHERE slug = ?", (tool.get_docid(*tool.split_ns(request.form["value"]), True), slug))
+                ns, name = tool.split_ns(request.form["value"])
+                docid = tool.get_docid(ns, name)
+                acl = tool.check_document_acl(docid, ns, "create_thread", name)
+                if acl[0] == 0:
+                    return acl[1], 403, {"Content-Type": "text/plain"}
+                acl = tool.check_document_acl(docid, ns, "write_thread_comment", name)
+                if acl[0] == 0:
+                    return acl[1], 403, {"Content-Type": "text/plain"}
+                c.execute("UPDATE discuss SET doc_id = ? WHERE slug = ?", (tool.get_docid(ns, name, True), slug))
                 tool.write_thread_comment(slug, 2, fullname, request.form["value"])
             elif opcode == "topic":
                 if not tool.has_perm("update_thread_topic"):
                     abort(403)
+                c.execute("UPDATE discuss SET topic = ? WHERE slug = ?", (request.form["value"], slug))
+                tool.write_thread_comment(slug, 3, topic, request.form["value"])
             else:
                 if status != "normal":
-                    tool.error_400("invalid_status")
+                    return tool.error_400("invalid_status")
+                acl = tool.check_document_acl(docid, ns, "write_thread_comment", name)
+                if acl[0] == 0:
+                    return acl[1], 403, {"Content-Type": "text/plain"}
                 tool.write_thread_comment(slug, 0, request.form["value"])
             #c.execute("""INSERT INTO thread_comment (slug, no, type, text, author, time)
 #SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), 0, ?2, ?3, ?4""", (slug, request.form["value"], tool.ipuser(), tool.get_utime()))
             #c.execute("UPDATE discuss SET seq = seq + 1 WHERE slug = ?", (slug,))
             return "", 204
         html, js = tool.render_thread(slug)
-        return tool.rt("thread.html", topic = topic, title = tool.render_docname(ns, name), raw_title = fullname, subtitle = "토론", comment = html, js = js, status = status, menu = [
+        return tool.rt("thread.html", topic = topic, title = tool.render_docname(ns, name), raw_title = fullname, subtitle = "토론", comment = html,
+                       js = js, status = status, slug = slug, menu = [
             tool.Menu("토론 목록", url_for("discuss", doc = fullname)),
             tool.Menu("ACL", url_for("acl2", doc_name = fullname))
         ])

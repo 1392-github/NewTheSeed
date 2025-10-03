@@ -442,7 +442,7 @@
                         }
                     }
                     else {
-                        if (r.status === 400 && r.headers.get("Content-Type").startsWith("text/plain")) {
+                        if (r.status >= 400 && r.status <= 499 && r.headers.get("Content-Type").startsWith("text/plain")) {
                             r.text().then(function (err) {
                                 alert(err)
                             })

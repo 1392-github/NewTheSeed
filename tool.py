@@ -524,9 +524,10 @@ def render_thread(slug):
         return rt("render_thread.html", comment = rc, presenter = get_thread_presenter(slug)), "".join(tjs)
 def write_thread_comment(slug, type, text = None, text2 = None):
     with g.db.cursor() as c:
+        t = get_utime()
         c.execute("""INSERT INTO thread_comment (slug, no, type, text, text2, author, time)
-SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), ?2, ?3, ?4, ?5, ?6""", (slug, type, text, text2, ipuser(), get_utime()))
-        c.execute("UPDATE discuss SET seq = seq + 1 WHERE slug = ?", (slug,))
+SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), ?2, ?3, ?4, ?5, ?6""", (slug, type, text, text2, ipuser(), t))
+        c.execute("UPDATE discuss SET seq = seq + 1, last = ? WHERE slug = ?", (t, slug))
 def get_thread_presenter(slug):
     with g.db.cursor() as c:
         return c.execute("SELECT author FROM thread_comment WHERE slug = ? AND no = 1", (slug,)).fetchone()[0]

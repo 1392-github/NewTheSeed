@@ -7,7 +7,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 22
+version = 23
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -67,8 +67,13 @@ acl_type = {
     "edit_request": "편집 요청",
     "acl": "ACL"
 }
-acl_type_key = tuple(acl_type.keys())
-acl_type_key2 = acl_type_key[1:]
+acl_type_key = None
+acl_type_key2 = None
+def load_acl_data():
+    global acl_type_key, acl_type_key2
+    acl_type_key = tuple(acl_type.keys())
+    acl_type_key2 = acl_type_key[1:]
+load_acl_data()
 perm_type = {
     "any": "아무나",
     "ip": "아이피 사용자",
