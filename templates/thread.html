@@ -80,7 +80,7 @@
             eval(r.js);
             last();
         })
-        .catch(e => {alert(e.message)})
+        .catch(e => {if (e.message != "Failed to fetch") alert(e.message)})
     }, 5000)
 </script>
 {% endblock %}

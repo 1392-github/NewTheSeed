@@ -8,6 +8,7 @@ import datetime
 import types
 import data
 import tool
+import os
 from render import render_set
 
 # Development Server Config
@@ -35,8 +36,6 @@ app = Flask(__name__)
 with app.app_context():
     g.db = tool.getdb()
     tool.run_sqlscript("db_stu.sql") # DB 구조 만들기
-    app.secret_key = tool.get_config("secret_key")
-    app.permanent_session_lifetime = datetime.timedelta(seconds = int(tool.get_config("keep_login_time")))
     with g.db.cursor() as c:
         for k in data.default_config:
             if c.execute("select exists (select 1 from config where name = ?)", (k,)).fetchone()[0] == 0:
@@ -199,7 +198,7 @@ with app.app_context():
         """c.execute('''update config
         set value = ?
         where name = "minorversion"''', (str(version[1]),))""" # 일단 철회
-    tool.reload_config()
+    tool.reload_config(app)
     g.db.close()
 
 @app.errorhandler(404)
@@ -214,8 +213,11 @@ def teardown_request(exc):
 def render_username(user):
     name = tool.id_to_user_name(user)
     return Markup(f'<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + name)}">{escape(name)}</a>')
+def render_time(time):
+    return tool.utime_to_str(time)
 app.jinja_env.globals["has_perm"] = tool.has_perm
 app.jinja_env.filters["user"] = render_username
+app.jinja_env.filters["time"] = render_time
 # 초기화 부분 끝, API 부분 시작
 """@app.route("/api/read_doc", methods=['POST'])
 def api_read_doc():
@@ -368,7 +370,8 @@ def doc_edit_form():
         return redirect(f"/w/{doc_name}")
 @app.route("/license")
 def license():
-    return tool.rt("license.html", title = "라이선스", engine_commit = commit_id)
+    update = int(os.path.getmtime("data.py"))
+    return tool.rt("license.html", title = "라이선스", engine_commit = commit_id, update = update, before = tool.time_to_str(tool.get_utime() - update))
 """@app.route("/admin/config")
 def owner_settings():
     if not tool.has_perm("config"):
@@ -537,7 +540,7 @@ def history(doc_name):
         c.execute("""SELECT rev, type, content, content2, content3, u1.name, edit_comment, datetime, length FROM history
     LEFT JOIN user AS u1 ON (author = u1.id) WHERE doc_id = ? ORDER BY rev DESC""", (docid,))
         history = [(x[0], x[1], x[2], x[3], x[4], x[5], x[6], tool.utime_to_str(x[7]), x[8]) for x in c.fetchall()]
-        return tool.rt("history.html", history=history, doc_name=tool.render_docname(ns, name), raw_doc_name=doc_name)
+        return tool.rt("history.html", history=history, title=tool.render_docname(ns, name), subtitle="역사", raw_doc_name=doc_name)
 @app.route("/sql")
 def sqldump():
     if not tool.has_perm("database"):
@@ -551,7 +554,7 @@ def sqlshell():
     if not tool.has_perm("database"):
         abort(403)
     if request.method == "GET":
-        return tool.rt("sql_shell.html", prev_sql = "", result = "")
+        return tool.rt("sql_shell.html", title = "SQL Shell", prev_sql = "", result = "")
     else:
         try:
             with g.db.cursor() as c:
@@ -822,15 +825,15 @@ def extension_route():
     else:
         return tool.rt("extension.html", ext = data.extension, ena = [x[0] for x in c.execute("SELECT name FROM extension").fetchall()])"""
 @app.route("/admin/config", methods = ["GET", "POST"])
-def config_advanced():
+def config():
     with g.db.cursor() as c:
         if not tool.has_perm("config"):
             abort(403)
         if request.method == "POST":
             c.execute("DELETE FROM config")
             c.executemany("INSERT INTO config VALUES(?,?)", request.form.items())
-        tool.reload_config()
-        return tool.rt("config.html", settings = c.execute("SELECT name, value FROM config").fetchall(), save = request.method == "POST")
+        tool.reload_config(app)
+        return tool.rt("config.html", title="Config", settings = c.execute("SELECT name, value FROM config").fetchall(), save = request.method == "POST")
 @app.route("/aclgroup", methods = ["GET", "POST"])
 def aclgroup():
     with g.db.cursor() as c:
@@ -953,20 +956,20 @@ def grant():
         else:
             user = request.args.get("username", "")
             if user == "":
-                return tool.rt("grant.html", user = "")
+                return tool.rt("grant.html", title="권한 부여", user = "")
             else:
                 if not tool.has_user(user):
-                    return tool.rt("grant.html", user = user, error = 1)
+                    return tool.rt("grant.html", title="권한 부여", user = user, error = 1)
                 else:
-                    return tool.rt("grant.html", user = user, grantable = data.grantable, vailduser = True, ext_note = tool.get_config("ext_note") == "1",
+                    return tool.rt("grant.html", title="권한 부여", user = user, grantable = data.grantable, vailduser = True, ext_note = tool.get_config("ext_note") == "1",
                             perm = set(x[0] for x in c.execute(f"SELECT perm FROM perm WHERE user = ? AND perm IN ({','.join('?' * len(data.grantable))})", [tool.user_name_to_id(user)] + data.grantable).fetchall()))
 @app.route("/admin/captcha_test", methods = ["GET", "POST"])
 def captcha_test():
     if not tool.has_perm("config"):
         abort(403)
     if request.method == "POST":
-        return tool.rt("captcha_test.html", result = int(tool.captcha("test")))
-    return tool.rt("captcha_test.html", req_captcha = tool.is_required_captcha("test"), result = -1)
+        return tool.rt("captcha_test.html", title = "CAPTCHA 테스트", result = int(tool.captcha("test")))
+    return tool.rt("captcha_test.html", title = "CAPTCHA 테스트", req_captcha = tool.is_required_captcha("test"), result = -1)
 @app.route("/admin/sysman")
 def sysman():
     if not tool.has_perm("sysman"):

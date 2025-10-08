@@ -47,12 +47,10 @@
 {% endblock %}
 
 {% block content %}
-<div id="ctn_data">
-    <form method="post">
-        <label>요약<br><input type="text" name="note" style="width: 100%"></label><br>
-        <input type="submit" class="danger" value="삭제">
-    </form>
-</div>
+<form method="post">
+    <label>요약<br><input type="text" name="note" style="width: 100%"></label><br>
+    <input type="submit" class="danger" value="삭제">
+</form>
 {% endblock %}
 
 {% block js %}

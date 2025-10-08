@@ -7,7 +7,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 23
+version = 24
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -38,8 +38,12 @@ default_config = {
     "ext_note": "0",
     "ingore_developer_perm": "disable_two_factor_login,hideip",
     "captcha_mode": "0",
+    "captcha_sitekey": "Put your reCAPTCHA site key",
+    "captcha_secretkey": "Put your reCAPTCHA secret key",
     "captcha_required_type": "black",
     "captcha_required": "",
+    "captcha_always": "signup",
+    "captcha_bypass_count": "10",
     "default_namespace": "1",
     "file_namespace": "3",
     "category_namespace": "4",
@@ -48,7 +52,7 @@ default_config = {
     "brand_color": "#8080ff",
     "document_read_acl": "1",
     "allow_muadt_subdoc": "1",
-    "username_format": r"[A-Za-z]\w{2,31}",
+    "username_format": r"[\w_가-힣]{1,128}",
     "frontpage": "FrontPage",
     "use_x_real_ip": "0",
     "document_license": '별도의 언급이 없는 경우 <a href="https://creativecommons.org/licenses/by/2.0">크리에이티브 커먼즈 저작자표시 2.0</a>에 따라 사용할 수 있습니다.'
@@ -56,6 +60,7 @@ default_config = {
 grantable = None
 captcha_bypass_cnt = {}
 captcha_required = None
+captcha_always = None
 username_format = None
 acl_type = {
     "read": "읽기",

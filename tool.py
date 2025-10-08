@@ -260,7 +260,7 @@ def captcha(action):
     if mode == "0": return True
     if has_perm("skip_captcha") or has_perm("no_force_captcha"): return True
     data.captcha_bypass_cnt.setdefault(getip(), 0)
-    if data.captcha_bypass_cnt[getip()] > 0:
+    if action != "test" and data.captcha_bypass_cnt[getip()] > 0:
         data.captcha_bypass_cnt[getip()] -= 1
         return True
     if mode == "2":
@@ -281,11 +281,13 @@ def captcha(action):
     else:
         print("경고! captcha_mode 는 0, 2, 3, 32 중 하나여야 합니다")
         return True
-def reload_config():
+def reload_config(app):
     data.grantable = get_config("grantable_permission").split(",")
     if has_config("captcha_required"): data.captcha_required = set(get_config("captcha_required").split(","))
     if has_config("captcha_always"): data.captcha_always = set(get_config("captcha_always").split(","))
     data.username_format = re.compile(get_config("username_format"))
+    app.secret_key = get_config("secret_key")
+    app.permanent_session_lifetime = datetime.timedelta(seconds = int(get_config("keep_login_time")))
 def is_required_captcha(action):
     if get_config("captcha_mode") == "0": return False
     if action == "test": return True

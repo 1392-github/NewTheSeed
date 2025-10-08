@@ -406,7 +406,7 @@ class class_do_render_namumark:
             elif re.search(r'^\/', link_main):
                 # 절대 하위 문서 이동 처리
                 link_main = re.sub(r'^\/', lambda x: (self.doc_name + '/'), link_main)
-            elif re.search(r'^:(분류|category):', link_main, flags=re.I):
+            """elif re.search(r'^:(분류|category):', link_main, flags=re.I):
                 # 분류 문서 처리
                 link_main = re.sub(r'^:(분류|category):', 'category:', link_main, flags=re.I)
             elif re.search(r'^:(파일|file):', link_main, flags=re.I):
@@ -414,7 +414,7 @@ class class_do_render_namumark:
                 link_main = re.sub(r'^:(파일|file):', 'file:', link_main, flags=re.I)
             elif re.search(r'^사용자:', link_main, flags=re.I):
                 # 사용자 문서 처리
-                link_main = re.sub(r'^사용자:', 'user:', link_main, flags=re.I)
+                link_main = re.sub(r'^사용자:', 'user:', link_main, flags=re.I)"""
         else:
             # 리다이렉트 처리 (do_type == 'redirect')
             if link_main.startswith('../'):
