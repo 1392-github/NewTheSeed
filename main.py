@@ -471,7 +471,7 @@ def signup_form():
             return tool.rt("error.html", error="IP나 CIDR 형식의 사용자 이름은 사용이 불가능합니다.")
         if request.form['pw'] != request.form['pw2']:
             return tool.rt("error.html", error="비밀번호가 일치하지 않습니다.")
-        first = c.execute("SELECT NOT EXISTS (SELECT 1 FROM user WHERE isip = 0)").fetchone()
+        first = c.execute("SELECT NOT EXISTS (SELECT 1 FROM user WHERE isip = 0)").fetchone()[0]
         c.execute('''insert into user (name, password, isip)
     values (?,?,0)''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest()))
         u = c.lastrowid
