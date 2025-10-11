@@ -5,6 +5,12 @@
 {% endblock %}
 
 {% block content %}
+{% if fr is not none %}
+<div class="alert">
+    <a href="{{ url_for('doc_read', doc_title = fr, noredirect = 1) }}">{{ fr }}</a>에서 넘어옴
+</div>
+<br>
+{% endif %}
 {{ doc_data|safe }}
 {% endblock %}
 

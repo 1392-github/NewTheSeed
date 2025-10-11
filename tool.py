@@ -1,4 +1,4 @@
-from flask import request, session, Response, render_template, g, has_app_context
+from flask import request, session, Response, render_template, g, has_app_context, url_for
 from markupsafe import escape
 from io import BytesIO
 import re
@@ -428,7 +428,7 @@ def cond_repr(cond, value, value2, no, denied, gid):
     if denied:
         return r + "이기"
     return r
-def check_acl(acl, type = None, acl_tab = None, user = None, basedoc = None, docname = None):
+def check_acl(acl, type = None, user = None, basedoc = None, docname = None):
     # condtype, value, value2, not, action 순으로 입력
     # 0 : 거부, 1 : 허용, 2 : 이름공간ACL 실행
     if user is None: user = ipuser(False)
@@ -440,7 +440,7 @@ def check_acl(acl, type = None, acl_tab = None, user = None, basedoc = None, doc
                 return r
             else:
                 if r == 0:
-                    return 0, f'{cond_repr(i[0], i[1], i[2], i[3], True, c[1])} 때문에 {type} 권한이 부족합니다. 해당 문서의 <a href="{acl_tab}">ACL 탭</a>을 확인하시기 바랍니다.'
+                    return 0, f'{cond_repr(i[0], i[1], i[2], i[3], True, c[1])} 때문에 {type} 권한이 부족합니다.'
                 else:
                     return r, None
     if type is None:
@@ -451,36 +451,37 @@ def check_acl(acl, type = None, acl_tab = None, user = None, basedoc = None, doc
             if i[4] == "allow" or i[4] == "gotons":
                 allow.append(i)
         if len(allow) == 0:
-            return 0, f'ACL에 허용 규칙이 없기 때문에 {type} 권한이 부족합니다. 해당 문서의 <a href="{acl_tab}">ACL 탭</a>을 확인하시기 바랍니다.'
+            return 0, f'ACL에 허용 규칙이 없기 때문에 {type} 권한이 부족합니다.'
         else:
             r = []
             for i in allow:
                 r.append(cond_repr(i[0], i[1], i[2], i[3], False, 0))
-            return 0, f'{type} 권한이 부족합니다. {" OR ".join(r)}(이)여야 합니다. 해당 문서의 <a href="{acl_tab}">ACL 탭</a>을 확인하시기 바랍니다.'
-def check_namespace_acl(nsid, type, name, user = None, basedoc = None):
+            return 0, f'{type} 권한이 부족합니다. {" OR ".join(r)}(이)여야 합니다.'
+def check_namespace_acl(nsid, type, name, user = None, basedoc = None, showmsg = True):
     delete_expired_acl()
     with g.db.cursor() as c:
         return check_acl(c.execute("SELECT condtype, value, value2, no, action FROM nsacl WHERE ns_id = ? AND acltype = ? ORDER BY idx", (nsid, type)).fetchall(),
-                     None if type == "acl" else data.acl_type[type], None if type == "acl" else f"/acl/document/edit/{name}", user, basedoc, name)
-def check_document_acl(docid, ns, type, name, user = None):
+                     data.acl_type[type] if showmsg else None, user, basedoc, name)
+def check_document_acl(docid, ns, type, name, user = None, showmsg = True):
     with g.db.cursor() as c:
         delete_expired_acl()
         if type != "read" and type != "edit" and type != "acl":
-            r = check_document_acl(docid, ns, "read", name, user)
+            r = check_document_acl(docid, ns, "read", name, user, showmsg)
             if r[0] == 0:
                 return r
         if type == "move" or type == "delete":
-            r = check_document_acl(docid, ns, "edit", name, user)
+            r = check_document_acl(docid, ns, "edit", name, user, showmsg)
             if r[0] == 0:
                 return r
         def cns():
-            return check_namespace_acl(ns, type, name, user, docid)
+            r = check_namespace_acl(ns, type, name, user, docid, showmsg)
+            return (r[0], r[1] + f' 해당 문서의 <a href="{url_for("acl", type1 = "document", type2 = "edit", doc_name = cat_namespace(ns, name))}">ACL 탭</a>을 확인하시기 바랍니다.') if showmsg and r[1] is not None else r
         acl = c.execute("SELECT condtype, value, value2, no, action FROM acl WHERE doc_id = ? AND acltype = ? ORDER BY idx", (docid, type)).fetchall()
         if type == "read" and get_config("document_read_acl") == "0": return cns()
         if len(acl) == 0: return cns()
-        r = check_acl(acl, None if type == "acl" else data.acl_type[type], None if type == "acl" else f"/acl/document/edit/{name}", user, docid)
+        r = check_acl(acl, data.acl_type[type] if showmsg else None, user, docid)
         if (r if type == "acl" else r[0]) == 2: return cns()
-        return r
+        return (r[0], r[1] + f' 해당 문서의 <a href="{url_for("acl", type1 = "document", type2 = "edit", doc_name = cat_namespace(ns, name))}">ACL 탭</a>을 확인하시기 바랍니다.') if showmsg and r[1] is not None else r
 def nvl(a, b):
     return b if a is None else a
 def get_doc_data(docid):

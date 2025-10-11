@@ -1802,10 +1802,10 @@ class class_do_render_namumark:
 
                 link_main = url_pas(link_main)
                 if link_main != '':
-                    link_main = '/w_from/' + link_main
+                    link_main = url_for("doc_read", doc_title = link_main, **{"from": self.doc_name})
 
                 self.data_redirect = 1
-                data_name = self.get_tool_data_storage('<a href="' + link_main + link_data_sharp + '">(GO)</a>', '', link_data_full)
+                data_name = self.get_tool_data_storage('#redirect <a href="' + link_main + link_data_sharp + '">' + self.doc_name + '</a>', '', link_data_full)
 
                 self.render_data = '<' + data_name + '></' + data_name + '>'
                 """else:

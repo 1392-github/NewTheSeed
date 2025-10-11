@@ -32,21 +32,24 @@
 {% endblock %}
 
 {% block content %}
-    <div id="ctn_header">
-        <div>
-            <a href="/w/{{ doc_title }}"><h1>{{ doc_title }}</h1></a>&nbsp;
-            <h2>(이동)</h2>
-        </div>
-    </div>
-    <div id="ctn_data">
-        이 문서를 이동합니다
-        <form action="/move_form" method="post">
-            <input type="hidden" name="doc_name" value="{{ doc_title }}">
-            <input type="text" name="to" placeholder="대상 문서">
-            <input type="text" name="edit_comment" placeholder="편집 요약">
-            <input type="submit" value="이동">
-        </form>
-    </div>
+<form method="post">
+    <label>
+        변경할 문서 제목
+        <input type="text" class="fullwidth" name="to">
+    </label>
+    <label>
+        요약
+        <input type="text" class="fullwidth" name="note">
+    </label>
+    <label>
+        <input type="checkbox" name="swap">
+        문서를 서로 맞바꾸기
+    </label><br>
+    {% if req_captcha %}
+    <div class="g-recaptcha" data-sitekey="{{ sitekey }}" data-callback="onCaptchaCompleted"></div>
+    {% endif %}
+    <input type="submit" class="ok" value="이동"{% if req_captcha %} id="on-captcha" style="display: none;"{% endif %}>
+</form>
 {% endblock %}
 
 {% block js %}

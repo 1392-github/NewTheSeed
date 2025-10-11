@@ -307,8 +307,13 @@ def doc_read(doc_title):
             d = c.execute("SELECT content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
         if d is None or d[0] is None:
             return tool.rt("no_document.html", title=tool.render_docname(ns, name), raw_doc_title=doc_title, menu=menu), 404
-        d = render_set(g.db, doc_title, d[0])
-        return tool.rt("document_read.html", title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d, menu=menu), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
+        d = d[0]
+        if "noredirect" not in request.args:
+            re = data.redirect_regex.fullmatch(d)
+            if re:
+                return redirect(url_for("doc_read", doc_title = re.group(1), **{"from": doc_title}))
+        d = render_set(g.db, doc_title, d)
+        return tool.rt("document_read.html", title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d, menu=menu, fr=request.args.get("from", None)), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
 @app.route("/raw/<path:doc_title>")
 def doc_raw(doc_title):
     with g.db.cursor() as c:
@@ -608,20 +613,44 @@ def api_keys():
     return tool.rt("api_key.html", keys = [x[0] for x in c.execute('''select name
 from user, api_keys
 where user.id = api_keys.user_id''').fetchall()])"""
-@app.route("/move/<path:doc_name>")
+@app.route("/move/<path:doc_name>", methods = ["GET", "POST"])
 def move(doc_name):
-    abort(404)
-    return tool.rt("document_move.html", doc_title = doc_name)
-@app.route("/move_form", methods=['POST'])
-def move_form():
-    abort(404)
-    with g.db.cursor() as c:
-        c.execute('''update doc_name
-    set name = ?
-    where name = ?''', (request.form['to'], request.form['doc_name']))
-        return redirect('/w/' + request.form['to'])
-@app.route("/acl/<type1>/<type2>/<path:doc_name>", methods = ["GET", "POST"])
-def acl(type1, type2, doc_name):
+    ns, name = tool.split_ns(doc_name)
+    docid = tool.get_docid(ns, name)
+    acl = tool.check_document_acl(docid, ns, "move", name)
+    if acl[0] == 0:
+        return tool.rt("error.html", error = acl[1]), 403
+    if docid == -1:
+        return tool.rt("error.html", error = "문서를 찾을 수 없습니다.")
+    if request.method == "POST":
+        to = request.form["to"]
+        tons, toname = tool.split_ns(to)
+        if "swap" in request.form:
+            # 문서를 서로 맞바꾸기
+            todocid = tool.get_docid(tons, toname)
+            if todocid == -1 or todocid == docid:
+                return tool.rt("error.html", error = "문서를 찾을 수 없습니다.")
+            with g.db.cursor() as c:
+                c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (tons, toname, docid))
+                c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (ns, name, todocid))
+            tool.record_history(docid, 3, tool.get_doc_data(docid), doc_name, to, tool.ipuser(), request.form["note"], 0)
+            tool.record_history(todocid, 3, tool.get_doc_data(todocid), to, doc_name, tool.ipuser(), request.form["note"], 0)
+        else:
+            # 일반 문서 이동
+            if tool.get_docid(tons, toname) != -1:
+                return tool.rt("error.html", error = "문서가 이미 존재합니다.")
+            acl = tool.check_document_acl(-1, tons, "move", toname)
+            if acl[0] == 0:
+                return tool.rt("error.html", error = acl[1]), 403
+            with g.db.cursor() as c:
+                c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (tons, toname, docid))
+            tool.record_history(docid, 3, tool.get_doc_data(docid), doc_name, to, tool.ipuser(), request.form["note"], 0)
+        return redirect(url_for("doc_read", doc_title = to))
+    return tool.rt("document_move.html", title = tool.render_docname(ns, name), subtitle = "이동")
+@app.route("/acl/<path:doc_name>", methods = ["GET", "POST"])
+def acl(doc_name):
+    type1 = request.args.get("type1", "document")
+    type2 = request.args.get("type2", None)
     with g.db.cursor() as c:
         tool.delete_expired_acl()
         nsacl = type1 == "namespace"
@@ -633,7 +662,7 @@ def acl(type1, type2, doc_name):
         id_col = "ns_id" if nsacl else "doc_id"
         id = ns if nsacl else docid
         if request.method == "POST":
-            if not (tool.has_perm("nsacl") if nsacl else tool.has_perm("nsacl") or tool.check_document_acl(docid, ns, "acl", name) == 1):
+            if not (tool.has_perm("nsacl") if nsacl else tool.has_perm("nsacl") or tool.check_document_acl(docid, ns, "acl", name, showmsg = False) == 1):
                 abort(403)
             json = request.json
             opcode = json["opcode"]
@@ -725,22 +754,16 @@ def acl(type1, type2, doc_name):
             return {}
         acls = []
         for i in data.acl_type_key if nsacl or tool.get_config("document_read_acl") == "1" else data.acl_type_key2:
-            acls.append(tool.Menu(data.acl_type[i], f"/acl/{type1}/{i}/{doc_name}", "menu2-selected" if i == type2 else ""))
+            acls.append(tool.Menu(data.acl_type[i], url_for("acl", doc_name = doc_name, type1 = type1, type2 = i), "menu2-selected" if i == type2 else ""))
         return tool.rt("acl.html", title=tool.render_docname(ns, name), raw_doc_name = doc_name, subtitle="ACL", type=data.acl_type[type2], type2 = type2,
-                hasperm = tool.has_perm("nsacl") if nsacl else tool.has_perm("nsacl") or tool.check_document_acl(docid, ns, "acl", name) == 1, perms = data.perm_type,
+                hasperm = tool.has_perm("nsacl") if nsacl else tool.has_perm("nsacl") or tool.check_document_acl(docid, ns, "acl", name, showmsg = False) == 1, perms = data.perm_type,
                 acl = tool.render_acl(c.execute(f"""SELECT idx, condtype, value, value2, no, action, expire FROM {acl_t} WHERE {id_col} = ? AND acltype = ? ORDER BY idx""", (id, type2)).fetchall()),
                 nsacl = nsacl, menu2 = (
             [
-                tool.Menu("문서 ACL", f"/acl/document/{doc_name}", "menu2-selected" if not nsacl else ""),
-                tool.Menu("이름공간 ACL", f"/acl/namespace/{doc_name}", "menu2-selected" if nsacl else "")
+                tool.Menu("문서 ACL", url_for("acl", doc_name = doc_name, type1 = "document"), "menu2-selected" if not nsacl else ""),
+                tool.Menu("이름공간 ACL", url_for("acl", doc_name = doc_name, type1 = "namespace"), "menu2-selected" if nsacl else "")
             ], acls
         ))
-@app.route("/acl/<path:doc_name>")
-def acl2(doc_name):
-    return redirect(f"/acl/document/edit/{doc_name}")
-@app.route("/acl/<type1>/<path:doc_name>")
-def acl3(type1, doc_name):
-    return redirect(f"/acl/{type1}/{'read' if type1 == 'namespace' else 'edit'}/{doc_name}")
 """@app.route("/api_request_accept_or_decline", methods=['POST'])
 def api_request_accept_or_decline():
     if not isowner():
@@ -1003,7 +1026,7 @@ def discuss(doc):
             else:
                 return tool.rt("discuss.html", title = tool.render_docname(ns, name), raw_title = doc, subtitle = "토론 목록", discuss = c.execute("SELECT slug, topic FROM discuss WHERE doc_id = ? AND status != 'close' ORDER BY last DESC", (docid,)).fetchall(), menu = [
                     tool.Menu("편집", url_for("doc_edit", doc_title = doc)),
-                    tool.Menu("ACL", url_for("acl2", doc_name = doc))
+                    tool.Menu("ACL", url_for("acl", doc_name = doc))
                 ])
 @app.route("/thread/<int:slug>", methods = ["GET", "POST"])
 def thread(slug):
@@ -1059,7 +1082,7 @@ def thread(slug):
         return tool.rt("thread.html", topic = topic, title = tool.render_docname(ns, name), raw_title = fullname, subtitle = "토론", comment = html,
                        js = js, status = status, slug = slug, menu = [
             tool.Menu("토론 목록", url_for("discuss", doc = fullname)),
-            tool.Menu("ACL", url_for("acl2", doc_name = fullname))
+            tool.Menu("ACL", url_for("acl", doc_name = fullname))
         ])
 @app.route("/api/render_thread/<int:slug>")
 def render_thread(slug):
@@ -1075,7 +1098,7 @@ def topic_redirect(slug):
     return redirect(url_for("thread", slug = slug))
 @app.route("/robots.txt")
 def robots():
-    return robotstxt, 200, {"Content-Type": "text/plain"}
+    return send_file("robots.txt")
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request
