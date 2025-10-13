@@ -124,6 +124,15 @@ def rt(t, **kwargs):
     k["brand_color"] = get_config("brand_color")
     k["document_license"] = get_config("document_license")
     if t == "error.html" and "title" not in k: k["title"] = "오류"
+    func = []
+    for i in data.special_function:
+        if not has_perm(i.perm):
+            continue
+        if i.urlfor:
+            func.append((i.name, url_for(i.url)))
+        else:
+            func.append((i.name, i.url))
+    k["special_function"] = func
     return render_template(t, **k)
 def has_config(key):
     with g.db.cursor() as c:
@@ -252,6 +261,10 @@ def has_perm(perm, user = None, basedoc = None, docname = None):
         if perm == "document_contributor":
             if basedoc is None: return False
             return bool(c.execute("SELECT EXISTS (SELECT 1 FROM history WHERE doc_id = ? AND author = ?)", (basedoc, user)).fetchone()[0])
+        if perm == "database" and os.getenv("DISABLE_SQLSHELL") == "1":
+            return False
+        if perm == "sysman" and os.getenv("DISABLE_SYSMAN") == "1":
+            return False
         if perm != "developer" and has_perm("developer", user):
             return perm not in get_config("ingore_developer_perm").split(",")
         return c.execute("SELECT EXISTS (SELECT 1 FROM perm WHERE user = ? AND perm = ?)", (user, perm)).fetchone()[0] == 1
@@ -286,7 +299,6 @@ def reload_config(app):
     if has_config("captcha_required"): data.captcha_required = set(get_config("captcha_required").split(","))
     if has_config("captcha_always"): data.captcha_always = set(get_config("captcha_always").split(","))
     data.username_format = re.compile(get_config("username_format"))
-    app.secret_key = get_config("secret_key")
     app.permanent_session_lifetime = datetime.timedelta(seconds = int(get_config("keep_login_time")))
 def is_required_captcha(action):
     if get_config("captcha_mode") == "0": return False

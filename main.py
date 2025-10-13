@@ -9,6 +9,9 @@ import types
 import data
 import tool
 import os
+import shutil
+import dotenv
+import secrets
 from render import render_set
 
 # Development Server Config
@@ -23,15 +26,16 @@ if sys.version_info < (3, 9):
 # 초기 설정
 
 try:
-    with Repo(".", search_parent_directories=False) as r:
-        commit_id = r.commit().hexsha[:7]
+    repo = Repo(".", search_parent_directories=False)
 except:
+    repo = None
+if repo is None:
     commit_id = "0000000"
-try:
-    with open("robots.txt", "r", encoding="utf-8") as f:
-        robotstxt = f.read()
-except FileNotFoundError:
-    robotstxt = "User-agent: *\nAllow: /"
+else:
+    commit_id = repo.commit().hexsha[:7]
+if not os.path.exists(".env"):
+    shutil.copy(".env.example", ".env")
+#dotenv.load_dotenv()
 app = Flask(__name__)
 with app.app_context():
     g.db = tool.getdb()
@@ -191,7 +195,10 @@ with app.app_context():
             PRIMARY KEY("slug" AUTOINCREMENT)
         )""")
             c.execute("DELETE FROM config WHERE name = 'wiki_title'")
-
+        if db_version < 27:
+            # secret key 저장위치 변경
+            dotenv.set_key(".env", "SECRET_KEY", tool.get_config("secret_key"))
+            c.execute("DELETE FROM config WHERE name = 'secret_key'")
         c.execute('''update config
         set value = ?
         where name = "version"''', (str(data.version),)) # 변환 후 버전 재설정
@@ -200,6 +207,10 @@ with app.app_context():
         where name = "minorversion"''', (str(version[1]),))""" # 일단 철회
     tool.reload_config(app)
     g.db.close()
+if os.getenv("SECRET_KEY") == "":
+    dotenv.set_key(".env", "SECRET_KEY", secrets.token_hex(32))
+dotenv.load_dotenv()
+app.secret_key = os.getenv("SECRET_KEY")
 
 @app.errorhandler(404)
 def errorhandler_404(e):
@@ -215,7 +226,19 @@ def render_username(user):
     return Markup(f'<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + name)}">{escape(name)}</a>')
 def render_time(time):
     return tool.utime_to_str(time)
+def history_msg(type, text2, text3):
+    if type == 0:
+        return ""
+    elif type == 1:
+        return "(새 문서)"
+    elif type == 2:
+        return "(삭제)"
+    elif type == 3:
+        return f"({text2}에서 {text3}으로 문서 이동)"
+    elif type == 4:
+        return f"({text2}으로 ACL 변경)"
 app.jinja_env.globals["has_perm"] = tool.has_perm
+app.jinja_env.globals["history_msg"] = history_msg
 app.jinja_env.filters["user"] = render_username
 app.jinja_env.filters["time"] = render_time
 # 초기화 부분 끝, API 부분 시작
@@ -313,7 +336,11 @@ def doc_read(doc_title):
             if re:
                 return redirect(url_for("doc_read", doc_title = re.group(1), **{"from": doc_title}))
         d = render_set(g.db, doc_title, d)
-        return tool.rt("document_read.html", title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d, menu=menu, fr=request.args.get("from", None)), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
+        if ns == int(tool.get_config("user_namespace")):
+            admin_userdoc = tool.has_perm("admin", tool.user_name_to_id(name))
+        else:
+            admin_userdoc = False
+        return tool.rt("document_read.html", admin_userdoc = admin_userdoc, title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d, menu=menu, fr=request.args.get("from", None)), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
 @app.route("/raw/<path:doc_title>")
 def doc_raw(doc_title):
     with g.db.cursor() as c:
@@ -567,9 +594,6 @@ def sqlshell():
         except Exception as e:
             result = str(e)
         return tool.rt("sql_shell.html", prev_sql = request.form["prev"] + "\n" + request.form["sql"], result = result)
-@app.route("/admin_tool")
-def admin_tool():
-    return tool.rt("admin_tool.html", title = "관리 도구")
 @app.route("/delete/<path:doc_name>", methods = ["GET", "POST"])
 def delete(doc_name):
     i = tool.ipuser(create = request.method == "POST")
@@ -1099,6 +1123,50 @@ def topic_redirect(slug):
 @app.route("/robots.txt")
 def robots():
     return send_file("robots.txt")
+@app.route("/admin/sysman/update", methods = ["GET", "POST"])
+def update():
+    if not tool.has_perm("sysman"):
+        abort(403)
+    if request.method == "POST":
+        if repo.is_dirty(untracked_files=True):
+            repo.index.add(".")
+            repo.index.commit(tool.get_config("update_local_change_commit"))
+        try:
+            repo.remotes.origin.pull(request.form["branch"])
+        except Exception as e:
+            print(e)
+        if repo.index.unmerged_blobs():
+            return tool.rt("update_conflict.html", title="업데이트")
+        return redirect(url_for("restart"))
+    if repo is None:
+        return tool.rt("error.html", error = "엔진이 git 저장소로 다운로드 되지 않았기 때문에 업데이트 기능을 사용할 수 없습니다.")
+    else:
+        repo.remotes.origin.fetch(tags = True)
+        branch = [r.name[7:] for r in repo.remotes.origin.refs]
+        latest = {}
+        for i in branch:
+            latest[i] = repo.git.describe(repo.remotes.origin.refs[i].commit.hexsha, tags = True)
+        return tool.rt("update.html", dirty = repo.is_dirty(untracked_files=True), title = "업데이트", current = repo.git.describe(tags = True), latest = latest, branch = branch)
+@app.route("/admin/sysman/update/cancel")
+def update_cancel():
+    if not tool.has_perm("sysman"):
+        abort(403)
+    repo.git.merge("--abort")
+    return url_for("sysman")
+@app.route("/admin/sysman/restart")
+def restart():
+    return tool.rt("restart.html", title = "재시작")
+@app.route("/RecentChanges")
+def recent_changes():
+    type = request.args.get("type", 0, type=int)
+    return tool.rt("recent_changes.html", title = "최근 변경", menu2 = [[
+        tool.Menu("전체", url_for("recent_changes"), "menu2-selected" if type == 0 else ""),
+        tool.Menu("새 문서", url_for("recent_changes", type = 1), "menu2-selected" if type == 1 else ""),
+        tool.Menu("삭제", url_for("recent_changes", type = 2), "menu2-selected" if type == 2 else ""),
+        tool.Menu("이동", url_for("recent_changes", type = 3), "menu2-selected" if type == 3 else ""),
+        tool.Menu("되돌림", url_for("recent_changes", type = 5), "menu2-selected" if type == 5 else ""),
+        tool.Menu("ACL", url_for("recent_changes", type = 4), "menu2-selected" if type == 4 else ""),
+        ]])
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request

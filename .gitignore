@@ -4,3 +4,4 @@ __pycache__/
 /temp.*
 /.venv
 /.vscode
+/.env

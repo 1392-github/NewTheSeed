@@ -1,13 +1,20 @@
 import re
 import random
 
+from dataclasses import dataclass
+@dataclass
+class SpecialFunction:
+    name: str
+    url: str
+    perm: str = "any"
+    urlfor: bool = True
 def gen_random_str(len):
     s = ""
     for _ in range(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 26
+version = 27
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -27,7 +34,6 @@ sql_max_detector = re.compile(r'\?(\d+)')
 default_config = {
     "version": str(version),
     "get_api_key": "disabled",
-    "secret_key": lambda : gen_random_str(64),
     "api_key_length": "64",
     "time_mode": "real",
     "time_format": "%Y-%m-%d %H:%M:%S",
@@ -55,7 +61,8 @@ default_config = {
     "username_format": r"[\w_가-힣]{1,128}",
     "frontpage": "FrontPage",
     "use_x_real_ip": "0",
-    "document_license": '별도의 언급이 없는 경우 <a href="https://creativecommons.org/licenses/by/2.0">크리에이티브 커먼즈 저작자표시 2.0</a>에 따라 사용할 수 있습니다.'
+    "document_license": '별도의 언급이 없는 경우 <a href="https://creativecommons.org/licenses/by/2.0">크리에이티브 커먼즈 저작자표시 2.0</a>에 따라 사용할 수 있습니다.',
+    "update_local_change_commit": "Update local change commit"
 }
 grantable = None
 captcha_bypass_cnt = {}
@@ -101,3 +108,13 @@ perm_type_not = {
 acl_action = {"allow": "허용", "deny": "거부", "gotons": "이름공간ACL 실행"}
 acl_action_key = {"allow": 1, "deny": 0, "gotons": 2}
 redirect_regex = re.compile("#(?:redirect|넘겨주기) (.+)")
+special_function = [
+    SpecialFunction("차단 내역", "block_history"),
+    SpecialFunction("라이선스", "license"),
+    SpecialFunction("[관리] 권한 부여", "grant", "grant"),
+    SpecialFunction("[관리] ACLGroup", "aclgroup", "admin"),
+    SpecialFunction("[관리] Config", "config", "config"),
+    SpecialFunction("[관리] SQL 덤프", "sqldump", "database"),
+    SpecialFunction("[관리] SQL 셀", "sqlshell", "database"),
+    SpecialFunction("[관리] 시스템 관리", "sysman", "sysman"),
+]

@@ -1,3 +1,4 @@
 flask
 requests
 gitpython
+python-dotenv

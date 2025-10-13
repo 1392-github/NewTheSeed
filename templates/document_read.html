@@ -5,6 +5,11 @@
 {% endblock %}
 
 {% block content %}
+{% if admin_userdoc %}
+<div class="special-perminssion">
+    이 사용자는 특수 권한을 가지고 있습니다.
+</div>
+{% endif %}
 {% if fr is not none %}
 <div class="alert">
     <a href="{{ url_for('doc_read', doc_title = fr, noredirect = 1) }}">{{ fr }}</a>에서 넘어옴
