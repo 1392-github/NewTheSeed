@@ -8,6 +8,10 @@ import datetime
 import types
 import data
 import tool
+import os
+import shutil
+import dotenv
+import secrets
 from render import render_set
 
 # Development Server Config
@@ -22,21 +26,20 @@ if sys.version_info < (3, 9):
 # 초기 설정
 
 try:
-    with Repo(".", search_parent_directories=False) as r:
-        commit_id = r.commit().hexsha[:7]
+    repo = Repo(".", search_parent_directories=False)
 except:
+    repo = None
+if repo is None:
     commit_id = "0000000"
-try:
-    with open("robots.txt", "r", encoding="utf-8") as f:
-        robotstxt = f.read()
-except FileNotFoundError:
-    robotstxt = "User-agent: *\nAllow: /"
+else:
+    commit_id = repo.commit().hexsha[:7]
+if not os.path.exists(".env"):
+    shutil.copy(".env.example", ".env")
+#dotenv.load_dotenv()
 app = Flask(__name__)
 with app.app_context():
     g.db = tool.getdb()
     tool.run_sqlscript("db_stu.sql") # DB 구조 만들기
-    app.secret_key = tool.get_config("secret_key")
-    app.permanent_session_lifetime = datetime.timedelta(seconds = int(tool.get_config("keep_login_time")))
     with g.db.cursor() as c:
         for k in data.default_config:
             if c.execute("select exists (select 1 from config where name = ?)", (k,)).fetchone()[0] == 0:
@@ -192,15 +195,22 @@ with app.app_context():
             PRIMARY KEY("slug" AUTOINCREMENT)
         )""")
             c.execute("DELETE FROM config WHERE name = 'wiki_title'")
-
+        if db_version < 27:
+            # secret key 저장위치 변경
+            dotenv.set_key(".env", "SECRET_KEY", tool.get_config("secret_key"))
+            c.execute("DELETE FROM config WHERE name = 'secret_key'")
         c.execute('''update config
         set value = ?
         where name = "version"''', (str(data.version),)) # 변환 후 버전 재설정
         """c.execute('''update config
         set value = ?
         where name = "minorversion"''', (str(version[1]),))""" # 일단 철회
-    tool.reload_config()
+    tool.reload_config(app)
     g.db.close()
+if os.getenv("SECRET_KEY") == "":
+    dotenv.set_key(".env", "SECRET_KEY", secrets.token_hex(32))
+dotenv.load_dotenv()
+app.secret_key = os.getenv("SECRET_KEY")
 
 @app.errorhandler(404)
 def errorhandler_404(e):
@@ -214,8 +224,23 @@ def teardown_request(exc):
 def render_username(user):
     name = tool.id_to_user_name(user)
     return Markup(f'<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + name)}">{escape(name)}</a>')
+def render_time(time):
+    return tool.utime_to_str(time)
+def history_msg(type, text2, text3):
+    if type == 0:
+        return ""
+    elif type == 1:
+        return "(새 문서)"
+    elif type == 2:
+        return "(삭제)"
+    elif type == 3:
+        return f"({text2}에서 {text3}으로 문서 이동)"
+    elif type == 4:
+        return f"({text2}으로 ACL 변경)"
 app.jinja_env.globals["has_perm"] = tool.has_perm
+app.jinja_env.globals["history_msg"] = history_msg
 app.jinja_env.filters["user"] = render_username
+app.jinja_env.filters["time"] = render_time
 # 초기화 부분 끝, API 부분 시작
 """@app.route("/api/read_doc", methods=['POST'])
 def api_read_doc():
@@ -305,8 +330,17 @@ def doc_read(doc_title):
             d = c.execute("SELECT content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
         if d is None or d[0] is None:
             return tool.rt("no_document.html", title=tool.render_docname(ns, name), raw_doc_title=doc_title, menu=menu), 404
-        d = render_set(g.db, doc_title, d[0])
-        return tool.rt("document_read.html", title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d, menu=menu), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
+        d = d[0]
+        if "noredirect" not in request.args:
+            re = data.redirect_regex.fullmatch(d)
+            if re:
+                return redirect(url_for("doc_read", doc_title = re.group(1), **{"from": doc_title}))
+        d = render_set(g.db, doc_title, d)
+        if ns == int(tool.get_config("user_namespace")):
+            admin_userdoc = tool.has_perm("admin", tool.user_name_to_id(name))
+        else:
+            admin_userdoc = False
+        return tool.rt("document_read.html", admin_userdoc = admin_userdoc, title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d, menu=menu, fr=request.args.get("from", None)), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
 @app.route("/raw/<path:doc_title>")
 def doc_raw(doc_title):
     with g.db.cursor() as c:
@@ -368,7 +402,8 @@ def doc_edit_form():
         return redirect(f"/w/{doc_name}")
 @app.route("/license")
 def license():
-    return tool.rt("license.html", title = "라이선스", engine_commit = commit_id)
+    update = int(os.path.getmtime("data.py"))
+    return tool.rt("license.html", title = "라이선스", engine_commit = commit_id, update = update, before = tool.time_to_str(tool.get_utime() - update))
 """@app.route("/admin/config")
 def owner_settings():
     if not tool.has_perm("config"):
@@ -468,7 +503,7 @@ def signup_form():
             return tool.rt("error.html", error="IP나 CIDR 형식의 사용자 이름은 사용이 불가능합니다.")
         if request.form['pw'] != request.form['pw2']:
             return tool.rt("error.html", error="비밀번호가 일치하지 않습니다.")
-        first = c.execute("SELECT NOT EXISTS (SELECT 1 FROM user WHERE isip = 0)").fetchone()
+        first = c.execute("SELECT NOT EXISTS (SELECT 1 FROM user WHERE isip = 0)").fetchone()[0]
         c.execute('''insert into user (name, password, isip)
     values (?,?,0)''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest()))
         u = c.lastrowid
@@ -537,7 +572,7 @@ def history(doc_name):
         c.execute("""SELECT rev, type, content, content2, content3, u1.name, edit_comment, datetime, length FROM history
     LEFT JOIN user AS u1 ON (author = u1.id) WHERE doc_id = ? ORDER BY rev DESC""", (docid,))
         history = [(x[0], x[1], x[2], x[3], x[4], x[5], x[6], tool.utime_to_str(x[7]), x[8]) for x in c.fetchall()]
-        return tool.rt("history.html", history=history, doc_name=tool.render_docname(ns, name), raw_doc_name=doc_name)
+        return tool.rt("history.html", history=history, title=tool.render_docname(ns, name), subtitle="역사", raw_doc_name=doc_name)
 @app.route("/sql")
 def sqldump():
     if not tool.has_perm("database"):
@@ -551,7 +586,7 @@ def sqlshell():
     if not tool.has_perm("database"):
         abort(403)
     if request.method == "GET":
-        return tool.rt("sql_shell.html", prev_sql = "", result = "")
+        return tool.rt("sql_shell.html", title = "SQL Shell", prev_sql = "", result = "")
     else:
         try:
             with g.db.cursor() as c:
@@ -559,9 +594,6 @@ def sqlshell():
         except Exception as e:
             result = str(e)
         return tool.rt("sql_shell.html", prev_sql = request.form["prev"] + "\n" + request.form["sql"], result = result)
-@app.route("/admin_tool")
-def admin_tool():
-    return tool.rt("admin_tool.html")
 @app.route("/delete/<path:doc_name>", methods = ["GET", "POST"])
 def delete(doc_name):
     i = tool.ipuser(create = request.method == "POST")
@@ -605,20 +637,44 @@ def api_keys():
     return tool.rt("api_key.html", keys = [x[0] for x in c.execute('''select name
 from user, api_keys
 where user.id = api_keys.user_id''').fetchall()])"""
-@app.route("/move/<path:doc_name>")
+@app.route("/move/<path:doc_name>", methods = ["GET", "POST"])
 def move(doc_name):
-    abort(404)
-    return tool.rt("document_move.html", doc_title = doc_name)
-@app.route("/move_form", methods=['POST'])
-def move_form():
-    abort(404)
-    with g.db.cursor() as c:
-        c.execute('''update doc_name
-    set name = ?
-    where name = ?''', (request.form['to'], request.form['doc_name']))
-        return redirect('/w/' + request.form['to'])
-@app.route("/acl/<type1>/<type2>/<path:doc_name>", methods = ["GET", "POST"])
-def acl(type1, type2, doc_name):
+    ns, name = tool.split_ns(doc_name)
+    docid = tool.get_docid(ns, name)
+    acl = tool.check_document_acl(docid, ns, "move", name)
+    if acl[0] == 0:
+        return tool.rt("error.html", error = acl[1]), 403
+    if docid == -1:
+        return tool.rt("error.html", error = "문서를 찾을 수 없습니다.")
+    if request.method == "POST":
+        to = request.form["to"]
+        tons, toname = tool.split_ns(to)
+        if "swap" in request.form:
+            # 문서를 서로 맞바꾸기
+            todocid = tool.get_docid(tons, toname)
+            if todocid == -1 or todocid == docid:
+                return tool.rt("error.html", error = "문서를 찾을 수 없습니다.")
+            with g.db.cursor() as c:
+                c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (tons, toname, docid))
+                c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (ns, name, todocid))
+            tool.record_history(docid, 3, tool.get_doc_data(docid), doc_name, to, tool.ipuser(), request.form["note"], 0)
+            tool.record_history(todocid, 3, tool.get_doc_data(todocid), to, doc_name, tool.ipuser(), request.form["note"], 0)
+        else:
+            # 일반 문서 이동
+            if tool.get_docid(tons, toname) != -1:
+                return tool.rt("error.html", error = "문서가 이미 존재합니다.")
+            acl = tool.check_document_acl(-1, tons, "move", toname)
+            if acl[0] == 0:
+                return tool.rt("error.html", error = acl[1]), 403
+            with g.db.cursor() as c:
+                c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (tons, toname, docid))
+            tool.record_history(docid, 3, tool.get_doc_data(docid), doc_name, to, tool.ipuser(), request.form["note"], 0)
+        return redirect(url_for("doc_read", doc_title = to))
+    return tool.rt("document_move.html", title = tool.render_docname(ns, name), subtitle = "이동")
+@app.route("/acl/<path:doc_name>", methods = ["GET", "POST"])
+def acl(doc_name):
+    type1 = request.args.get("type1", "document")
+    type2 = request.args.get("type2", None)
     with g.db.cursor() as c:
         tool.delete_expired_acl()
         nsacl = type1 == "namespace"
@@ -630,7 +686,7 @@ def acl(type1, type2, doc_name):
         id_col = "ns_id" if nsacl else "doc_id"
         id = ns if nsacl else docid
         if request.method == "POST":
-            if not (tool.has_perm("nsacl") if nsacl else tool.has_perm("nsacl") or tool.check_document_acl(docid, ns, "acl", name) == 1):
+            if not (tool.has_perm("nsacl") if nsacl else tool.has_perm("nsacl") or tool.check_document_acl(docid, ns, "acl", name, showmsg = False) == 1):
                 abort(403)
             json = request.json
             opcode = json["opcode"]
@@ -722,22 +778,16 @@ def acl(type1, type2, doc_name):
             return {}
         acls = []
         for i in data.acl_type_key if nsacl or tool.get_config("document_read_acl") == "1" else data.acl_type_key2:
-            acls.append(tool.Menu(data.acl_type[i], f"/acl/{type1}/{i}/{doc_name}", "menu2-selected" if i == type2 else ""))
+            acls.append(tool.Menu(data.acl_type[i], url_for("acl", doc_name = doc_name, type1 = type1, type2 = i), "menu2-selected" if i == type2 else ""))
         return tool.rt("acl.html", title=tool.render_docname(ns, name), raw_doc_name = doc_name, subtitle="ACL", type=data.acl_type[type2], type2 = type2,
-                hasperm = tool.has_perm("nsacl") if nsacl else tool.has_perm("nsacl") or tool.check_document_acl(docid, ns, "acl", name) == 1, perms = data.perm_type,
+                hasperm = tool.has_perm("nsacl") if nsacl else tool.has_perm("nsacl") or tool.check_document_acl(docid, ns, "acl", name, showmsg = False) == 1, perms = data.perm_type,
                 acl = tool.render_acl(c.execute(f"""SELECT idx, condtype, value, value2, no, action, expire FROM {acl_t} WHERE {id_col} = ? AND acltype = ? ORDER BY idx""", (id, type2)).fetchall()),
                 nsacl = nsacl, menu2 = (
             [
-                tool.Menu("문서 ACL", f"/acl/document/{doc_name}", "menu2-selected" if not nsacl else ""),
-                tool.Menu("이름공간 ACL", f"/acl/namespace/{doc_name}", "menu2-selected" if nsacl else "")
+                tool.Menu("문서 ACL", url_for("acl", doc_name = doc_name, type1 = "document"), "menu2-selected" if not nsacl else ""),
+                tool.Menu("이름공간 ACL", url_for("acl", doc_name = doc_name, type1 = "namespace"), "menu2-selected" if nsacl else "")
             ], acls
         ))
-@app.route("/acl/<path:doc_name>")
-def acl2(doc_name):
-    return redirect(f"/acl/document/edit/{doc_name}")
-@app.route("/acl/<type1>/<path:doc_name>")
-def acl3(type1, doc_name):
-    return redirect(f"/acl/{type1}/{'read' if type1 == 'namespace' else 'edit'}/{doc_name}")
 """@app.route("/api_request_accept_or_decline", methods=['POST'])
 def api_request_accept_or_decline():
     if not isowner():
@@ -822,15 +872,15 @@ def extension_route():
     else:
         return tool.rt("extension.html", ext = data.extension, ena = [x[0] for x in c.execute("SELECT name FROM extension").fetchall()])"""
 @app.route("/admin/config", methods = ["GET", "POST"])
-def config_advanced():
+def config():
     with g.db.cursor() as c:
         if not tool.has_perm("config"):
             abort(403)
         if request.method == "POST":
             c.execute("DELETE FROM config")
             c.executemany("INSERT INTO config VALUES(?,?)", request.form.items())
-        tool.reload_config()
-        return tool.rt("config.html", settings = c.execute("SELECT name, value FROM config").fetchall(), save = request.method == "POST")
+        tool.reload_config(app)
+        return tool.rt("config.html", title="Config", settings = c.execute("SELECT name, value FROM config").fetchall(), save = request.method == "POST")
 @app.route("/aclgroup", methods = ["GET", "POST"])
 def aclgroup():
     with g.db.cursor() as c:
@@ -872,7 +922,7 @@ def aclgroup():
                         (session["id"], request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))
         groups = [x[0] for x in c.execute("SELECT name FROM aclgroup WHERE deleted = 0").fetchall()]
         current = request.args.get("group", groups[0] if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE deleted = 0)").fetchone()[0] else "")
-        return tool.rt("aclgroup.html", groups = groups, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.has_perm("admin"), delete_perm = tool.has_perm("admin"), record = (
+        return tool.rt("aclgroup.html", title = "ACLGroup", groups = groups, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.has_perm("admin"), delete_perm = tool.has_perm("admin"), record = (
             (x[0], x[1], x[2], tool.utime_to_str(x[3]), "영구" if x[4] is None else tool.utime_to_str(x[4]))
             for x in c.execute("SELECT id, (CASE WHEN ip IS NULL THEN (SELECT name FROM user WHERE id = user) ELSE ip END), note, start, end FROM aclgroup_log WHERE gid = (SELECT id FROM aclgroup WHERE name = ?)", (current,)).fetchall()
         ))
@@ -918,7 +968,7 @@ def api_hasuser1(name):
 @app.route("/BlockHistory")
 def block_history():
     with g.db.cursor() as c:
-        return tool.rt("block_history.html", log = [
+        return tool.rt("block_history.html", title = "차단 내역", log = [
             (x[0], x[1], (x[3] if x[2] is None else x[2]), x[2] != None, x[4], x[5], tool.utime_to_str(x[6]), None if x[7] is None else tool.time_to_str(x[7]), x[8], x[9]) for x in
             c.execute("""SELECT type, u1.name, target_ip, u2.name, block_log.id, aclgroup.name, date, duration, grant_perm, note FROM block_log
     LEFT JOIN user AS u1 ON block_log.operator = u1.id
@@ -953,20 +1003,20 @@ def grant():
         else:
             user = request.args.get("username", "")
             if user == "":
-                return tool.rt("grant.html", user = "")
+                return tool.rt("grant.html", title="권한 부여", user = "")
             else:
                 if not tool.has_user(user):
-                    return tool.rt("grant.html", user = user, error = 1)
+                    return tool.rt("grant.html", title="권한 부여", user = user, error = 1)
                 else:
-                    return tool.rt("grant.html", user = user, grantable = data.grantable, vailduser = True, ext_note = tool.get_config("ext_note") == "1",
+                    return tool.rt("grant.html", title="권한 부여", user = user, grantable = data.grantable, vailduser = True, ext_note = tool.get_config("ext_note") == "1",
                             perm = set(x[0] for x in c.execute(f"SELECT perm FROM perm WHERE user = ? AND perm IN ({','.join('?' * len(data.grantable))})", [tool.user_name_to_id(user)] + data.grantable).fetchall()))
 @app.route("/admin/captcha_test", methods = ["GET", "POST"])
 def captcha_test():
     if not tool.has_perm("config"):
         abort(403)
     if request.method == "POST":
-        return tool.rt("captcha_test.html", result = int(tool.captcha("test")))
-    return tool.rt("captcha_test.html", req_captcha = tool.is_required_captcha("test"), result = -1)
+        return tool.rt("captcha_test.html", title = "CAPTCHA 테스트", result = int(tool.captcha("test")))
+    return tool.rt("captcha_test.html", title = "CAPTCHA 테스트", req_captcha = tool.is_required_captcha("test"), result = -1)
 @app.route("/admin/sysman")
 def sysman():
     if not tool.has_perm("sysman"):
@@ -1000,7 +1050,7 @@ def discuss(doc):
             else:
                 return tool.rt("discuss.html", title = tool.render_docname(ns, name), raw_title = doc, subtitle = "토론 목록", discuss = c.execute("SELECT slug, topic FROM discuss WHERE doc_id = ? AND status != 'close' ORDER BY last DESC", (docid,)).fetchall(), menu = [
                     tool.Menu("편집", url_for("doc_edit", doc_title = doc)),
-                    tool.Menu("ACL", url_for("acl2", doc_name = doc))
+                    tool.Menu("ACL", url_for("acl", doc_name = doc))
                 ])
 @app.route("/thread/<int:slug>", methods = ["GET", "POST"])
 def thread(slug):
@@ -1026,23 +1076,37 @@ def thread(slug):
             elif opcode == "document":
                 if not tool.has_perm("update_thread_document"):
                     abort(403)
-                c.execute("UPDATE discuss SET doc_id = ? WHERE slug = ?", (tool.get_docid(*tool.split_ns(request.form["value"]), True), slug))
+                ns, name = tool.split_ns(request.form["value"])
+                docid = tool.get_docid(ns, name)
+                acl = tool.check_document_acl(docid, ns, "create_thread", name)
+                if acl[0] == 0:
+                    return acl[1], 403, {"Content-Type": "text/plain"}
+                acl = tool.check_document_acl(docid, ns, "write_thread_comment", name)
+                if acl[0] == 0:
+                    return acl[1], 403, {"Content-Type": "text/plain"}
+                c.execute("UPDATE discuss SET doc_id = ? WHERE slug = ?", (tool.get_docid(ns, name, True), slug))
                 tool.write_thread_comment(slug, 2, fullname, request.form["value"])
             elif opcode == "topic":
                 if not tool.has_perm("update_thread_topic"):
                     abort(403)
+                c.execute("UPDATE discuss SET topic = ? WHERE slug = ?", (request.form["value"], slug))
+                tool.write_thread_comment(slug, 3, topic, request.form["value"])
             else:
                 if status != "normal":
-                    tool.error_400("invalid_status")
+                    return tool.error_400("invalid_status")
+                acl = tool.check_document_acl(docid, ns, "write_thread_comment", name)
+                if acl[0] == 0:
+                    return acl[1], 403, {"Content-Type": "text/plain"}
                 tool.write_thread_comment(slug, 0, request.form["value"])
             #c.execute("""INSERT INTO thread_comment (slug, no, type, text, author, time)
 #SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), 0, ?2, ?3, ?4""", (slug, request.form["value"], tool.ipuser(), tool.get_utime()))
             #c.execute("UPDATE discuss SET seq = seq + 1 WHERE slug = ?", (slug,))
             return "", 204
         html, js = tool.render_thread(slug)
-        return tool.rt("thread.html", topic = topic, title = tool.render_docname(ns, name), raw_title = fullname, subtitle = "토론", comment = html, js = js, status = status, menu = [
+        return tool.rt("thread.html", topic = topic, title = tool.render_docname(ns, name), raw_title = fullname, subtitle = "토론", comment = html,
+                       js = js, status = status, slug = slug, menu = [
             tool.Menu("토론 목록", url_for("discuss", doc = fullname)),
-            tool.Menu("ACL", url_for("acl2", doc_name = fullname))
+            tool.Menu("ACL", url_for("acl", doc_name = fullname))
         ])
 @app.route("/api/render_thread/<int:slug>")
 def render_thread(slug):
@@ -1058,7 +1122,51 @@ def topic_redirect(slug):
     return redirect(url_for("thread", slug = slug))
 @app.route("/robots.txt")
 def robots():
-    return robotstxt, 200, {"Content-Type": "text/plain"}
+    return send_file("robots.txt")
+@app.route("/admin/sysman/update", methods = ["GET", "POST"])
+def update():
+    if not tool.has_perm("sysman"):
+        abort(403)
+    if request.method == "POST":
+        if repo.is_dirty(untracked_files=True):
+            repo.index.add(".")
+            repo.index.commit(tool.get_config("update_local_change_commit"))
+        try:
+            repo.remotes.origin.pull(request.form["branch"])
+        except Exception as e:
+            print(e)
+        if repo.index.unmerged_blobs():
+            return tool.rt("update_conflict.html", title="업데이트")
+        return redirect(url_for("restart"))
+    if repo is None:
+        return tool.rt("error.html", error = "엔진이 git 저장소로 다운로드 되지 않았기 때문에 업데이트 기능을 사용할 수 없습니다.")
+    else:
+        repo.remotes.origin.fetch(tags = True)
+        branch = [r.name[7:] for r in repo.remotes.origin.refs]
+        latest = {}
+        for i in branch:
+            latest[i] = repo.git.describe(repo.remotes.origin.refs[i].commit.hexsha, tags = True)
+        return tool.rt("update.html", dirty = repo.is_dirty(untracked_files=True), title = "업데이트", current = repo.git.describe(tags = True), latest = latest, branch = branch)
+@app.route("/admin/sysman/update/cancel")
+def update_cancel():
+    if not tool.has_perm("sysman"):
+        abort(403)
+    repo.git.merge("--abort")
+    return url_for("sysman")
+@app.route("/admin/sysman/restart")
+def restart():
+    return tool.rt("restart.html", title = "재시작")
+@app.route("/RecentChanges")
+def recent_changes():
+    type = request.args.get("type", 0, type=int)
+    return tool.rt("recent_changes.html", title = "최근 변경", menu2 = [[
+        tool.Menu("전체", url_for("recent_changes"), "menu2-selected" if type == 0 else ""),
+        tool.Menu("새 문서", url_for("recent_changes", type = 1), "menu2-selected" if type == 1 else ""),
+        tool.Menu("삭제", url_for("recent_changes", type = 2), "menu2-selected" if type == 2 else ""),
+        tool.Menu("이동", url_for("recent_changes", type = 3), "menu2-selected" if type == 3 else ""),
+        tool.Menu("되돌림", url_for("recent_changes", type = 5), "menu2-selected" if type == 5 else ""),
+        tool.Menu("ACL", url_for("recent_changes", type = 4), "menu2-selected" if type == 4 else ""),
+        ]])
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request

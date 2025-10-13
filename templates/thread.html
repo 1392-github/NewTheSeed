@@ -47,6 +47,15 @@
 
 {% block js %}
 <script>
+    function last() {
+        document.querySelectorAll('details:not(.already_accordion)').forEach((el) => {
+            new Accordion(el);
+            el.classList.add('already_accordion');
+        });
+        if(window.location.hash !== '' && document.getElementById(window.location.hash.replace(/^#/, ''))) {
+            document.getElementById(window.location.hash.replace(/^#/, '')).focus();
+        }
+    }
     preview = document.getElementById("preview")
     document.getElementById("preview_button").addEventListener("click", function () {
         callapi("/api/preview/thread", {"data": comment.value.value}, function (r) {
@@ -55,5 +64,23 @@
         })
     })
     {{ js }}
+    last();
+    var comment_list = document.getElementById("comment-list")
+    setInterval(function () {
+        if (window.getSelection().toString() == "") fetch("/api/render_thread/{{slug}}", {
+            "headers": {"Content-Type": "application/json"}
+            })
+        .then(r => {
+            if (r.ok) return r.json()
+            else if (r.status == 400) return r.text().then(t => {throw new Error(t)}) 
+            else throw new Error(`Request failed with status code ${r.status}`)
+        })
+        .then(r => {
+            comment_list.innerHTML = r.html;
+            eval(r.js);
+            last();
+        })
+        .catch(e => {if (e.message != "Failed to fetch") alert(e.message)})
+    }, 5000)
 </script>
 {% endblock %}

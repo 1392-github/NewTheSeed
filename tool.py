@@ -1,4 +1,4 @@
-from flask import request, session, Response, render_template, g, has_app_context
+from flask import request, session, Response, render_template, g, has_app_context, url_for
 from markupsafe import escape
 from io import BytesIO
 import re
@@ -124,6 +124,15 @@ def rt(t, **kwargs):
     k["brand_color"] = get_config("brand_color")
     k["document_license"] = get_config("document_license")
     if t == "error.html" and "title" not in k: k["title"] = "오류"
+    func = []
+    for i in data.special_function:
+        if not has_perm(i.perm):
+            continue
+        if i.urlfor:
+            func.append((i.name, url_for(i.url)))
+        else:
+            func.append((i.name, i.url))
+    k["special_function"] = func
     return render_template(t, **k)
 def has_config(key):
     with g.db.cursor() as c:
@@ -252,6 +261,10 @@ def has_perm(perm, user = None, basedoc = None, docname = None):
         if perm == "document_contributor":
             if basedoc is None: return False
             return bool(c.execute("SELECT EXISTS (SELECT 1 FROM history WHERE doc_id = ? AND author = ?)", (basedoc, user)).fetchone()[0])
+        if perm == "database" and os.getenv("DISABLE_SQLSHELL") == "1":
+            return False
+        if perm == "sysman" and os.getenv("DISABLE_SYSMAN") == "1":
+            return False
         if perm != "developer" and has_perm("developer", user):
             return perm not in get_config("ingore_developer_perm").split(",")
         return c.execute("SELECT EXISTS (SELECT 1 FROM perm WHERE user = ? AND perm = ?)", (user, perm)).fetchone()[0] == 1
@@ -260,7 +273,7 @@ def captcha(action):
     if mode == "0": return True
     if has_perm("skip_captcha") or has_perm("no_force_captcha"): return True
     data.captcha_bypass_cnt.setdefault(getip(), 0)
-    if data.captcha_bypass_cnt[getip()] > 0:
+    if action != "test" and data.captcha_bypass_cnt[getip()] > 0:
         data.captcha_bypass_cnt[getip()] -= 1
         return True
     if mode == "2":
@@ -281,11 +294,12 @@ def captcha(action):
     else:
         print("경고! captcha_mode 는 0, 2, 3, 32 중 하나여야 합니다")
         return True
-def reload_config():
+def reload_config(app):
     data.grantable = get_config("grantable_permission").split(",")
     if has_config("captcha_required"): data.captcha_required = set(get_config("captcha_required").split(","))
     if has_config("captcha_always"): data.captcha_always = set(get_config("captcha_always").split(","))
     data.username_format = re.compile(get_config("username_format"))
+    app.permanent_session_lifetime = datetime.timedelta(seconds = int(get_config("keep_login_time")))
 def is_required_captcha(action):
     if get_config("captcha_mode") == "0": return False
     if action == "test": return True
@@ -426,7 +440,7 @@ def cond_repr(cond, value, value2, no, denied, gid):
     if denied:
         return r + "이기"
     return r
-def check_acl(acl, type = None, acl_tab = None, user = None, basedoc = None, docname = None):
+def check_acl(acl, type = None, user = None, basedoc = None, docname = None):
     # condtype, value, value2, not, action 순으로 입력
     # 0 : 거부, 1 : 허용, 2 : 이름공간ACL 실행
     if user is None: user = ipuser(False)
@@ -438,7 +452,7 @@ def check_acl(acl, type = None, acl_tab = None, user = None, basedoc = None, doc
                 return r
             else:
                 if r == 0:
-                    return 0, f'{cond_repr(i[0], i[1], i[2], i[3], True, c[1])} 때문에 {type} 권한이 부족합니다. 해당 문서의 <a href="{acl_tab}">ACL 탭</a>을 확인하시기 바랍니다.'
+                    return 0, f'{cond_repr(i[0], i[1], i[2], i[3], True, c[1])} 때문에 {type} 권한이 부족합니다.'
                 else:
                     return r, None
     if type is None:
@@ -449,36 +463,37 @@ def check_acl(acl, type = None, acl_tab = None, user = None, basedoc = None, doc
             if i[4] == "allow" or i[4] == "gotons":
                 allow.append(i)
         if len(allow) == 0:
-            return 0, f'ACL에 허용 규칙이 없기 때문에 {type} 권한이 부족합니다. 해당 문서의 <a href="{acl_tab}">ACL 탭</a>을 확인하시기 바랍니다.'
+            return 0, f'ACL에 허용 규칙이 없기 때문에 {type} 권한이 부족합니다.'
         else:
             r = []
             for i in allow:
                 r.append(cond_repr(i[0], i[1], i[2], i[3], False, 0))
-            return 0, f'{type} 권한이 부족합니다. {" OR ".join(r)}(이)여야 합니다. 해당 문서의 <a href="{acl_tab}">ACL 탭</a>을 확인하시기 바랍니다.'
-def check_namespace_acl(nsid, type, name, user = None, basedoc = None):
+            return 0, f'{type} 권한이 부족합니다. {" OR ".join(r)}(이)여야 합니다.'
+def check_namespace_acl(nsid, type, name, user = None, basedoc = None, showmsg = True):
     delete_expired_acl()
     with g.db.cursor() as c:
         return check_acl(c.execute("SELECT condtype, value, value2, no, action FROM nsacl WHERE ns_id = ? AND acltype = ? ORDER BY idx", (nsid, type)).fetchall(),
-                     None if type == "acl" else data.acl_type[type], None if type == "acl" else f"/acl/document/edit/{name}", user, basedoc, name)
-def check_document_acl(docid, ns, type, name, user = None):
+                     data.acl_type[type] if showmsg else None, user, basedoc, name)
+def check_document_acl(docid, ns, type, name, user = None, showmsg = True):
     with g.db.cursor() as c:
         delete_expired_acl()
         if type != "read" and type != "edit" and type != "acl":
-            r = check_document_acl(docid, ns, "read", name, user)
+            r = check_document_acl(docid, ns, "read", name, user, showmsg)
             if r[0] == 0:
                 return r
         if type == "move" or type == "delete":
-            r = check_document_acl(docid, ns, "edit", name, user)
+            r = check_document_acl(docid, ns, "edit", name, user, showmsg)
             if r[0] == 0:
                 return r
         def cns():
-            return check_namespace_acl(ns, type, name, user, docid)
+            r = check_namespace_acl(ns, type, name, user, docid, showmsg)
+            return (r[0], r[1] + f' 해당 문서의 <a href="{url_for("acl", type1 = "document", type2 = "edit", doc_name = cat_namespace(ns, name))}">ACL 탭</a>을 확인하시기 바랍니다.') if showmsg and r[1] is not None else r
         acl = c.execute("SELECT condtype, value, value2, no, action FROM acl WHERE doc_id = ? AND acltype = ? ORDER BY idx", (docid, type)).fetchall()
         if type == "read" and get_config("document_read_acl") == "0": return cns()
         if len(acl) == 0: return cns()
-        r = check_acl(acl, None if type == "acl" else data.acl_type[type], None if type == "acl" else f"/acl/document/edit/{name}", user, docid)
+        r = check_acl(acl, data.acl_type[type] if showmsg else None, user, docid)
         if (r if type == "acl" else r[0]) == 2: return cns()
-        return r
+        return (r[0], r[1] + f' 해당 문서의 <a href="{url_for("acl", type1 = "document", type2 = "edit", doc_name = cat_namespace(ns, name))}">ACL 탭</a>을 확인하시기 바랍니다.') if showmsg and r[1] is not None else r
 def nvl(a, b):
     return b if a is None else a
 def get_doc_data(docid):
@@ -524,9 +539,10 @@ def render_thread(slug):
         return rt("render_thread.html", comment = rc, presenter = get_thread_presenter(slug)), "".join(tjs)
 def write_thread_comment(slug, type, text = None, text2 = None):
     with g.db.cursor() as c:
+        t = get_utime()
         c.execute("""INSERT INTO thread_comment (slug, no, type, text, text2, author, time)
-SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), ?2, ?3, ?4, ?5, ?6""", (slug, type, text, text2, ipuser(), get_utime()))
-        c.execute("UPDATE discuss SET seq = seq + 1 WHERE slug = ?", (slug,))
+SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), ?2, ?3, ?4, ?5, ?6""", (slug, type, text, text2, ipuser(), t))
+        c.execute("UPDATE discuss SET seq = seq + 1, last = ? WHERE slug = ?", (t, slug))
 def get_thread_presenter(slug):
     with g.db.cursor() as c:
         return c.execute("SELECT author FROM thread_comment WHERE slug = ? AND no = 1", (slug,)).fetchone()[0]

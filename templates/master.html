@@ -25,7 +25,7 @@
             margin: 0;
             background-color: #f0f0f0;
         }
-        #head div
+        #head > div
         {
             display: flex;
         }
@@ -39,17 +39,16 @@
             justify-content: space-between;
             background-color: {{ brand_color }};
         }
-        #wiki_name, #head div:first-child a
+        #head-left
+        {
+            gap: 50px;
+        }
+        #head-left > *
         {
             line-height: 42px;
             text-align: center;
             color: white;
             text-decoration: none;
-        }
-        #wiki_name, #head div:first-child a[href="/license"]
-        {
-            margin-right: 50px;
-            
         }
         #search *
         {
@@ -312,6 +311,62 @@
         {
             background-color: #fc6;
         }
+        .history-plus
+        {
+            color: green;
+        }
+        .history-minus
+        {
+            color: red;
+        }
+        .history-zero
+        {
+            color: gray;
+        }
+        #tool-dropdown
+        {
+            position: relative;
+        }
+        #tool-dropdown-inner
+        {
+            position: absolute;
+            background-color: white;
+            display: none;
+            width: max-content;
+        }
+        #tool-dropdown-checkbox
+        {
+            display: none;
+        }
+        #tool-dropdown-checkbox:checked ~ #tool-dropdown-inner
+        {
+            display: block;
+        }
+        #tool-dropdown-inner a
+        {
+            display: block;
+            color: black;
+            line-height: 1.5;
+            text-align: left;
+            padding: 3px 20px;
+        }
+        #tool-dropdown-inner a:hover
+        {
+            color: white;
+            transition: .1s;
+            background-color: {{ brand_color }};
+        }
+        .special-perminssion
+        {
+            border: 1px solid gray;
+            border-top: 5px solid orange;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .special-perminssion:hover
+        {
+            border-top: 5px solid red;
+        }
         </style>
     {% block css %}{% endblock %}
     <title>{{ wiki_name }}</title>
@@ -320,15 +375,28 @@
     <div id="modal_background" style="display: none;"></div>
     {% block outcontent %}{% endblock %}
     <div id="head">
-        <div>
-            <div id="wiki_name">
-                <a href="/">{{ wiki_name }}</a></div>
+        <div id="head-left">
+            <a href="/">{{ wiki_name }}</a>
+            <!--
             <a href="/license">LICENSE</a>
             {% if has_perm("admin") %}
             <a href="/admin_tool">관리 도구</a>
             {% endif %}
+            -->
+            <a href="{{ url_for('recent_changes') }}">최근 변경</a>
+            <a href="#">최근 토론</a>
+            <a href="{{ url_for('random_document') }}">임의 문서</a>
+            <div id="tool-dropdown">
+                <label style="cursor: pointer;" for="tool-dropdown-checkbox">도구</label>
+                <input id="tool-dropdown-checkbox" type="checkbox">
+                <div id="tool-dropdown-inner">
+                    {% for i in special_function %}
+                    <a href="{{ i[1] }}">{{ i[0] }}</a>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
-        <div>
+        <div id="head-right">
             <form id="search" action="{{ url_for('go') }}" method="get"> <!-- 검색 창 -->
                 <button type="button">
                     <i class="fa-solid fa-shuffle"></i>
@@ -442,7 +510,7 @@
                         }
                     }
                     else {
-                        if (r.status === 400 && r.headers.get("Content-Type").startsWith("text/plain")) {
+                        if (r.status >= 400 && r.status <= 499 && r.headers.get("Content-Type").startsWith("text/plain")) {
                             r.text().then(function (err) {
                                 alert(err)
                             })

@@ -2,11 +2,6 @@
 
 {% block css %}
 <style>
-    h1
-    {
-        color: #303030;
-        margin: 0;
-    }
     #aclgroup_list_container
     {
         display: flex;
@@ -57,7 +52,6 @@
 {% endblock %}
 
 {% block content %}
-<h1>ACLGroup</h1>
 <div id="aclgroup_list_container">
     {% for g in groups %}
     <div{% if g == current %} class="current"{% endif %}>
