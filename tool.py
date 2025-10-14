@@ -238,10 +238,7 @@ def isip(user):
 def has_perm(perm, user = None, basedoc = None, docname = None):
     with g.db.cursor() as c:
         if user is None:
-            if "id" in session:
-                user = session["id"]
-            else:
-                return False
+            user = ipuser(False)
         if perm == "any":
             return True
         if perm == "ip":

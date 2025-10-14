@@ -35,7 +35,7 @@ else:
     commit_id = repo.commit().hexsha[:7]
 if not os.path.exists(".env"):
     shutil.copy(".env.example", ".env")
-#dotenv.load_dotenv()
+dotenv.load_dotenv()
 app = Flask(__name__)
 with app.app_context():
     g.db = tool.getdb()
@@ -210,9 +210,9 @@ with app.app_context():
         where name = "minorversion"''', (str(version[1]),))""" # 일단 철회
     tool.reload_config(app)
     g.db.close()
-if os.getenv("SECRET_KEY") == "":
+if not os.getenv("SECRET_KEY"):
     dotenv.set_key(".env", "SECRET_KEY", secrets.token_hex(32))
-dotenv.load_dotenv()
+    dotenv.load_dotenv()
 app.secret_key = os.getenv("SECRET_KEY")
 
 @app.errorhandler(404)
@@ -697,6 +697,13 @@ def acl(doc_name):
         if request.method == "POST":
             if not (tool.has_perm("nsacl") if nsacl else tool.has_perm("nsacl") or tool.check_document_acl(docid, ns, "acl", name, showmsg = False) == 1):
                 abort(403)
+            limit_acl = int(tool.get_config("limit_acl"))
+            limit = False
+            if type2 == "read" and limit_acl >= 2:
+                limit = True
+            if type2 == "acl" and limit_acl % 2 == 1:
+                limit = True
+            if limit and not tool.has_perm("nsacl"): abort(403)
             json = request.json
             opcode = json["opcode"]
             if type2 == "read" and not nsacl and tool.get_config("document_read_acl") == "0":
@@ -1174,6 +1181,7 @@ def recent_changes():
             ((tool.get_doc_full_name(x[0]), x[1], None if x[2] == 0 and x[7] == "" else f"{x[7]} <i>{history_msg(x[2], x[3], x[4])}</i>", x[5], tool.time_to_str(x[6])) for x in
             c.execute(f"SELECT doc_id, length, type, content2, content3, author, ? - datetime, edit_comment FROM history{'' if type == -1 else ' WHERE type = ?'} ORDER BY datetime DESC LIMIT 100", (tool.get_utime(),) if type == -1 else (tool.get_utime(),type)).fetchall()), menu2 = [[
             tool.Menu("전체", url_for("recent_changes"), "menu2-selected" if type == -1 else ""),
+            tool.Menu("일반", url_for("recent_changes"), "menu2-selected" if type == 0 else ""),
             tool.Menu("새 문서", url_for("recent_changes", type = 1), "menu2-selected" if type == 1 else ""),
             tool.Menu("삭제", url_for("recent_changes", type = 2), "menu2-selected" if type == 2 else ""),
             tool.Menu("이동", url_for("recent_changes", type = 3), "menu2-selected" if type == 3 else ""),

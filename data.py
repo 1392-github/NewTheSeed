@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 27
+version = 28
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -54,7 +54,8 @@ default_config = {
     "frontpage": "FrontPage",
     "use_x_real_ip": "0",
     "document_license": '별도의 언급이 없는 경우 <a href="https://creativecommons.org/licenses/by/2.0">크리에이티브 커먼즈 저작자표시 2.0</a>에 따라 사용할 수 있습니다.',
-    "update_local_change_commit": "Update local change commit"
+    "update_local_change_commit": "Update local change commit",
+    "limit_acl": "3"
 }
 grantable = None
 captcha_bypass_cnt = {}
