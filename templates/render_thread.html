@@ -4,7 +4,7 @@
         <div class="comment-header">
             <div class="comment-header-left">
                 <span class="comment-no" id="{{ c[0] }}">#{{ c[0] }}</span>
-                <span class="comment-author">{{ c[1]|user }}</span>
+                <span class="comment-author">{{ c[1]|user(1 if c[6] else 2) }}</span>
             </div>
             <div class="comment-header-right">
                 <span class="comment-time">{{ c[5] }}</span>

@@ -199,6 +199,9 @@ with app.app_context():
             # secret key 저장위치 변경
             dotenv.set_key(".env", "SECRET_KEY", tool.get_config("secret_key"))
             c.execute("DELETE FROM config WHERE name = 'secret_key'")
+            # admin 컬럼 추가
+            c.execute("ALTER TABLE thread_comment ADD COLUMN admin INTEGER NOT NULL DEFAULT 0")
+            c.execute("UPDATE thread_comment SET admin = (SELECT EXISTS (SELECT 1 FROM perm WHERE user = author AND perm IN ('admin', 'developer')))")
         c.execute('''update config
         set value = ?
         where name = "version"''', (str(data.version),)) # 변환 후 버전 재설정
@@ -221,9 +224,15 @@ def before_request():
 @app.teardown_request
 def teardown_request(exc):
     g.db.close()
-def render_username(user):
+def render_username(user, bold = 0):
     name = tool.id_to_user_name(user)
-    return Markup(f'<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + name)}">{escape(name)}</a>')
+    if bold == 0:
+        b = not tool.isip(user)
+    elif bold == 1:
+        b = True
+    elif bold == 2:
+        b = False
+    return Markup(f'{"<b>" if b else ""}<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + name)}">{escape(name)}</a>{"</b>" if b else ""}')
 def render_time(time):
     return tool.utime_to_str(time)
 def history_msg(type, text2, text3):
@@ -1135,6 +1144,7 @@ def update():
             repo.remotes.origin.pull(request.form["branch"])
         except Exception as e:
             print(e)
+        os.system("pip install -r requirements.txt")
         if repo.index.unmerged_blobs():
             return tool.rt("update_conflict.html", title="업데이트")
         return redirect(url_for("restart"))
@@ -1158,15 +1168,18 @@ def restart():
     return tool.rt("restart.html", title = "재시작")
 @app.route("/RecentChanges")
 def recent_changes():
-    type = request.args.get("type", 0, type=int)
-    return tool.rt("recent_changes.html", title = "최근 변경", menu2 = [[
-        tool.Menu("전체", url_for("recent_changes"), "menu2-selected" if type == 0 else ""),
-        tool.Menu("새 문서", url_for("recent_changes", type = 1), "menu2-selected" if type == 1 else ""),
-        tool.Menu("삭제", url_for("recent_changes", type = 2), "menu2-selected" if type == 2 else ""),
-        tool.Menu("이동", url_for("recent_changes", type = 3), "menu2-selected" if type == 3 else ""),
-        tool.Menu("되돌림", url_for("recent_changes", type = 5), "menu2-selected" if type == 5 else ""),
-        tool.Menu("ACL", url_for("recent_changes", type = 4), "menu2-selected" if type == 4 else ""),
-        ]])
+    type = request.args.get("type", -1, type=int)
+    with g.db.cursor() as c:
+        return tool.rt("recent_changes.html", title = "최근 변경", recent = 
+            ((tool.get_doc_full_name(x[0]), x[1], None if x[2] == 0 and x[7] == "" else f"{x[7]} <i>{history_msg(x[2], x[3], x[4])}</i>", x[5], tool.time_to_str(x[6])) for x in
+            c.execute(f"SELECT doc_id, length, type, content2, content3, author, ? - datetime, edit_comment FROM history{'' if type == -1 else ' WHERE type = ?'} ORDER BY datetime DESC LIMIT 100", (tool.get_utime(),) if type == -1 else (tool.get_utime(),type)).fetchall()), menu2 = [[
+            tool.Menu("전체", url_for("recent_changes"), "menu2-selected" if type == -1 else ""),
+            tool.Menu("새 문서", url_for("recent_changes", type = 1), "menu2-selected" if type == 1 else ""),
+            tool.Menu("삭제", url_for("recent_changes", type = 2), "menu2-selected" if type == 2 else ""),
+            tool.Menu("이동", url_for("recent_changes", type = 3), "menu2-selected" if type == 3 else ""),
+            tool.Menu("되돌림", url_for("recent_changes", type = 5), "menu2-selected" if type == 5 else ""),
+            tool.Menu("ACL", url_for("recent_changes", type = 4), "menu2-selected" if type == 4 else ""),
+            ]])
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request

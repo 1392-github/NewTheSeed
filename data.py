@@ -21,14 +21,6 @@ keyl = {'문서 읽기' : 'read_doc',
         '사용자 차단':'ban',
         '문서 역사 보기':'history',
 }
-extension = {
-    #"document_read_acl": "문서 ACL에서 읽기 ACL 사용 가능",
-    #"twe_api": "TWE식 API 사용",
-    #"split_blind": "strong_blind, weak_blind 이원화",
-    #"split_lock_edit_request": "편집 요청 잠금과 내용 숨김 분리",
-    #"split_aclgroup_perm": "ACL Group 생성/삭제 권한과 ACL Group 사용자 추가 권한 분리",
-    #"show_reaming_time": "ACL Group 메시지에 남은 기간 표시"
-}
 rng_string = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 sql_max_detector = re.compile(r'\?(\d+)')
 default_config = {

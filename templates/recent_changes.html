@@ -5,7 +5,39 @@
 {% endblock %}
 
 {% block content %}
-
+<table class="fullwidth">
+    <colgroup>
+        <col>
+        <!-- <col style="width: 10rem"> -->
+        <col style="width: 9rem">
+        <col style="width: 12rem">
+    </colgroup>
+    <thead>
+        <tr>
+            <th>문서</th>
+            <!-- <th>기능</th> -->
+            <th>수정자</th>
+            <th>수정 시간</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i in recent %}
+        <tr>
+            <td>
+                <a href="{{ url_for('doc_read', doc_title = i[0]) }}">{{ i[0] }}</a>
+                <span style="margin-left: .35rem;" class="history-{% if i[1] > 0 %}plus{% elif i[1] < 0 %}minus{% else %}zero{% endif %}">{% if i[1] > 0%}+{% endif %}{{ i[1] }}</span>
+            </td>
+            <td>{{ i[3]|user }}</td>
+            <td>{{ i[4] }}</td>
+        </tr>
+        {% if i[2] is not none %}
+        <tr>
+            <td colspan="3">{{ i[2]|safe }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+    </tbody>
+</table>
 {% endblock %}
 
 {% block js %}

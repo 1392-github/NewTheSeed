@@ -502,8 +502,11 @@ def get_doc_data(docid):
     if r is None:
         return None
     return r[0]
-#def get_doc_full_name(docid):
-    #r = c.execute
+def get_doc_name(docid):
+    with g.db.cursor() as c:
+        return c.execute("SELECT namespace, name FROM doc_name WHERE id = ?", (docid,)).fetchone()
+def get_doc_full_name(docid):
+    return cat_namespace(*get_doc_name(docid))
 def cat_namespace(namespace, name):
     with g.db.cursor() as c:
         dns = int(get_config("default_namespace"))
@@ -515,7 +518,11 @@ def cat_namespace(namespace, name):
                 if c.execute("SELECT EXISTS (SELECT 1 FROM namespace WHERE name = ?)", (b,)).fetchone()[0]: show_ns = True
         else:
             show_ns = True
-        ns = c.execute("SELECT name FROM namespace WHERE id = ?", (namespace,)).fetchone()[0]
+        f = c.execute("SELECT name FROM namespace WHERE id = ?", (namespace,)).fetchone()
+        if f is None:
+            ns = "?"
+        else:
+            ns = f[0]
         if show_ns:
             r = f'{ns}:{name}'
         else:
@@ -529,19 +536,20 @@ def render_thread(slug):
     with g.db.cursor() as c:
         rc = []
         tjs = []
-        for d in c.execute("SELECT no, author, type, text, text2, time FROM thread_comment WHERE slug = ?", (slug,)).fetchall():
+        for d in c.execute("SELECT no, author, type, text, text2, time, admin FROM thread_comment WHERE slug = ?", (slug,)).fetchall():
             if d[2] == 0:
                 html, js = render_set(g.db, "", d[3], "api_thread", lastjs = False)
                 tjs.append(js)
             else:
                 html = d[3]
-            rc.append((d[0], d[1], d[2], html, d[4], utime_to_str(d[5])))
+            rc.append((d[0], d[1], d[2], html, d[4], utime_to_str(d[5]), d[6]))
         return rt("render_thread.html", comment = rc, presenter = get_thread_presenter(slug)), "".join(tjs)
 def write_thread_comment(slug, type, text = None, text2 = None):
     with g.db.cursor() as c:
         t = get_utime()
-        c.execute("""INSERT INTO thread_comment (slug, no, type, text, text2, author, time)
-SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), ?2, ?3, ?4, ?5, ?6""", (slug, type, text, text2, ipuser(), t))
+        u = ipuser()
+        c.execute("""INSERT INTO thread_comment (slug, no, type, text, text2, author, time, admin)
+SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), ?2, ?3, ?4, ?5, ?6, ?7""", (slug, type, text, text2, u, t, has_perm("admin", u)))
         c.execute("UPDATE discuss SET seq = seq + 1, last = ? WHERE slug = ?", (t, slug))
 def get_thread_presenter(slug):
     with g.db.cursor() as c:
