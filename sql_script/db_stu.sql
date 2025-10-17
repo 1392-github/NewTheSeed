@@ -142,3 +142,10 @@ CREATE TABLE IF NOT EXISTS "thread_comment" (
 	"time"	INTEGER NOT NULL,
 	"blind"	INTEGER NOT NULL DEFAULT -1
 );
+CREATE TABLE IF NOT EXISTS "login_history" (
+	"user"	INTEGER NOT NULL,
+	"date"	INTEGER NOT NULL,
+	"ip"	TEXT NOT NULL,
+	"ua"	TEXT NOT NULL,
+	"uach"	TEXT
+);

@@ -1,0 +1,26 @@
+{% extends "master.html" %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<form>
+    <label>
+        Username<br>
+        <input name="user" type="text">
+    </label><br>
+    {% if ext_note %}
+    <label>
+        메모<br>
+        <input name="note" type="text">
+    </label><br>
+    {% endif %}
+    <br>
+    <input type="submit" class="ok" value="확인">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

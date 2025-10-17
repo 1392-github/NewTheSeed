@@ -221,6 +221,13 @@ def errorhandler_404(e):
 @app.before_request
 def before_request():
     g.db = tool.getdb()
+@app.after_request
+def after_request(res):
+    if tool.get_config("keep_login_history") != "0":
+        res.headers["Accept-CH"] = tool.get_config("accept_ch")
+        res.headers["Accept-CH-Lifetime"] = tool.get_config("accept_ch_lifetime")
+        res.headers["Permissions-Policy"] = "ch-ua=(self)"
+    return res
 @app.teardown_request
 def teardown_request(exc):
     g.db.close()
@@ -233,8 +240,6 @@ def render_username(user, bold = 0):
     elif bold == 2:
         b = False
     return Markup(f'{"<b>" if b else ""}<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + name)}">{escape(name)}</a>{"</b>" if b else ""}')
-def render_time(time):
-    return tool.utime_to_str(time)
 def history_msg(type, text2, text3):
     if type == 0:
         return ""
@@ -249,7 +254,7 @@ def history_msg(type, text2, text3):
 app.jinja_env.globals["has_perm"] = tool.has_perm
 app.jinja_env.globals["history_msg"] = history_msg
 app.jinja_env.filters["user"] = render_username
-app.jinja_env.filters["time"] = render_time
+app.jinja_env.filters["time"] = tool.utime_to_str
 # 초기화 부분 끝, API 부분 시작
 """@app.route("/api/read_doc", methods=['POST'])
 def api_read_doc():
@@ -534,21 +539,26 @@ def login_form():
     with g.db.cursor() as c:
         if not tool.captcha("login"):
             return tool.captcha_failed()
-        if c.execute('''select exists (
-        select 1
+        f = c.execute('''select id
         from user
         where name = ?
         and password = ?
-        and isip = 0
-    )''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest())).fetchone()[0]:
-            if "keep" in request.form:
-                session.permanent = True
-            session['id'] = c.execute('''select id
-    from user
-    where name = ?''', (request.form['id'],)).fetchone()[0]
-            return redirect('/')
-        else:
+        and isip = 0''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest())).fetchone()
+        if f == None:
             return tool.rt("error.html", error="아이디나 비밀번호가 일치하지 않습니다.")
+        if "keep" in request.form:
+            session.permanent = True
+        id = f[0]
+        session['id'] = id
+        if tool.has_perm("hideip", id):
+            c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,'127.0.0.1','<hideip>','<hideip>')", (id, tool.get_utime()))
+        else:
+            uach = []
+            for i,v in request.headers:
+                if not i.startswith("Sec-Ch-Ua"): continue
+                uach.append(i + "=" + v)
+            c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,?,?,?)", (id, tool.get_utime(), tool.getip(), request.user_agent.string, ",".join(uach)))
+        return redirect('/')
 @app.route("/logout")
 def logout():
     session.clear()
@@ -1014,7 +1024,7 @@ def grant():
             for p in oldperm - newperm:
                 logstr.append("-" + p)
             if len(logstr) != 0: c.execute("INSERT INTO block_log (type, operator, target, date, grant_perm, note) VALUES(3,?,?,?,?,?)",
-                    (tool.ipuser(), user, tool.get_utime(), " ".join(logstr), request.form["note"] if tool.get_config("ext_note") == "1" else None))
+                    (tool.ipuser(), user, tool.get_utime(), " ".join(logstr), request.form["note"] if tool.get_config("ext_note") == "1" else ""))
             return '', 204
         else:
             user = request.args.get("username", "")
@@ -1178,7 +1188,7 @@ def recent_changes():
     type = request.args.get("type", -1, type=int)
     with g.db.cursor() as c:
         return tool.rt("recent_changes.html", title = "최근 변경", recent = 
-            ((tool.get_doc_full_name(x[0]), x[1], None if x[2] == 0 and x[7] == "" else f"{x[7]} <i>{history_msg(x[2], x[3], x[4])}</i>", x[5], tool.time_to_str(x[6])) for x in
+            ((tool.get_doc_full_name(x[0]), x[1], None if x[2] == 0 and x[7] == "" else f"{x[7]} <i>{escape(history_msg(x[2], x[3], x[4]))}</i>", x[5], tool.time_to_str(x[6])) for x in
             c.execute(f"SELECT doc_id, length, type, content2, content3, author, ? - datetime, edit_comment FROM history{'' if type == -1 else ' WHERE type = ?'} ORDER BY datetime DESC LIMIT 100", (tool.get_utime(),) if type == -1 else (tool.get_utime(),type)).fetchall()), menu2 = [[
             tool.Menu("전체", url_for("recent_changes"), "menu2-selected" if type == -1 else ""),
             tool.Menu("일반", url_for("recent_changes"), "menu2-selected" if type == 0 else ""),
@@ -1188,6 +1198,39 @@ def recent_changes():
             tool.Menu("되돌림", url_for("recent_changes", type = 5), "menu2-selected" if type == 5 else ""),
             tool.Menu("ACL", url_for("recent_changes", type = 4), "menu2-selected" if type == 4 else ""),
             ]])
+@app.route("/RecentDiscuss")
+def recent_discuss():
+    logtype = request.args.get("logtype", "normal_thread")
+    if logtype not in data.allowed_recentthread_type:
+        return redirect(url_for("recent_discuss"))
+    old = logtype == "old_thread"
+    if logtype == "normal_thread" or logtype == "old_thread": status = "normal"
+    if logtype == "pause_thread": status = "pause"
+    if logtype == "closed_thread": status = "close"
+    with g.db.cursor() as c:
+        return tool.rt("recent_discuss.html", title = "최근 토론", recent =
+            ((x[0], tool.get_doc_full_name(x[1]), x[2], x[3], tool.time_to_str(x[4])) for x in
+            c.execute("SELECT D.slug, D.doc_id, D.topic, C.author, ? - D.last FROM discuss D JOIN thread_comment C ON (D.slug = C.slug AND D.seq - 1 = C.no) WHERE D.status = ? ORDER BY D.last {0} LIMIT 100".format("ASC" if old else "DESC"), (tool.get_utime(), status)).fetchall()), menu2 = [[
+            tool.Menu("열린 토론", url_for("recent_discuss", logtype = "normal_thread"), "menu2-selected" if logtype == "normal_thread" else ""),
+            tool.Menu("오래된 토론", url_for("recent_discuss", logtype = "old_thread"), "menu2-selected" if logtype == "old_thread" else ""),
+            tool.Menu("중지된 토론", url_for("recent_discuss", logtype = "pause_thread"), "menu2-selected" if logtype == "pause_thread" else ""),
+            tool.Menu("닫힌 토론", url_for("recent_discuss", logtype = "closed_thread"), "menu2-selected" if logtype == "closed_thread" else ""),
+        ]])
+@app.route("/admin/login_history")
+def login_history():
+    with g.db.cursor() as c:
+        exp = int(tool.get_config("keep_login_history"))
+        if exp == 0:
+            return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다.")
+        if exp != -1:
+            c.execute("DELETE FROM login_history WHERE date < ?", (tool.get_utime() - exp,))
+        if "user" in request.args:
+            user = request.args["user"]
+            id = tool.user_name_to_id(user)
+            c.execute("INSERT INTO block_log (type, operator, target, date, note) VALUES(4,?,?,?,?)", (tool.ipuser(), id, tool.get_utime(), request.args["note"] if tool.get_config("ext_note") == "1" else ""))
+            return tool.rt("login_history_1.html", title = f"{user} 로그인 내역", lh = c.execute("SELECT date, ip, ua, uach FROM login_history WHERE user = ?", (id,)).fetchall())
+        else:
+            return tool.rt("login_history.html", title = "로그인 내역", ext_note = tool.get_config("ext_note") == "1")
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request

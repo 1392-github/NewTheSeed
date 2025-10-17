@@ -7,6 +7,8 @@ render.py, static/render.js, static/opennamu_main.css, static/func.js 파일(가
 DB는 sqlite을 사용합니다.
 ## 설치 방법
 https://1392year.pythonanywhere.com/w/NewTheSeed/튜토리얼/설치 를 참고하세요.
+## 업데이트 알림
+https://discord.gg/2ZzgkXeuYS Discord 서버에서 업데이트 알림을 받을 수 있습니다.
 ## PR 시 규칙
 * DB 구조는 ```sql_script/db_stu.sql```에 정의합니다
   * DB Browser for SQLite 등으로 확인한 스키마를 넣고, ```CREATE TABLE``` 뒤에 ```IF NOT EXISTS```를 붙여주세요

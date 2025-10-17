@@ -262,8 +262,8 @@ def has_perm(perm, user = None, basedoc = None, docname = None):
             return False
         if perm == "sysman" and os.getenv("DISABLE_SYSMAN") == "1":
             return False
-        if perm != "developer" and has_perm("developer", user):
-            return perm not in get_config("ingore_developer_perm").split(",")
+        if perm != "developer" and has_perm("developer", user) and perm not in get_config("ingore_developer_perm").split(","):
+            return True
         return c.execute("SELECT EXISTS (SELECT 1 FROM perm WHERE user = ? AND perm = ?)", (user, perm)).fetchone()[0] == 1
 def captcha(action):
     mode = get_config("captcha_mode")
@@ -297,6 +297,10 @@ def reload_config(app):
     if has_config("captcha_always"): data.captcha_always = set(get_config("captcha_always").split(","))
     data.username_format = re.compile(get_config("username_format"))
     app.permanent_session_lifetime = datetime.timedelta(seconds = int(get_config("keep_login_time")))
+    with g.db.cursor() as c:
+        exp = int(get_config("keep_login_history"))
+        if exp != -1:
+            c.execute("DELETE FROM login_history WHERE date < ?", (get_utime() - exp,))
 def is_required_captcha(action):
     if get_config("captcha_mode") == "0": return False
     if action == "test": return True
@@ -449,7 +453,7 @@ def check_acl(acl, type = None, user = None, basedoc = None, docname = None):
                 return r
             else:
                 if r == 0:
-                    return 0, f'{cond_repr(i[0], i[1], i[2], i[3], True, c[1])} 때문에 {type} 권한이 부족합니다.'
+                    return 0, f'{escape(cond_repr(i[0], i[1], i[2], i[3], True, c[1]))} 때문에 {type} 권한이 부족합니다.'
                 else:
                     return r, None
     if type is None:
@@ -465,7 +469,7 @@ def check_acl(acl, type = None, user = None, basedoc = None, docname = None):
             r = []
             for i in allow:
                 r.append(cond_repr(i[0], i[1], i[2], i[3], False, 0))
-            return 0, f'{type} 권한이 부족합니다. {" OR ".join(r)}(이)여야 합니다.'
+            return 0, f'{type} 권한이 부족합니다. {escape(" OR ".join(r))}(이)여야 합니다.'
 def check_namespace_acl(nsid, type, name, user = None, basedoc = None, showmsg = True):
     delete_expired_acl()
     with g.db.cursor() as c:
