@@ -1218,6 +1218,7 @@ def recent_discuss():
         ]])
 @app.route("/admin/login_history")
 def login_history():
+    if not tool.has_perm("login_history"): abort(403)
     with g.db.cursor() as c:
         exp = int(tool.get_config("keep_login_history"))
         if exp == 0:
