@@ -1,4 +1,4 @@
-{% extends "master.html" %}
+{% extends skin %}
 
 {% block css %}
 <style>
@@ -44,7 +44,7 @@
         <tr>
             <td>{{i[0]}}</td>
             <td>{{i[1]}}</td>
-            <td>{{i[2]}}</td>
+            <td>{{i[2]|safe}}</td>
             <td>{{i[3]}}</td>
             <td>{% if hasperm %}<button type="button" class="danger delete" data-id="{{i[0]}}">삭제</button>{% endif %}</td>
         </tr>
@@ -93,7 +93,9 @@
             <option value="allow">허용</option>
             <option value="deny">거부</option>
             {% if not nsacl %}<option value="gotons" selected>이름공간ACL 실행</option>{% endif %}
+            <option value="gotootherns">다른 이름공간ACL 실행</option>
         </select>
+        <input type="text" name="ns" hidden>
     </div>
     <div>
         <div>Duration</div>
@@ -125,6 +127,9 @@
             add.cond2.hidden = false;
         }
     });
+    add.action.addEventListener("change", function () {
+        add.ns.hidden = add.action.value != "gotootherns";
+    });
     add.addEventListener("submit", function (e) {
         e.preventDefault();
         /*r => {
@@ -144,6 +149,7 @@
             "cond": add.condtype.value == "perm" ? add.cond1.value : add.cond2.value,
             "action": add.action.value,
             "not": add.not.checked,
+            "ns": add.ns.value,
             "duration": Number(add.duration.value)
         }, () => location.reload());
     });

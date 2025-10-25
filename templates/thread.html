@@ -1,4 +1,4 @@
-{% extends "master.html" %}
+{% extends skin %}
 
 {% block css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='opennamu_main.css') }}">
@@ -67,7 +67,7 @@
     last();
     var comment_list = document.getElementById("comment-list")
     setInterval(function () {
-        if (window.getSelection().toString() == "") fetch("/api/render_thread/{{slug}}", {
+        if (!document.hidden && window.getSelection().toString() == "") fetch("/api/render_thread/{{slug}}", {
             "headers": {"Content-Type": "application/json"}
             })
         .then(r => {

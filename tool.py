@@ -11,10 +11,9 @@ import random
 import types
 import ipaddress
 import os
-from requests import get, post
+from requests import post
 import data
 from dataclasses import dataclass
-from render import render_set
 
 init = not os.path.exists("data.db")
 
@@ -123,6 +122,7 @@ def rt(t, **kwargs):
     k["sitekey"] = get_config("captcha_sitekey")
     k["brand_color"] = get_config("brand_color")
     k["document_license"] = get_config("document_license")
+    k["skin"] = "ntsds/master.html"
     if t == "error.html" and "title" not in k: k["title"] = "오류"
     func = []
     for i in data.special_function:
@@ -296,6 +296,7 @@ def reload_config(app):
     if has_config("captcha_required"): data.captcha_required = set(get_config("captcha_required").split(","))
     if has_config("captcha_always"): data.captcha_always = set(get_config("captcha_always").split(","))
     data.username_format = re.compile(get_config("username_format"))
+    data.file_namespace = [int(x) for x in get_config("file_namespace").split(",")]
     app.permanent_session_lifetime = datetime.timedelta(seconds = int(get_config("keep_login_time")))
     with g.db.cursor() as c:
         exp = int(get_config("keep_login_history"))
@@ -376,7 +377,7 @@ def record_history(docid, type, content, content2, content3, author, edit_commen
                 (docid, type, content, content2, content3, author, edit_comment, get_utime(), length))
         c.execute("UPDATE doc_name SET history_seq = history_seq + 1 WHERE id = ?", (docid,))
 def render_acl(acl):
-    # index, condtype, value, value2, not, action, expire 순으로 입력
+    # index, condtype, value, value2, not, action, expire, otherns 순으로 입력
     r = []
     for n in acl:
         perml = (data.perm_type_not if n[4] else data.perm_type)
@@ -393,7 +394,12 @@ def render_acl(acl):
             cond = n[1] + ":" + n[2]
         if trg and n[4]:
             cond = "not:" + cond
-        r.append((n[0], cond, data.acl_action.get(n[5], "???"), "영구" if n[6] is None else utime_to_str(n[6])))
+        if n[5] == "gotootherns":
+            ns = get_namespace_name(n[7])
+            action = f'<a href="{url_for("doc_read", doc_title = ns + ":문서")}">{ns}</a> ACL 실행'
+        else:
+            action = data.acl_action.get(n[5], "???")
+        r.append((n[0], cond, action, "영구" if n[6] is None else utime_to_str(n[6])))
     return r
 def delete_expired_acl():
     with g.db.cursor() as c:
@@ -442,7 +448,7 @@ def cond_repr(cond, value, value2, no, denied, gid):
         return r + "이기"
     return r
 def check_acl(acl, type = None, user = None, basedoc = None, docname = None):
-    # condtype, value, value2, not, action 순으로 입력
+    # condtype, value, value2, not, action, otherns 순으로 입력
     # 0 : 거부, 1 : 허용, 2 : 이름공간ACL 실행
     if user is None: user = ipuser(False)
     for i in acl:
@@ -450,31 +456,41 @@ def check_acl(acl, type = None, user = None, basedoc = None, docname = None):
         if c[0] ^ i[3]:
             r = data.acl_action_key.get(i[4], 0)
             if type is None:
-                return r
+                return r, i[5] if r == 3 else 0
             else:
                 if r == 0:
-                    return 0, f'{escape(cond_repr(i[0], i[1], i[2], i[3], True, c[1]))} 때문에 {type} 권한이 부족합니다.'
+                    return 0, 0, f'{escape(cond_repr(i[0], i[1], i[2], i[3], True, c[1]))} 때문에 {type} 권한이 부족합니다.', True
                 else:
-                    return r, None
+                    return r, i[5] if r == 3 else 0, None, False
     if type is None:
-        return 0
+        return 0, 0
     else:
         allow = []
         for i in acl:
-            if i[4] == "allow" or i[4] == "gotons":
+            if i[4] != "deny":
                 allow.append(i)
         if len(allow) == 0:
-            return 0, f'ACL에 허용 규칙이 없기 때문에 {type} 권한이 부족합니다.'
+            return 0, 0, f'ACL에 허용 규칙이 없기 때문에 {type} 권한이 부족합니다.', True
         else:
             r = []
             for i in allow:
                 r.append(cond_repr(i[0], i[1], i[2], i[3], False, 0))
-            return 0, f'{type} 권한이 부족합니다. {escape(" OR ".join(r))}(이)여야 합니다.'
-def check_namespace_acl(nsid, type, name, user = None, basedoc = None, showmsg = True):
+            return 0, 0, f'{type} 권한이 부족합니다. {escape(" OR ".join(r))}(이)여야 합니다.', True
+def check_namespace_acl(nsid, type, name, user = None, basedoc = None, showmsg = True, gotootherns_already = None):
     delete_expired_acl()
+    if gotootherns_already is None: gotootherns_already = set()
     with g.db.cursor() as c:
-        return check_acl(c.execute("SELECT condtype, value, value2, no, action FROM nsacl WHERE ns_id = ? AND acltype = ? ORDER BY idx", (nsid, type)).fetchall(),
+        acl = check_acl(c.execute("SELECT condtype, value, value2, no, action, otherns FROM nsacl WHERE ns_id = ? AND acltype = ? ORDER BY idx", (nsid, type)).fetchall(),
                      data.acl_type[type] if showmsg else None, user, basedoc, name)
+        r = acl[0]
+        ns = acl[1]
+        if r == 3:
+            if ns in gotootherns_already:
+                return (0, "다른 이름공간 ACL실행이 이중으로 사용되었습니다.", False) if showmsg else 0
+            gotootherns_already.add(ns)
+            return check_namespace_acl(ns, type, name, user, basedoc, showmsg, gotootherns_already)
+        else:
+            return r, acl[2], acl[3] if showmsg else r
 def check_document_acl(docid, ns, type, name, user = None, showmsg = True):
     with g.db.cursor() as c:
         delete_expired_acl()
@@ -486,15 +502,19 @@ def check_document_acl(docid, ns, type, name, user = None, showmsg = True):
             r = check_document_acl(docid, ns, "edit", name, user, showmsg)
             if r[0] == 0:
                 return r
+        tab = f' 해당 문서의 <a href="{url_for("acl", type1 = "document", type2 = "edit", doc_name = cat_namespace(ns, name))}">ACL 탭</a>을 확인하시기 바랍니다.'
         def cns():
             r = check_namespace_acl(ns, type, name, user, docid, showmsg)
-            return (r[0], r[1] + f' 해당 문서의 <a href="{url_for("acl", type1 = "document", type2 = "edit", doc_name = cat_namespace(ns, name))}">ACL 탭</a>을 확인하시기 바랍니다.') if showmsg and r[1] is not None else r
-        acl = c.execute("SELECT condtype, value, value2, no, action FROM acl WHERE doc_id = ? AND acltype = ? ORDER BY idx", (docid, type)).fetchall()
+            return (r[0], r[1] + (tab if r[2] else "")) if showmsg and r[1] is not None else r
+        acl = c.execute("SELECT condtype, value, value2, no, action, otherns FROM acl WHERE doc_id = ? AND acltype = ? ORDER BY idx", (docid, type)).fetchall()
         if type == "read" and get_config("document_read_acl") == "0": return cns()
         if len(acl) == 0: return cns()
         r = check_acl(acl, data.acl_type[type] if showmsg else None, user, docid)
-        if (r if type == "acl" else r[0]) == 2: return cns()
-        return (r[0], r[1] + f' 해당 문서의 <a href="{url_for("acl", type1 = "document", type2 = "edit", doc_name = cat_namespace(ns, name))}">ACL 탭</a>을 확인하시기 바랍니다.') if showmsg and r[1] is not None else r
+        if r[0] == 2: return cns()
+        if r[0] == 3:
+            r = check_namespace_acl(r[1], type, name, user, docid, showmsg)
+            return (r[0], r[1] + (tab if r[2] else "")) if showmsg and r[1] is not None else r
+        return (r[0], r[2] + (tab if r[3] else "")) if showmsg and r[1] is not None else r
 def nvl(a, b):
     return b if a is None else a
 def get_doc_data(docid):
@@ -555,3 +575,6 @@ SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), ?2, ?3, ?4, ?5, ?6, ?7""",
 def get_thread_presenter(slug):
     with g.db.cursor() as c:
         return c.execute("SELECT author FROM thread_comment WHERE slug = ? AND no = 1", (slug,)).fetchone()[0]
+def get_namespace_name(ns):
+    with g.db.cursor() as c:
+        return c.execute("SELECT name FROM namespace WHERE id = ?", (ns,)).fetchone()[0]

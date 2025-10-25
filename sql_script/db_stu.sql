@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS "discuss" (
 	"last"	INTEGER NOT NULL DEFAULT 0,
 	"status"	TEXT NOT NULL DEFAULT 'normal',
 	"fix_comment"	INTEGER,
-	"seq"	INTEGER NOT NULL DEFAULT 2,
+	"seq"	INTEGER NOT NULL DEFAULT 1,
 	PRIMARY KEY("slug" AUTOINCREMENT)
 );
 CREATE TABLE IF NOT EXISTS "api_policy" (
@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS "acl" (
 	"value2"	INTEGER,
 	"no"	INTEGER NOT NULL,
 	"action"	TEXT NOT NULL,
+	"otherns"	INTEGER,
 	"expire"	INTEGER
 );
 CREATE TABLE IF NOT EXISTS "nsacl" (
@@ -84,6 +85,7 @@ CREATE TABLE IF NOT EXISTS "nsacl" (
 	"value2"	INTEGER,
 	"no"	INTEGER NOT NULL,
 	"action"	TEXT NOT NULL,
+    "otherns"	INTEGER,
 	"expire"	INTEGER
 );
 CREATE TABLE IF NOT EXISTS "extension" (

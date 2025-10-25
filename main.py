@@ -1,4 +1,5 @@
 from flask import Flask, request, redirect, session, send_file, abort, Response, url_for, g
+from jinja2 import ChoiceLoader, FileSystemLoader
 from git import Repo
 from markupsafe import escape, Markup
 from io import BytesIO
@@ -202,6 +203,52 @@ with app.app_context():
             # admin 컬럼 추가
             c.execute("ALTER TABLE thread_comment ADD COLUMN admin INTEGER NOT NULL DEFAULT 0")
             c.execute("UPDATE thread_comment SET admin = (SELECT EXISTS (SELECT 1 FROM perm WHERE user = author AND perm IN ('admin', 'developer')))")
+        if db_version < 31:
+            # gotootherns 추가
+            c.execute("""CREATE TABLE "acl_new" (
+            "doc_id"	INTEGER,
+            "acltype"	TEXT,
+            "idx"	INTEGER,
+            "condtype"	TEXT NOT NULL,
+            "value"	TEXT,
+            "value2"	INTEGER,
+            "no"	INTEGER,
+            "action"	TEXT NOT NULL,
+            "otherns"	INTEGER,
+            "expire"	INTEGER
+        )""")
+            c.execute("INSERT INTO acl_new (doc_id, acltype, idx, condtype, value, value2, no, action, expire) SELECT doc_id, acltype, idx, condtype, value, value2, no, action, expire FROM acl")
+            c.execute("DROP TABLE acl")
+            c.execute("ALTER TABLE acl_new RENAME TO acl")
+            c.execute("""CREATE TABLE "nsacl_new" (
+            "ns_id"	INTEGER,
+            "acltype"	TEXT,
+            "idx"	INTEGER,
+            "condtype"	TEXT NOT NULL,
+            "value"	TEXT,
+            "value2"	INTEGER,
+            "no"	INTEGER,
+            "action"	TEXT NOT NULL,
+            "otherns"	INTEGER,
+            "expire"	INTEGER
+        )""")
+            c.execute("INSERT INTO nsacl_new (ns_id, acltype, idx, condtype, value, value2, no, action, expire) SELECT ns_id, acltype, idx, condtype, value, value2, no, action, expire FROM nsacl")
+            c.execute("DROP TABLE nsacl")
+            c.execute("ALTER TABLE nsacl_new RENAME TO nsacl")
+            # seq 기본값 2에서 1로 변경
+            c.execute("""CREATE TABLE "discuss_new" (
+            "slug"	INTEGER,
+            "doc_id"	INTEGER NOT NULL,
+            "topic"	TEXT NOT NULL DEFAULT '',
+            "last"	INTEGER NOT NULL DEFAULT 0,
+            "status"	TEXT NOT NULL DEFAULT 'normal',
+            "fix_comment"	INTEGER,
+            "seq"	INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY("slug" AUTOINCREMENT)
+        );""")
+            c.execute("INSERT INTO discuss_new SELECT * FROM discuss")
+            c.execute("DROP TABLE discuss")
+            c.execute("ALTER TABLE discuss_new RENAME TO discuss")
         c.execute('''update config
         set value = ?
         where name = "version"''', (str(data.version),)) # 변환 후 버전 재설정
@@ -251,6 +298,10 @@ def history_msg(type, text2, text3):
         return f"({text2}에서 {text3}으로 문서 이동)"
     elif type == 4:
         return f"({text2}으로 ACL 변경)"
+app.jinja_loader = ChoiceLoader([
+    FileSystemLoader("skins"),
+    FileSystemLoader("templates")
+])
 app.jinja_env.globals["has_perm"] = tool.has_perm
 app.jinja_env.globals["history_msg"] = history_msg
 app.jinja_env.filters["user"] = render_username
@@ -700,7 +751,7 @@ def acl(doc_name):
         if type2 not in data.acl_type_key:
             type2 = "read" if nsacl else "edit"
         ns, name = tool.split_ns(doc_name)
-        docid = tool.get_docid(ns, name, request.method == "POST")
+        docid = tool.get_docid(ns, name, request.method == "POST" and not nsacl)
         acl_t = "nsacl" if nsacl else "acl"
         id_col = "ns_id" if nsacl else "doc_id"
         id = ns if nsacl else docid
@@ -739,7 +790,7 @@ def acl(doc_name):
                     cond = "member"
                 if type2 not in data.acl_type_key:
                     return tool.error_400("invalid_acl_condition")
-                if action != "allow" and action != "deny" and (nsacl or action != "gotons"):
+                if action != "allow" and action != "deny" and (nsacl or action != "gotons") and action != "gotootherns":
                     return tool.error_400("invalid_acl_condition")
                 if condtype == "user":
                     if not tool.has_user(cond):
@@ -765,9 +816,12 @@ def acl(doc_name):
                     ty2 = True
                 elif condtype != "perm":
                     return tool.error_400("invalid_acl_condition")
-                c.execute(f"""INSERT INTO {acl_t} ({id_col}, acltype, idx, condtype, value{"2" if ty2 else ""}, no, action, expire)
-                                SELECT ?1,?2,(SELECT COALESCE(MAX(idx), 0) + 1 FROM {acl_t} WHERE {id_col} = ?1 AND acltype = ?2),?3,?4,?5,?6,?7""",
-                            (id, type2, condtype, cond, no, action, None if duration == 0 else tool.get_utime() + duration))
+                if action == "gotootherns":
+                    ons = c.execute("SELECT id FROM namespace WHERE name = ?", (json["ns"],)).fetchone()
+                    if ons is None: return tool.error_400(f"{json['ns']} 이름공간은 존재하지 않습니다!")
+                c.execute(f"""INSERT INTO {acl_t} ({id_col}, acltype, idx, condtype, value{"2" if ty2 else ""}, no, action, expire, otherns)
+                                SELECT ?1,?2,(SELECT COALESCE(MAX(idx), 0) + 1 FROM {acl_t} WHERE {id_col} = ?1 AND acltype = ?2),?3,?4,?5,?6,?7,?8""",
+                            (id, type2, condtype, cond, no, action, None if duration == 0 else tool.get_utime() + duration, ons[0] if action == "gotootherns" else None))
                 if not nsacl: tool.record_history(docid, 4, tool.get_doc_data(docid), f'insert,{type2},{action},{"not:" if no else ""}{condtype}:{cond2 if condtype == "aclgroup" or condtype == "user" else cond}', None, tool.ipuser(), "", 0)
             elif opcode == "delete":
                 idx = json["index"]
@@ -807,7 +861,7 @@ def acl(doc_name):
             acls.append(tool.Menu(data.acl_type[i], url_for("acl", doc_name = doc_name, type1 = type1, type2 = i), "menu2-selected" if i == type2 else ""))
         return tool.rt("acl.html", title=tool.render_docname(ns, name), raw_doc_name = doc_name, subtitle="ACL", type=data.acl_type[type2], type2 = type2,
                 hasperm = tool.has_perm("nsacl") if nsacl else tool.has_perm("nsacl") or tool.check_document_acl(docid, ns, "acl", name, showmsg = False) == 1, perms = data.perm_type,
-                acl = tool.render_acl(c.execute(f"""SELECT idx, condtype, value, value2, no, action, expire FROM {acl_t} WHERE {id_col} = ? AND acltype = ? ORDER BY idx""", (id, type2)).fetchall()),
+                acl = tool.render_acl(c.execute(f"""SELECT idx, condtype, value, value2, no, action, expire, otherns FROM {acl_t} WHERE {id_col} = ? AND acltype = ? ORDER BY idx""", (id, type2)).fetchall()),
                 nsacl = nsacl, menu2 = (
             [
                 tool.Menu("문서 ACL", url_for("acl", doc_name = doc_name, type1 = "document"), "menu2-selected" if not nsacl else ""),
@@ -943,7 +997,7 @@ def aclgroup():
                 if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE user = (SELECT id FROM user WHERE name = ?) AND gid = ?)", (request.form["value"], gid)).fetchone()[0]:
                     return tool.error_400("aclgroup_already_exists")
                 c.execute("INSERT INTO aclgroup_log (gid, user, note, start, end) VALUES(?, (SELECT id FROM user WHERE name = ?), ?, ?, ?)",
-                        (gid, request.form["value"], request.form["note"], t, None if request.form["dur"] == "" else t + dur))
+                        (gid, request.form["value"], request.form["note"], t, None if dur == 0 else t + dur))
                 c.execute("INSERT INTO block_log (type, operator, target, id, gid, date, duration, note) VALUES(1, ?, (SELECT id FROM user WHERE name = ?), ?, ?, ?, ?, ?)",
                         (session["id"], request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))
         groups = [x[0] for x in c.execute("SELECT name FROM aclgroup WHERE deleted = 0").fetchall()]
@@ -1067,7 +1121,8 @@ def discuss(doc):
             time = tool.get_utime()
             c.execute("INSERT INTO discuss (doc_id, topic, last) VALUES(?,?,?)", (docid, request.form["topic"], time))
             slug = c.lastrowid
-            c.execute("INSERT INTO thread_comment (slug, no, text, type, author, time) VALUES(?,1,?,0,?,?)", (slug, request.form["content"], tool.ipuser(), time))
+            #c.execute("INSERT INTO thread_comment (slug, no, text, type, author, time) VALUES(?,1,?,0,?,?)", (slug, request.form["content"], tool.ipuser(), time))
+            tool.write_thread_comment(slug, 0, request.form["content"])
             return redirect(url_for("thread", slug = slug))
         else:
             state = request.args.get("state", "")
@@ -1201,7 +1256,7 @@ def recent_changes():
 @app.route("/RecentDiscuss")
 def recent_discuss():
     logtype = request.args.get("logtype", "normal_thread")
-    if logtype not in data.allowed_recentthread_type:
+    if logtype not in data.allow_recentthread_type:
         return redirect(url_for("recent_discuss"))
     old = logtype == "old_thread"
     if logtype == "normal_thread" or logtype == "old_thread": status = "normal"
@@ -1232,6 +1287,11 @@ def login_history():
             return tool.rt("login_history_1.html", title = f"{user} 로그인 내역", lh = c.execute("SELECT date, ip, ua, uach FROM login_history WHERE user = ?", (id,)).fetchall())
         else:
             return tool.rt("login_history.html", title = "로그인 내역", ext_note = tool.get_config("ext_note") == "1")
+@app.route("/Upload", methods=['GET','POST'])
+def upload():
+    if request.method == "POST":
+        print(request.files["file"].filename)
+    return tool.rt("upload.html", title = "파일 올리기", dns = tool.get_namespace_name(data.file_namespace[0]))
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request

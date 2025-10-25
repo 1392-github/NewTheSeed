@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 30
+version = 31
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -58,7 +58,9 @@ default_config = {
     "limit_acl": "3",
     "keep_login_history": "0",
     "accept_ch": "Sec-CH-UA, Sec-CH-UA-Platform, Sec-CH-UA-Full-Version",
-    "accept_ch_lifetime": "604800"
+    "accept_ch_lifetime": "604800",
+    "max_file_size": "20000000",
+    "image_upload_templete": "템플릿:이미지 업로드"
 }
 grantable = None
 captcha_bypass_cnt = {}
@@ -101,10 +103,11 @@ perm_type_not = {
     "contributor": "위키 미기여자",
     "match_username_and_document_title": "문서 제목과 사용자 이름이 불일치"
 }
-acl_action = {"allow": "허용", "deny": "거부", "gotons": "이름공간ACL 실행"}
-acl_action_key = {"allow": 1, "deny": 0, "gotons": 2}
+acl_action = {"allow": "허용", "deny": "거부", "gotons": "이름공간ACL 실행", "gotootherns": "다른 이름공간ACL 실행"}
+acl_action_key = {"allow": 1, "deny": 0, "gotons": 2, "gotootherns": 3}
 redirect_regex = re.compile("#(?:redirect|넘겨주기) (.+)")
 special_function = [
+    SpecialFunction("파일 올리기", "upload"),
     SpecialFunction("차단 내역", "block_history"),
     SpecialFunction("라이선스", "license"),
     SpecialFunction("[관리] 권한 부여", "grant", "grant"),
@@ -115,4 +118,6 @@ special_function = [
     SpecialFunction("[관리] SQL 셀", "sqlshell", "database"),
     SpecialFunction("[관리] 시스템 관리", "sysman", "sysman"),
 ]
-allowed_recentthread_type = {"normal_thread", "old_thread", "pause_thread", "closed_thread"}
+allow_recentthread_type = {"normal_thread", "old_thread", "pause_thread", "closed_thread"}
+allow_file_extension = {"jpg", "png", "gif", "webp", "bmp", "svg", "ico"}
+file_namespace = [3]
