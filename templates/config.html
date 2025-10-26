@@ -24,6 +24,7 @@
 
 {% block content %}
 <a href="/admin/captcha_test">(CAPTCHA 테스트)</a>
+<a href="{{ url_for('manage_namespace') }}">(이름공간 관리)</a>
 <form method="post">
     {% if save %}
     <div class="alert">저장되었습니다.</div>

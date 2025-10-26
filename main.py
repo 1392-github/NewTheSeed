@@ -258,9 +258,11 @@ with app.app_context():
     tool.reload_config(app)
     g.db.close()
 if not os.getenv("SECRET_KEY"):
+    key = secrets.token_hex(32)
     dotenv.set_key(".env", "SECRET_KEY", secrets.token_hex(32))
-    dotenv.load_dotenv()
-app.secret_key = os.getenv("SECRET_KEY")
+    app.secret_key = key
+else:
+    app.secret_key = os.getenv("SECRET_KEY")
 
 @app.errorhandler(404)
 def errorhandler_404(e):
@@ -1292,6 +1294,28 @@ def upload():
     if request.method == "POST":
         print(request.files["file"].filename)
     return tool.rt("upload.html", title = "파일 올리기", dns = tool.get_namespace_name(data.file_namespace[0]))
+@app.route("/admin/config/namespace", methods = ["GET", "POST"])
+def manage_namespace():
+    if not tool.has_perm("config"): abort(403)
+    with g.db.cursor() as c:
+        if request.method == "POST":
+            id = int(request.form["id"])
+            c.execute("INSERT INTO namespace (id, name) VALUES(?,?)", (id, request.form["name"]))
+            tool.init_nsacl(id)
+        return tool.rt("manage_namespace.html", title = "이름공간 관리", namespace = c.execute("SELECT id, name FROM namespace").fetchall(), auto_number = c.execute("SELECT max(id) + 1 FROM namespace").fetchone()[0])
+@app.route("/admin/config/namespace/reset", methods = ["POST"])
+def nsacl_reset():
+    if not tool.has_perm("config"): abort(403)
+    tool.init_nsacl(int(request.form["ns"]))
+    return "", 204
+@app.route("/admin/config/namespace/delete", methods = ["POST"])
+def delete_namespace():
+    if not tool.has_perm("config"): abort(403)
+    ns = int(request.form["ns"])
+    with g.db.cursor() as c:
+        c.execute("DELETE FROM namespace WHERE id = ?", (ns,))
+        c.execute("DELETE FROM nsacl WHERE ns_id = ?", (ns,))
+    return "", 204
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request

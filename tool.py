@@ -490,7 +490,7 @@ def check_namespace_acl(nsid, type, name, user = None, basedoc = None, showmsg =
             gotootherns_already.add(ns)
             return check_namespace_acl(ns, type, name, user, basedoc, showmsg, gotootherns_already)
         else:
-            return r, acl[2], acl[3] if showmsg else r
+            return (r, acl[2], acl[3]) if showmsg else r
 def check_document_acl(docid, ns, type, name, user = None, showmsg = True):
     with g.db.cursor() as c:
         delete_expired_acl()
@@ -578,3 +578,9 @@ def get_thread_presenter(slug):
 def get_namespace_name(ns):
     with g.db.cursor() as c:
         return c.execute("SELECT name FROM namespace WHERE id = ?", (ns,)).fetchone()[0]
+def init_nsacl(ns):
+    default = int(get_config("default_namespace"))
+    with g.db.cursor() as c:
+        c.execute("DELETE FROM nsacl WHERE ns_id = ?", (ns,))
+        c.executemany("INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire, otherns) VALUES(?, ?, 1, 'perm', 'any', NULL, 0, 'gotootherns', NULL, ?)",
+                      ([ns, x, default] for x in data.acl_type_key))

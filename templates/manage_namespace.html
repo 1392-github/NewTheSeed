@@ -1,0 +1,50 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<table>
+    <thead>
+        <tr>
+            <th>번호</th>
+            <th>이름</th>
+            <th>nsacl 초기화</th>
+            <th>삭제</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i in namespace %}
+        <tr>
+            <td>{{i[0]}}</td>
+            <td>{{i[1]}}</td>
+            <td>
+                <form action="{{ url_for('nsacl_reset') }}" method="post" class="confirm refresh-on-submit">
+                    <input type="hidden" name="ns" value="{{i[0]}}">
+                    <input type="submit" class="ok" value="초기화">
+                </form>
+            </td>
+            <td>
+                <form action="{{ url_for('delete_namespace') }}" method="post" class="confirm refresh-on-submit">
+                    <input type="hidden" name="ns" value="{{i[0]}}">
+                    <input type="submit" class="danger" value="삭제">
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<form method="post" class="refresh-on-submit">
+    <fieldset>
+        <legend>새 이름공간 생성</legend>
+        <label>번호 : <input type="number" min="1" name="id" value="{{ auto_number }}"></label><br>
+        <label>이름 : <input name="name"></label><br><br>
+        <input type="submit" class="ok" value="생성">
+    </fieldset>
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}
