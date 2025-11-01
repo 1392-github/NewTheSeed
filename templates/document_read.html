@@ -16,6 +16,9 @@
 </div>
 <br>
 {% endif %}
+{% if image %}
+<img src="{{ url_for('file', id = docid) }}">
+{% endif %}
 {{ doc_data|safe }}
 {% endblock %}
 

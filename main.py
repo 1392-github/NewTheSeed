@@ -1,18 +1,20 @@
-from flask import Flask, request, redirect, session, send_file, abort, Response, url_for, g
-from jinja2 import ChoiceLoader, FileSystemLoader
-from git import Repo
-from markupsafe import escape, Markup
-from io import BytesIO
+import secrets
+import mimetypes
 import hashlib
 import sys
 import datetime
 import types
-import data
-import tool
 import os
 import shutil
+
+from flask import Flask, request, redirect, session, send_file, abort, Response, url_for, g
+from jinja2 import ChoiceLoader, FileSystemLoader
+from git import Repo
+from markupsafe import escape, Markup
 import dotenv
-import secrets
+
+import data
+import tool
 from render import render_set
 
 # Development Server Config
@@ -249,6 +251,9 @@ with app.app_context():
             c.execute("INSERT INTO discuss_new SELECT * FROM discuss")
             c.execute("DROP TABLE discuss")
             c.execute("ALTER TABLE discuss_new RENAME TO discuss")
+        if db_version < 34:
+            # file 테이블 삭제
+            c.execute("DROP TABLE file")
         c.execute('''update config
         set value = ?
         where name = "version"''', (str(data.version),)) # 변환 후 버전 재설정
@@ -264,6 +269,9 @@ if not os.getenv("SECRET_KEY"):
 else:
     app.secret_key = os.getenv("SECRET_KEY")
 
+@app.errorhandler(403)
+def errorhandler_403(e):
+    return tool.rt("error.html", error="권한이 부족합니다."), 403
 @app.errorhandler(404)
 def errorhandler_404(e):
     return tool.rt("404.html"), 404
@@ -403,11 +411,13 @@ def doc_read(doc_title):
             if re:
                 return redirect(url_for("doc_read", doc_title = re.group(1), **{"from": doc_title}))
         d = render_set(g.db, doc_title, d)
-        if ns == int(tool.get_config("user_namespace")):
+        if "/" not in name and ns == int(tool.get_config("user_namespace")):
             admin_userdoc = tool.has_perm("admin", tool.user_name_to_id(name))
         else:
             admin_userdoc = False
-        return tool.rt("document_read.html", admin_userdoc = admin_userdoc, title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d, menu=menu, fr=request.args.get("from", None)), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
+        return tool.rt("document_read.html", admin_userdoc = admin_userdoc, title=tool.render_docname(ns, name), raw_doc_title=doc_title,
+                       doc_data=d, menu=menu, fr=request.args.get("from", None), image = ns in data.file_namespace, docid = docid
+                       ), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
 @app.route("/raw/<path:doc_title>")
 def doc_raw(doc_title):
     with g.db.cursor() as c:
@@ -442,7 +452,7 @@ def doc_edit(doc_title):
         if d is None: d = ""
         r = c.execute("select history_seq - 1 from doc_name where id = ?", (docid,)).fetchone()
         r = 0 if r is None else r[0]
-        return tool.rt("document_edit.html", title=tool.render_docname(ns, name), subtitle=f"r{r} 편집", raw_doc_title=doc_title, doc_data=d, doc_rev=r, req_captcha = tool.is_required_captcha("edit"), aclmsg = acl[1], menu = [
+        return tool.rt("document_edit.html", title=tool.render_docname(ns, name), subtitle="새 문서 생성" if r == 0 else f"r{r} 편집", raw_doc_title=doc_title, doc_data=d, doc_rev=r, req_captcha = tool.is_required_captcha("edit"), aclmsg = acl[1], menu = [
             tool.Menu("역링크", f"/backlink/{doc_title}"),
             tool.Menu("삭제", f"/delete/{doc_title}"),
             tool.Menu("이동", f"/move/{doc_title}")
@@ -455,9 +465,13 @@ def doc_edit_form():
         doc_name = request.form["doc_name"]
         value = request.form["value"]
         ns, name = tool.split_ns(doc_name)
-        docid = tool.get_docid(ns, name, create=True)
+        docid = tool.get_docid(ns, name)
         if tool.check_document_acl(docid, ns, "edit", name)[0] == 0:
             abort(403)
+        if docid == -1:
+            if ns in data.file_namespace or ("/" not in name and ns == int(tool.get_config("user_namespace"))):
+                return tool.rt("error.html", error = "invalid_namespace")
+            docid = tool.get_docid(ns, name, True)
         prev_content = c.execute("SELECT value FROM data WHERE id = ?", (docid,)).fetchone()
         new_document = prev_content is None
         prev_content = "" if new_document else prev_content[0]
@@ -622,7 +636,7 @@ def history(doc_name):
         ns, name = tool.split_ns(doc_name)
         docid = tool.get_docid(ns, name)
         if docid == -1:
-            return tool.rt("error.html", error = "문서를 찾을 수 없습니다.")
+            return tool.rt("error.html", error = "문서를 찾을 수 없습니다."), 404
         """h = c.execute('''select name, datetime, length, rev, edit_comment, dsc
     from (
         select author, edit_comment, datetime, length, rev, case
@@ -717,15 +731,19 @@ def move(doc_name):
     if acl[0] == 0:
         return tool.rt("error.html", error = acl[1]), 403
     if docid == -1:
-        return tool.rt("error.html", error = "문서를 찾을 수 없습니다.")
+        return tool.rt("error.html", error = "문서를 찾을 수 없습니다."), 404
     if request.method == "POST":
         to = request.form["to"]
         tons, toname = tool.split_ns(to)
+        if (ns in data.file_namespace) ^ (tons in data.file_namespace):
+            return tool.rt("error.html", error = "이 문서를 해당 이름 공간으로 이동할 수 없습니다."), 409
+        if ns in data.file_namespace and os.path.splitext(name)[1] != os.path.splitext(toname)[1]:
+            return tool.rt("error.html", error = "확장자가 다릅니다."), 409
         if "swap" in request.form:
             # 문서를 서로 맞바꾸기
             todocid = tool.get_docid(tons, toname)
             if todocid == -1 or todocid == docid:
-                return tool.rt("error.html", error = "문서를 찾을 수 없습니다.")
+                return tool.rt("error.html", error = "문서를 찾을 수 없습니다."), 404
             with g.db.cursor() as c:
                 c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (tons, toname, docid))
                 c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (ns, name, todocid))
@@ -734,7 +752,7 @@ def move(doc_name):
         else:
             # 일반 문서 이동
             if tool.get_docid(tons, toname) != -1:
-                return tool.rt("error.html", error = "문서가 이미 존재합니다.")
+                return tool.rt("error.html", error = "문서가 이미 존재합니다."), 409
             acl = tool.check_document_acl(-1, tons, "move", toname)
             if acl[0] == 0:
                 return tool.rt("error.html", error = acl[1]), 403
@@ -931,28 +949,17 @@ def random_document():
         c.execute('SELECT name FROM doc_name LIMIT 1 OFFSET abs(random()) % (SELECT COUNT(*) FROM doc_name);')
         r = c.fetchone()[0]
         return redirect('/w/{0}'.format(r))
-"""@app.route("/upload", methods=['GET','POST'])
-def upload():
-    if request.method == 'POST':
-        c.execute('insert into file (type,data) values(?,?)', (request.files['file'].content_type, request.files['file'].getvalue()))
-        return tool.rt('dialog_redirect.html',message='업로드된 파일은 /file/{0}(으)로 사용할수 있습니다'.format(c.execute("select seq from sqlite_sequence where name='file'").fetchone()[0]))
-    return tool.rt('upload.html')
-@app.route("/file/<int:fid>")
-def file(fid):
+@app.route("/file/<id>")
+def file(id):
+    name = tool.get_doc_name(id)
+    if name is None: abort(404)
+    ns, name = name
+    if ns not in data.file_namespace: abort(404)
+    if tool.check_document_acl(id, ns, "read", name, showmsg=False) == 0: return "", 403
     try:
-        return send_file(BytesIO(c.execute('select data from file where id=?',(fid,)).fetchone()[0]),mimetype=c.execute('select type from file where id=?',(fid,)).fetchone()[0])
-    except:
+        return send_file(os.path.join("file", str(id)), mimetypes.guess_type(name)[0])
+    except FileNotFoundError:
         abort(404)
-@app.route("/admin/extension", methods = ["GET", "POST"])
-def extension_route():
-    if not tool.has_perm("config"):
-        abort(403)
-    if request.method == "POST":
-        c.execute("DELETE from extension")
-        c.executemany("INSERT INTO extension VALUES(?)", ((x,) for x in request.form.keys()))
-        return redirect("/")
-    else:
-        return tool.rt("extension.html", ext = data.extension, ena = [x[0] for x in c.execute("SELECT name FROM extension").fetchall()])"""
 @app.route("/admin/config", methods = ["GET", "POST"])
 def config():
     with g.db.cursor() as c:
@@ -1292,8 +1299,44 @@ def login_history():
 @app.route("/Upload", methods=['GET','POST'])
 def upload():
     if request.method == "POST":
-        print(request.files["file"].filename)
-    return tool.rt("upload.html", title = "파일 올리기", dns = tool.get_namespace_name(data.file_namespace[0]))
+        with g.db.cursor() as c:
+            if "file" not in request.files: abort(400)
+            file = request.files["file"]
+            if file.filename == "": abort(400)
+            if not tool.has_perm("bypass_image_size_limit"):
+                file.seek(0, 2)
+                max_size = int(tool.get_config("max_file_size"))
+                if file.tell() > max_size:
+                    return tool.rt("error.html", error = f"파일 최대 용량({max_size} 바이트)을 초과합니다."), 413
+                file.seek(0)
+            ns, name = tool.split_ns(request.form["name"])
+            if ns not in data.file_namespace:
+                return tool.rt("error.html", error = "invalid_namespace"), 400
+            if tool.get_docid(ns, name) != -1:
+                return tool.rt("error.html", error = "이미 해당 이름의 문서가 존재합니다."), 400
+            acl = tool.check_document_acl(-1, ns, "edit", name)
+            if acl[0] == 0:
+                return tool.rt("error.html", error = acl[1]), 403
+            ext = os.path.splitext(request.form["name"])[1][1:]
+            if ext not in data.allow_file_extension:
+                return tool.rt("error.html", error = f"{ext} 확장자는 허용되지 않습니다."), 400
+            docid = tool.get_docid(ns, name, True)
+            content = f'[include({tool.get_config("image_license")}{request.form["license"]})]\n[[{tool.get_namespace_name(int(tool.get_config("category_namespace")))}:{tool.get_config("file_category")}{request.form["category"]}]]\n{request.form["content"]}'
+            c.execute("UPDATE data SET value = ? WHERE id = ?", (content, docid))
+            tool.record_history(docid, 1, content, None, None, tool.ipuser(), request.form["note"], len(content))
+            file.save(os.path.join("file", str(docid)))
+            return redirect(url_for("doc_read", doc_title = request.form["name"]))
+    temp_docid = tool.get_docid(*tool.split_ns(tool.get_config("image_upload_templete")))
+    if temp_docid == -1: templete = ""
+    else: templete = tool.get_doc_data(temp_docid)
+    if templete is None: templete = ""
+    image_license_ns, image_license = tool.split_ns(tool.get_config("image_license"))
+    file_category = tool.get_config("file_category")
+    with g.db.cursor() as c:
+        return tool.rt("upload.html", title = "파일 올리기", dns = tool.get_namespace_name(data.file_namespace[0]), templete = templete,
+                       def_license = tool.get_config("default_image_license"), def_category = tool.get_config("default_file_category"),
+                   license = (x[0] for x in c.execute("SELECT substr(name, ?) FROM doc_name N JOIN data D ON (N.id = D.id) WHERE namespace = ? AND name LIKE ? AND D.value IS NOT NULL ORDER BY name", (len(image_license) + 1, image_license_ns, image_license + "%")).fetchall()),
+                   category = (x[0] for x in c.execute("SELECT substr(name, ?) FROM doc_name N JOIN data D ON (N.id = D.id) WHERE namespace = ? AND name LIKE ? AND D.value IS NOT NULL ORDER BY name", (len(file_category) + 1, int(tool.get_config("category_namespace")), file_category + "%")).fetchall()))
 @app.route("/admin/config/namespace", methods = ["GET", "POST"])
 def manage_namespace():
     if not tool.has_perm("config"): abort(403)
@@ -1316,6 +1359,15 @@ def delete_namespace():
         c.execute("DELETE FROM namespace WHERE id = ?", (ns,))
         c.execute("DELETE FROM nsacl WHERE ns_id = ?", (ns,))
     return "", 204
+"""@app.route("/admin/config/delete_file")
+def delete_file():
+    if not tool.has_perm("config"): abort(403)"""
+"""@app.route("/admin/grant2", methods = ["GET", "POST"])
+def grant2():
+    if not tool.has_perm("developer"): abort(403)
+    if request.method == "POST":
+        if tool.has_user(request.form["user"])
+    return tool.rt("grant2.html")"""
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request

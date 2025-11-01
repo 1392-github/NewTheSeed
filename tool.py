@@ -514,8 +514,8 @@ def check_document_acl(docid, ns, type, name, user = None, showmsg = True):
         if r[0] == 3:
             r = check_namespace_acl(r[1], type, name, user, docid, showmsg)
             return (r[0], r[1] + (tab if r[2] else "")) if showmsg and r[1] is not None else r
-        if r[0] == 0: return (0, r[2] + (tab if r[3] else "")) if showmsg and r[1] is not None else r
-        return (1, None)
+        if r[0] == 0: return (0, r[2] + (tab if r[3] else "")) if showmsg and r[1] is not None else 0
+        return (1, None) if showmsg else 1
 def nvl(a, b):
     return b if a is None else a
 def get_doc_data(docid):

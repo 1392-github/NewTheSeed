@@ -10,6 +10,7 @@ https://github.com/openNAMU/openNAMU/blob/26bce3cb0073acf3f6d9f54578c99a35867aab
 from typing import Any
 from flask import *
 import tool
+import data as data_module
 import random
 
 import urllib.parse
@@ -1092,10 +1093,12 @@ class class_do_render_namumark:
 
                 link_main = link_data[0]
                 link_main_org = link_main
+                ns, name = tool.split_ns(link_main)
+                docid = tool.get_docid(ns, name)
 
                 # file link
                 # 추가예정
-                """if re.search(r'^(파일|file|외부|out):', link_main, flags = re.I):
+                if ns in data_module.file_namespace:
                     file_width = ''
                     file_height = ''
                     file_align = ''
@@ -1136,9 +1139,9 @@ class class_do_render_namumark:
                     link_sub = link_main
                     file_out = 0
 
-                    link_out_regex = re.compile('^(외부|out):', re.I)
                     link_in_regex = re.compile('^(파일|file):', re.I)
-                    if re.search(link_out_regex, link_main):
+                    # NTS에는 외부 파일 기능이 없다
+                    """if re.search(link_out_regex, link_main):
                         link_main = re.sub(link_out_regex, '', link_main)
 
                         link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
@@ -1147,40 +1150,39 @@ class class_do_render_namumark:
                         
                         link_exist = ''
                         file_out = 1
+                    else:"""
+                    """link_main = re.sub(link_in_regex, '', link_main)
+
+                    link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
+                    link_main = html.unescape(link_main)"""
+
+                    if not ('file:' + link_main) in self.data_backlink:
+                        self.data_backlink['file:' + link_main] = {}
+
+                    if docid == -1:
+                        link_exist = 'opennamu_not_exist_link'
+                        self.data_backlink['file:' + link_main]['no'] = ''
                     else:
-                        link_main = re.sub(link_in_regex, '', link_main)
+                        link_exist = ''
 
-                        link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
-                        link_main = html.unescape(link_main)
+                    """self.curs.execute('select id from history where title = ? order by date desc limit 1', ['file:' + link_main])
+                    db_data = self.curs.fetchall()
+                    rev = db_data[0][0] if db_data else '1' """
 
-                        if not ('file:' + link_main) in self.data_backlink:
-                            self.data_backlink['file:' + link_main] = {}
+                    self.data_backlink['file:' + link_main]['file'] = ''
 
-                        self.curs.execute("select title from data where title = ?", ['file:' + link_main])
-                        db_data = self.curs.fetchall()
-                        if db_data:
-                            link_exist = ''
-                        else:
-                            link_exist = 'opennamu_not_exist_link'
-                            self.data_backlink['file:' + link_main]['no'] = ''
+                    """link_extension_regex = r'\.([^.]+)$'
+                    link_extension = re.search(link_extension_regex, link_main)
+                    if link_extension:
+                        link_extension = link_extension.group(1)
+                    else:
+                        link_extension = 'jpg'
 
-                        self.curs.execute('select id from history where title = ? order by date desc limit 1', ['file:' + link_main])
-                        db_data = self.curs.fetchall()
-                        rev = db_data[0][0] if db_data else '1' 
+                    link_main = re.sub(link_extension_regex, '', link_main)"""
+                    link_main_org = link_main
 
-                        self.data_backlink['file:' + link_main]['file'] = ''
-
-                        link_extension_regex = r'\.([^.]+)$'
-                        link_extension = re.search(link_extension_regex, link_main)
-                        if link_extension:
-                            link_extension = link_extension.group(1)
-                        else:
-                            link_extension = 'jpg'
-
-                        link_main = re.sub(link_extension_regex, '', link_main)
-                        link_main_org = link_main
-
-                        link_main = '/image/' + url_pas(sha224_replace(link_main)) + '.' + link_extension + '.cache_v' + rev
+                    #link_main = '/image/' + url_pas(sha224_replace(link_main)) + '.' + link_extension + '.cache_v' + rev
+                    link_main = url_for("file", id = docid)
 
                     if file_width != '':
                         file_width = 'width:' + self.get_tool_css_safe(file_width) + ';'
@@ -1226,10 +1228,7 @@ class class_do_render_namumark:
                             file_pass = 1
 
                         if file_pass == 1:
-                            if file_out == 0:
-                                file_link = '/w/file:' + url_pas(link_main_org) + '.' + url_pas(link_extension)
-                            else:
-                                file_link = link_main
+                            file_link = url_for("doc_read", doc_title = link_main_org)
 
                             if image_set == 'new_click':
                                 data_name = self.get_tool_data_storage('<a title="' + link_sub + '" id="opennamu_image_' + str(image_count) + '_link" href="javascript:void(0);">' + file_end, '</a>', link_data_full)
@@ -1247,7 +1246,7 @@ class class_do_render_namumark:
                         else:
                             data_name = self.get_tool_data_storage('', '', link_data_full)
                         
-                        self.render_data = re.sub(link_regex, '<' + data_name + '></' + data_name + '>' + link_data[2], self.render_data, 1)"""
+                        self.render_data = re.sub(link_regex, '<' + data_name + '></' + data_name + '>' + link_data[2], self.render_data, 1)
                 # category
                 # 추가 예정
                 """elif re.search(r'^(분류|category):', link_main, flags = re.I):

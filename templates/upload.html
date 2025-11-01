@@ -14,14 +14,24 @@
     파일 이름
     <input name="name" class="fullwidth">
 </label><br><br>
-<textarea style="width: 100%; height: 30rem;"></textarea>
+<textarea style="width: 100%; height: 30rem;" name="content">{{ templete }}</textarea>
 <label>
     라이선스
     <select name="license" class="fullwidth">
-        <option>제한적 이용</option>
+        {% for i in license %}
+        <option{% if i == def_license %} selected{% endif %}>{{ i }}</option>
+        {% endfor %}
     </select>
 </label>
 <b>실제 파일과 일치하는 라이선스를 선택해야 합니다. 라이선스가 확인된 이미지를 업로드하실 경우 출처를 적으셔야 합니다.</b><br>
+<label>
+    분류
+    <select name="category" class="fullwidth">
+        {% for i in category %}
+        <option{% if i == def_category %} selected{% endif %}>{{ i }}</option>
+        {% endfor %}
+    </select>
+</label><br>
 <label>
     요약
     <input name="note" class="fullwidth">
@@ -42,5 +52,18 @@
             upload.name.value = "{{ dns }}:" + name.slice(0, dot) + name.slice(dot).toLowerCase();
         }
     });
+    /* upload.file.addEventListener("change", function (e) {
+        var name = upload.file.files[0].name
+        var dot = name.lastIndexOf(".");
+        if (dot == -1) {
+            alert("확장자가 없는 파일은 허용되지 않습니다.");
+            e.preventDefault();
+        }
+        else {
+            var ext = name.slice(dot + 1).toLowerCase();
+            if 
+            upload.name.value = "{{ dns }}:" + name.slice(0, dot + 1) + ext;
+        }
+    }); */
 </script>
 {% endblock %}

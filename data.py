@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 33
+version = 34
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -60,7 +60,11 @@ default_config = {
     "accept_ch": "Sec-CH-UA, Sec-CH-UA-Platform, Sec-CH-UA-Full-Version",
     "accept_ch_lifetime": "604800",
     "max_file_size": "20000000",
-    "image_upload_templete": "템플릿:이미지 업로드"
+    "image_license": "틀:이미지 라이선스/",
+    "default_image_license": "제한적 이용",
+    "image_upload_templete": "템플릿:이미지 업로드",
+    "file_category": "파일/",
+    "default_file_category": "미분류"
 }
 grantable = None
 captcha_bypass_cnt = {}
@@ -119,5 +123,5 @@ special_function = [
     SpecialFunction("[관리] 시스템 관리", "sysman", "sysman"),
 ]
 allow_recentthread_type = {"normal_thread", "old_thread", "pause_thread", "closed_thread"}
-allow_file_extension = {"jpg", "png", "gif", "webp", "bmp", "svg", "ico"}
+allow_file_extension = {"jpg", "png", "gif", "webp", "bmp", "svg", "webp", "ico"}
 file_namespace = [3]

@@ -53,12 +53,6 @@ CREATE TABLE IF NOT EXISTS "api_key_perm" (
 	"value"	INTEGER,
 	PRIMARY KEY("user","name")
 );
-CREATE TABLE IF NOT EXISTS "file" (
-	"id"	INTEGER,
-	"type"	TEXT,
-	"data"	BLOB,
-	PRIMARY KEY("id" AUTOINCREMENT)
-);
 CREATE TABLE IF NOT EXISTS "namespace" (
 	"id"	INTEGER,
 	"name"	TEXT,
@@ -142,7 +136,8 @@ CREATE TABLE IF NOT EXISTS "thread_comment" (
 	"text2"	TEXT,
 	"author"	INTEGER NOT NULL,
 	"time"	INTEGER NOT NULL,
-	"blind"	INTEGER NOT NULL DEFAULT -1
+	"blind"	INTEGER NOT NULL DEFAULT -1,
+	"admin"	INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS "login_history" (
 	"user"	INTEGER NOT NULL,
