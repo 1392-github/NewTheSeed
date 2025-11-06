@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 34
+version = 35
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -34,7 +34,7 @@ default_config = {
     "aclgroup_note_required": "0",
     "grantable_permission": "grant,delete_thread,admin,aclgroup,update_thread_document,update_thread_status,update_thread_topic,nsacl,weak_hide_thread_comment,hide_thread_comment,pin_thread_comment,bypass_thread_status,no_force_captcha,login_history,api_access,hide_document_history_log,hide_revision,batch_revert,mark_troll_revision,disable_two_factor_login,member_info,bypass_resizing,bypass_image_size_limit",
     "ext_note": "0",
-    "ingore_developer_perm": "disable_two_factor_login,hideip",
+    "ignore_developer_perm": "disable_two_factor_login,hideip",
     "captcha_mode": "0",
     "captcha_sitekey": "Put your reCAPTCHA site key",
     "captcha_secretkey": "Put your reCAPTCHA secret key",

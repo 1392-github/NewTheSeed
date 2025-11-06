@@ -1,0 +1,42 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+전체 {{contribution|length}}회
+<table class="fullwidth">
+    <colgroup>
+        <col>
+        <col style="width: 12rem;">
+    </colgroup>
+    <thead>
+        <tr>
+            <th>문서</th>
+            <th>수정 시간</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i in contribution %}
+        <tr>
+            <td>
+                <a href="{{ url_for('doc_read', doc_title = i[0]) }}">{{ i[0] }}</a>
+                <a href="{{ url_for('doc_read', doc_title = i[0], rev = i[1]) }}">(r{{i[1]}})</a>
+                <span style="margin-left: .35rem;" class="history-{% if i[4] > 0 %}plus{% elif i[4] < 0 %}minus{% else %}zero{% endif %}">{% if i[4] > 0%}+{% endif %}{{ i[4] }}</span>
+            </td>
+            <td>{{i[3]}} 전</td>
+        </tr>
+        {% if i[2] is not none %}
+        <tr>
+            <td colspan="2">{{ i[2]|safe }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<table>
+    <colgroup>
+        <col>
+        <col style="width: 13rem;">
+    </colgroup>
+    <thead>
+        <tr>
+            <th>제목</th>
+            <th>시간</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i in discuss %}
+        <tr>
+            <td>
+                <a href="{{ url_for()}}"></a>
+            </td>
+            <td></td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

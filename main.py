@@ -254,6 +254,8 @@ with app.app_context():
         if db_version < 34:
             # file 테이블 삭제
             c.execute("DROP TABLE file")
+        """if db_version < 35:
+            UPDATE config SET name = 'ignore_developer_perm' WHERE name = 'ingore_developer_perm'"""
         c.execute('''update config
         set value = ?
         where name = "version"''', (str(data.version),)) # 변환 후 버전 재설정
@@ -412,7 +414,9 @@ def doc_read(doc_title):
                 return redirect(url_for("doc_read", doc_title = re.group(1), **{"from": doc_title}))
         d = render_set(g.db, doc_title, d)
         if "/" not in name and ns == int(tool.get_config("user_namespace")):
-            admin_userdoc = tool.has_perm("admin", tool.user_name_to_id(name))
+            user = tool.user_name_to_id(name)
+            admin_userdoc = tool.has_perm("admin", user)
+            menu.append(tool.Menu("기여 목록", url_for("document_contribution", user = user)))
         else:
             admin_userdoc = False
         return tool.rt("document_read.html", admin_userdoc = admin_userdoc, title=tool.render_docname(ns, name), raw_doc_title=doc_title,
@@ -1293,7 +1297,7 @@ def login_history():
             user = request.args["user"]
             id = tool.user_name_to_id(user)
             c.execute("INSERT INTO block_log (type, operator, target, date, note) VALUES(4,?,?,?,?)", (tool.ipuser(), id, tool.get_utime(), request.args["note"] if tool.get_config("ext_note") == "1" else ""))
-            return tool.rt("login_history_1.html", title = f"{user} 로그인 내역", lh = c.execute("SELECT date, ip, ua, uach FROM login_history WHERE user = ?", (id,)).fetchall())
+            return tool.rt("login_history_1.html", title = f"{user} 로그인 내역", lh = c.execute("SELECT date, ip, ua, uach FROM login_history WHERE user = ? ORDER BY date DESC", (id,)).fetchall())
         else:
             return tool.rt("login_history.html", title = "로그인 내역", ext_note = tool.get_config("ext_note") == "1")
 @app.route("/Upload", methods=['GET','POST'])
@@ -1368,6 +1372,38 @@ def grant2():
     if request.method == "POST":
         if tool.has_user(request.form["user"])
     return tool.rt("grant2.html")"""
+@app.route("/aclgroup/manage", methods = ["GET", "POST"])
+def manage_aclgroup():
+    if not tool.has_perm("aclgroup"): abort(403)
+    return tool.rt("manage_aclgroup.html", title = "ACLGroup 설정", group = "111")
+@app.route("/contribution/<int:user>/document")
+def document_contribution(user):
+    type = request.args.get("logtype", -1, int)
+    with g.db.cursor() as c:
+        if c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ?)", (user,)).fetchone()[0] == 0:
+            abort(404)
+        return tool.rt("document_contribution.html", title = f'"{tool.id_to_user_name(user)}" 기여 목록', contribution = [(tool.get_doc_full_name(x[0]), x[1], None if x[2] == 0 and x[6] == "" else f"{x[6]} <i>{escape(history_msg(x[2], x[4], x[5]))}</i>", tool.time_to_str(x[7]), x[8]) for x in
+                c.execute(f"SELECT doc_id, rev, type, content, content2, content3, edit_comment, ? - datetime, length FROM history WHERE author = ?{'' if type == -1 else ' AND type = ?'} ORDER BY datetime DESC", (tool.get_utime(), user) if type == -1 else (tool.get_utime(), user, type)).fetchall()], menu2 = [[
+                    tool.Menu("문서", url_for("document_contribution", user = user), "menu2-selected"),
+                    #tool.Menu("토론", url_for("discuss_contribution", user = user))
+                ],
+                [
+                    tool.Menu("전체", url_for("document_contribution", user = user), "menu2-selected" if type == -1 else ""),
+                    tool.Menu("일반", url_for("document_contribution", user = user, logtype = 0), "menu2-selected" if type == 0 else ""),
+                    tool.Menu("새 문서", url_for("document_contribution", user = user, logtype = 1), "menu2-selected" if type == 1 else ""),
+                    tool.Menu("삭제", url_for("document_contribution", user = user, logtype = 2), "menu2-selected" if type == 2 else ""),
+                    tool.Menu("이동", url_for("document_contribution", user = user, logtype = 3), "menu2-selected" if type == 3 else ""),
+                    tool.Menu("되돌림", url_for("document_contribution", user = user, logtype = 5), "menu2-selected" if type == 5 else ""),
+                    tool.Menu("ACL", url_for("document_contribution", user = user, logtype = 4), "menu2-selected" if type == 4 else ""),
+                ]])
+@app.route("/contribution/<int:user>/discuss")
+def discuss_contribution(user): return "아 아직 안 만듬", 404
+@app.route("/contribution/ip/<ip>")
+def ip_contribution(ip):
+    with g.db.cursor() as c:
+        user = c.execute("SELECT id FROM user WHERE name = ? AND isip = 1", (ip,)).fetchone()
+        if user is None: abort(404)
+        return redirect(url_for("document_contribution", user = user[0]))
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request

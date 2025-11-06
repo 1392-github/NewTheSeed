@@ -262,7 +262,7 @@ def has_perm(perm, user = None, basedoc = None, docname = None):
             return False
         if perm == "sysman" and os.getenv("DISABLE_SYSMAN") == "1":
             return False
-        if perm != "developer" and has_perm("developer", user) and perm not in get_config("ingore_developer_perm").split(","):
+        if perm != "developer" and has_perm("developer", user) and perm not in get_config("ignore_developer_perm").split(","):
             return True
         return c.execute("SELECT EXISTS (SELECT 1 FROM perm WHERE user = ? AND perm = ?)", (user, perm)).fetchone()[0] == 1
 def captcha(action):
@@ -459,7 +459,7 @@ def check_acl(acl, type = None, user = None, basedoc = None, docname = None):
                 return r, i[5] if r == 3 else 0
             else:
                 if r == 0:
-                    return 0, 0, f'{escape(cond_repr(i[0], i[1], i[2], i[3], True, c[1]))} 때문에 {type} 권한이 부족합니다.', True
+                    return 0, 0, f'{escape(cond_repr(i[0], i[1], i[2], i[3], True, c[1]))} 때문에 {type} 권한이 부족합니다. {acltab}'
                 else:
                     return r, i[5] if r == 3 else 0, None, False
     if type is None:
@@ -470,12 +470,12 @@ def check_acl(acl, type = None, user = None, basedoc = None, docname = None):
             if i[4] != "deny":
                 allow.append(i)
         if len(allow) == 0:
-            return 0, 0, f'ACL에 허용 규칙이 없기 때문에 {type} 권한이 부족합니다.', True
+            return 0, 0, f'ACL에 허용 규칙이 없기 때문에 {type} 권한이 부족합니다. {acltab}'
         else:
             r = []
             for i in allow:
                 r.append(cond_repr(i[0], i[1], i[2], i[3], False, 0))
-            return 0, 0, f'{type} 권한이 부족합니다. {escape(" OR ".join(r))}(이)여야 합니다.', True
+            return 0, 0, f'{type} 권한이 부족합니다. {escape(" OR ".join(r))}(이)여야 합니다. {acltab}'
 def check_namespace_acl(nsid, type, name, user = None, basedoc = None, showmsg = True, gotootherns_already = None):
     delete_expired_acl()
     if gotootherns_already is None: gotootherns_already = set()
@@ -486,11 +486,11 @@ def check_namespace_acl(nsid, type, name, user = None, basedoc = None, showmsg =
         ns = acl[1]
         if r == 3:
             if ns in gotootherns_already:
-                return (0, "다른 이름공간 ACL실행이 이중으로 사용되었습니다.", False) if showmsg else 0
+                return (0, "다른 이름공간 ACL실행이 이중으로 사용되었습니다.") if showmsg else 0
             gotootherns_already.add(ns)
             return check_namespace_acl(ns, type, name, user, basedoc, showmsg, gotootherns_already)
         else:
-            return (r, acl[2], acl[3]) if showmsg else r
+            return (r, acl[2]) if showmsg else r
 def check_document_acl(docid, ns, type, name, user = None, showmsg = True):
     with g.db.cursor() as c:
         delete_expired_acl()
@@ -513,8 +513,8 @@ def check_document_acl(docid, ns, type, name, user = None, showmsg = True):
         if r[0] == 2: return cns()
         if r[0] == 3:
             r = check_namespace_acl(r[1], type, name, user, docid, showmsg)
-            return (r[0], r[1] + (tab if r[2] else "")) if showmsg and r[1] is not None else r
-        if r[0] == 0: return (0, r[2] + (tab if r[3] else "")) if showmsg and r[1] is not None else 0
+            return (r[0], r[1].format(tab = tab)) if showmsg and r[1] is not None else r
+        if r[0] == 0: return (0, r[2].format(tab = tab)) if showmsg and r[1] is not None else 0
         return (1, None) if showmsg else 1
 def nvl(a, b):
     return b if a is None else a
