@@ -95,7 +95,7 @@
             {% if not nsacl %}<option value="gotons" selected>이름공간ACL 실행</option>{% endif %}
             <option value="gotootherns">다른 이름공간ACL 실행</option>
         </select>
-        <input type="text" name="ns" hidden>
+        <input type="text" name="ns" value="{{dns}}" hidden>
     </div>
     <div>
         <div>Duration</div>

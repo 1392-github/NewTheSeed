@@ -592,13 +592,6 @@ def signup_form():
         c.execute('''insert into user (name, password, isip)
     values (?,?,0)''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest()))
         u = c.lastrowid
-        c.execute('''insert into api_key_perm
-    select ?, name, case value
-        when 0 then 1
-        when 1 then 1
-        when 2 then 0
-        end
-    from api_policy''', (u,))
         docid = tool.get_docid(int(tool.get_config("user_namespace")), request.form["id"], True)
         c.execute("UPDATE data SET value = '' WHERE id = ?", (docid,))
         tool.record_history(docid, 1, "", None, None, u, "", 0)
@@ -883,9 +876,9 @@ def acl(doc_name):
         acls = []
         for i in data.acl_type_key if nsacl or tool.get_config("document_read_acl") == "1" else data.acl_type_key2:
             acls.append(tool.Menu(data.acl_type[i], url_for("acl", doc_name = doc_name, type1 = type1, type2 = i), "menu2-selected" if i == type2 else ""))
-        return tool.rt("acl.html", title=tool.render_docname(ns, name), raw_doc_name = doc_name, subtitle="ACL", type=data.acl_type[type2], type2 = type2,
+        return tool.rt("acl.html", title=tool.render_docname(ns, name), raw_doc_name = doc_name, subtitle="ACL", type=data.acl_type[type2], type2 = type2, dns = tool.get_namespace_name(int(tool.get_config("default_namespace"))),
                 hasperm = tool.has_perm("nsacl") if nsacl else tool.has_perm("nsacl") or tool.check_document_acl(docid, ns, "acl", name, showmsg = False) == 1, perms = data.perm_type,
-                acl = tool.render_acl(c.execute(f"""SELECT idx, condtype, value, value2, no, action, expire, otherns FROM {acl_t} WHERE {id_col} = ? AND acltype = ? ORDER BY idx""", (id, type2)).fetchall()),
+                acl = tool.render_acl(c.execute(f"""SELECT idx, condtype, value, value2, no, action, expire, otherns FROM {acl_t} WHERE {id_col} = ? AND acltype = ? ORDER BY idx""", (id, type2)).fetchall(), type2),
                 nsacl = nsacl, menu2 = (
             [
                 tool.Menu("문서 ACL", url_for("acl", doc_name = doc_name, type1 = "document"), "menu2-selected" if not nsacl else ""),
@@ -953,12 +946,13 @@ def random_document():
         c.execute('SELECT name FROM doc_name LIMIT 1 OFFSET abs(random()) % (SELECT COUNT(*) FROM doc_name);')
         r = c.fetchone()[0]
         return redirect('/w/{0}'.format(r))
-@app.route("/file/<id>")
+@app.route("/file/<int:id>")
 def file(id):
     name = tool.get_doc_name(id)
     if name is None: abort(404)
     ns, name = name
     if ns not in data.file_namespace: abort(404)
+    print(tool.check_document_acl(id, ns, "read", name, showmsg=False))
     if tool.check_document_acl(id, ns, "read", name, showmsg=False) == 0: return "", 403
     try:
         return send_file(os.path.join("file", str(id)), mimetypes.guess_type(name)[0])
