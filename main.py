@@ -1095,7 +1095,7 @@ def grant():
                 if not tool.has_user(user):
                     return tool.rt("grant.html", title="권한 부여", user = user, error = 1)
                 else:
-                    return tool.rt("grant.html", title="권한 부여", user = user, grantable = data.grantable, vailduser = True, ext_note = tool.get_config("ext_note") == "1",
+                    return tool.rt("grant.html", title="권한 부여", user = user, grantable = data.grantable, validuser = True, ext_note = tool.get_config("ext_note") == "1",
                             perm = set(x[0] for x in c.execute(f"SELECT perm FROM perm WHERE user = ? AND perm IN ({','.join('?' * len(data.grantable))})", [tool.user_name_to_id(user)] + data.grantable).fetchall()))
 @app.route("/admin/captcha_test", methods = ["GET", "POST"])
 def captcha_test():
@@ -1398,6 +1398,12 @@ def ip_contribution(ip):
         user = c.execute("SELECT id FROM user WHERE name = ? AND isip = 1", (ip,)).fetchone()
         if user is None: abort(404)
         return redirect(url_for("document_contribution", user = user[0]))
+@app.route("/google<code>.html")
+def google_site_verification(code):
+    valid = tool.get_config("google_site_verification")
+    if valid == "": abort(404)
+    if code != valid: abort(404)
+    return f"google-site-verification: google{code}.html"
 if __name__ == "__main__":
     if DEBUG:
         @app.before_request

@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 36
+version = 37
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -64,7 +64,8 @@ default_config = {
     "default_image_license": "제한적 이용",
     "image_upload_templete": "템플릿:이미지 업로드",
     "file_category": "파일/",
-    "default_file_category": "미분류"
+    "default_file_category": "미분류",
+    "google_site_verification": ""
 }
 grantable = None
 captcha_bypass_cnt = {}
