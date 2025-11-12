@@ -17,11 +17,6 @@ import data
 import tool
 from render import render_set
 
-# Development Server Config
-HOST = "0.0.0.0"
-PORT = 3000
-DEBUG = True
-
 if sys.version_info < (3, 9):
     if input("경고! NewTheSeed는 Python 3.9 미만의 Python 버전은 지원하지 않으며, 이로 인해 발생하는 버그(보안취약점 포함)는 수정되지 않습니다. 계속하려면 y를 입력해주세요. -> ") != "y":
         sys.exit()
@@ -470,7 +465,7 @@ def doc_edit_form():
         value = request.form["value"]
         ns, name = tool.split_ns(doc_name)
         docid = tool.get_docid(ns, name)
-        if tool.check_document_acl(docid, ns, "edit", name)[0] == 0:
+        if tool.check_document_acl(docid, ns, "edit", name, showmsg=False) == 0:
             abort(403)
         if docid == -1:
             if ns in data.file_namespace or ("/" not in name and ns == int(tool.get_config("user_namespace"))):
@@ -1405,8 +1400,9 @@ def google_site_verification(code):
     if code != valid: abort(404)
     return f"google-site-verification: google{code}.html"
 if __name__ == "__main__":
+    DEBUG = os.getenv("DEBUG") == 1
     if DEBUG:
         @app.before_request
         def clear_template_cache():
             app.jinja_env.cache.clear()
-    app.run(debug=DEBUG, host=HOST, port=PORT)
+    app.run(debug=os.getenv("DEBUG"), host=os.getenv("HOST"), port=os.getenv("PORT"))

@@ -492,13 +492,13 @@ def check_namespace_acl(nsid, type, name, user = None, basedoc = None, showmsg =
 def check_document_acl(docid, ns, type, name, user = None, showmsg = True):
     with g.db.cursor() as c:
         delete_expired_acl()
-        if type != "read" and type != "edit" and type != "acl":
+        if type != "read" and type != "acl":
             r = check_document_acl(docid, ns, "read", name, user, showmsg)
-            if r[0] if showmsg else r == 0:
+            if (r[0] if showmsg else r) == 0:
                 return r
         if type == "move" or type == "delete":
             r = check_document_acl(docid, ns, "edit", name, user, showmsg)
-            if r[0] if showmsg else r == 0:
+            if (r[0] if showmsg else r) == 0:
                 return r
         tab = f' 해당 문서의 <a href="{url_for("acl", type1 = "document", type2 = "edit", doc_name = cat_namespace(ns, name))}">ACL 탭</a>을 확인하시기 바랍니다.'
         def cns():
