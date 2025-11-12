@@ -5,22 +5,8 @@
 {% endblock %}
 
 {% block content %}
-{% if dirty %}
-<div class="error"><strong>[경고!]</strong> 로컬 수정이 감지되었습니다. 업데이트 중 충돌이 발생할 수 있습니다.</div>
-{% endif %}
-현재 버전 : {{ current }}<br>
-{% for i in latest %}
-최신 버전 ({{ i }}) : {{ latest[i] }}<br>
-{% endfor %}
+현재 버전 : {{ current }}
 <form method="post">
-    <label>
-        업데이트 방식 :
-        <select name="method">
-            <option value="branch">특정 브랜치의 최신 버전으로 업데이트</option>
-            <option value="tag" disabled>특정 태그로 업데이트(미완성)</option>
-            <option value="commit" disabled>특정 커밋으로 업데이트(미완성)</option>
-        </select>
-    </label><br>
     <label>
         브랜치 :
         <select name="branch">

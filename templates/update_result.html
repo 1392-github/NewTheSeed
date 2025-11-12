@@ -1,0 +1,16 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<pre>{{ result }}</pre>
+<form action="{{ url_for('restart') }}" method="post">
+    <input type="submit" value="재시작" class="ok">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

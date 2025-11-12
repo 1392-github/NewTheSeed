@@ -128,6 +128,8 @@ def rt(t, **kwargs):
     for i in data.special_function:
         if not has_perm(i.perm):
             continue
+        if (i.url == "sqldump" or i.url == "sqlshell") and os.getenv("DISABLE_SQLSHELL") == "1": continue
+        if i.url == "sysman" and os.getenv("DISABLE_SYSMAN") == "1": continue
         if i.urlfor:
             func.append((i.name, url_for(i.url)))
         else:

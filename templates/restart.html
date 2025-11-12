@@ -5,7 +5,13 @@
 {% endblock %}
 
 {% block content %}
-업데이트가 완료되었습니다. 엔진을 재시작 해주시기 바랍니다.
+<form method="post">
+    {% if paw %}
+    <input type="submit" value="재시작" class="ok">
+    {% else %}
+    재시작 기능은 pythonanywhere에서만 사용 가능합니다. 이외 환경에서는 서버에서 수동으로 재시작해 주세요.
+    {% endif %}
+</form>
 {% endblock %}
 
 {% block js %}

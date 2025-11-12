@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 38
+version = 39
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -65,7 +65,11 @@ default_config = {
     "image_upload_templete": "템플릿:이미지 업로드",
     "file_category": "파일/",
     "default_file_category": "미분류",
-    "google_site_verification": ""
+    "google_site_verification": "",
+    "pythonanywhere": "0",
+    "pythonanywhere_eu": "0",
+    "pythonanywhere_user": "Your pythonanywhere user name",
+    "pythonanywhere_domain": "Your pythonanywhere domain name"
 }
 grantable = None
 captcha_bypass_cnt = {}
@@ -119,9 +123,9 @@ special_function = [
     SpecialFunction("[관리] ACLGroup", "aclgroup", "admin"),
     SpecialFunction("[관리] 로그인 내역 조회", "login_history", "login_history"),
     SpecialFunction("[관리] Config", "config", "config"),
-    SpecialFunction("[관리] SQL 덤프", "sqldump", "database"),
-    SpecialFunction("[관리] SQL 셀", "sqlshell", "database"),
-    SpecialFunction("[관리] 시스템 관리", "sysman", "sysman"),
+    SpecialFunction("[관리] SQL 덤프", "sqldump", "developer"),
+    SpecialFunction("[관리] SQL 셀", "sqlshell", "developer"),
+    SpecialFunction("[관리] 시스템 관리", "sysman", "developer"),
 ]
 allow_recentthread_type = {"normal_thread", "old_thread", "pause_thread", "closed_thread"}
 allow_file_extension = {"jpg", "png", "gif", "webp", "bmp", "svg", "webp", "ico"}

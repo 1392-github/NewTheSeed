@@ -6,12 +6,14 @@ import datetime
 import types
 import os
 import shutil
+import subprocess
 
 from flask import Flask, request, redirect, session, send_file, abort, Response, url_for, g
 from jinja2 import ChoiceLoader, FileSystemLoader
 from git import Repo
 from markupsafe import escape, Markup
 import dotenv
+import requests
 
 import data
 import tool
@@ -249,8 +251,10 @@ with app.app_context():
         if db_version < 34:
             # file 테이블 삭제
             c.execute("DROP TABLE file")
-        """if db_version < 35:
-            UPDATE config SET name = 'ignore_developer_perm' WHERE name = 'ingore_developer_perm'"""
+        if db_version < 35:
+            c.execute("UPDATE config SET name = 'ignore_developer_perm' WHERE name = 'ingore_developer_perm'")
+        if db_version < 39:
+            c.execute("DELETE FROM perm WHERE perm in ('database', 'sysman')")
         c.execute('''update config
         set value = ?
         where name = "version"''', (str(data.version),)) # 변환 후 버전 재설정
@@ -653,16 +657,20 @@ def history(doc_name):
         return tool.rt("history.html", history=history, title=tool.render_docname(ns, name), subtitle="역사", raw_doc_name=doc_name)
 @app.route("/sql")
 def sqldump():
-    if not tool.has_perm("database"):
+    if not tool.has_perm("developer"):
         abort(403)
+    if os.getenv("DISABLE_SQLSHELL") == "1":
+        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
     with open("dump.sql", "w", encoding='utf-8') as f:
         for l in g.db.iterdump():
             f.write("%s\n" % l)
     return send_file("dump.sql", as_attachment=True)
 @app.route("/sql_shell", methods=['GET', 'POST'])
 def sqlshell():
-    if not tool.has_perm("database"):
+    if not tool.has_perm("developer"):
         abort(403)
+    if os.getenv("DISABLE_SQLSHELL") == "1":
+        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
     if request.method == "GET":
         return tool.rt("sql_shell.html", title = "SQL Shell", prev_sql = "", result = "")
     else:
@@ -1099,11 +1107,6 @@ def captcha_test():
     if request.method == "POST":
         return tool.rt("captcha_test.html", title = "CAPTCHA 테스트", result = int(tool.captcha("test")))
     return tool.rt("captcha_test.html", title = "CAPTCHA 테스트", req_captcha = tool.is_required_captcha("test"), result = -1)
-@app.route("/admin/sysman")
-def sysman():
-    if not tool.has_perm("sysman"):
-        abort(403)
-    return tool.rt("sysman.html", title="시스템 관리")
 @app.route("/Go")
 def go():
     return redirect(url_for("doc_read", doc_title = request.args["q"]))
@@ -1206,40 +1209,56 @@ def topic_redirect(slug):
 @app.route("/robots.txt")
 def robots():
     return send_file("robots.txt")
+@app.route("/admin/sysman")
+def sysman():
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+    return tool.rt("sysman.html", title="시스템 관리", nokey = tool.get_config("pythonanywhere") == "1" and not os.getenv("API_TOKEN"))
 @app.route("/admin/sysman/update", methods = ["GET", "POST"])
 def update():
-    if not tool.has_perm("sysman"):
+    if not tool.has_perm("developer"):
         abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
     if request.method == "POST":
-        if repo.is_dirty(untracked_files=True):
-            repo.index.add(".")
-            repo.index.commit(tool.get_config("update_local_change_commit"))
-        try:
-            repo.remotes.origin.pull(request.form["branch"])
-        except Exception as e:
-            print(e)
-        os.system("pip install -r requirements.txt")
-        if repo.index.unmerged_blobs():
-            return tool.rt("update_conflict.html", title="업데이트")
-        return redirect(url_for("restart"))
+        p = subprocess.Popen(["pip", "install", "-r", "requirements.txt"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        r1 = p.communicate()[0]
+        p = subprocess.Popen(["git", "pull", "origin", "main"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        return tool.rt("update_result.html", title = "업데이트 결과", result = r1.decode("utf-8") + "\n" + p.communicate()[0].decode("utf-8"))
     if repo is None:
         return tool.rt("error.html", error = "엔진이 git 저장소로 다운로드 되지 않았기 때문에 업데이트 기능을 사용할 수 없습니다.")
     else:
-        repo.remotes.origin.fetch(tags = True)
-        branch = [r.name[7:] for r in repo.remotes.origin.refs]
-        latest = {}
-        for i in branch:
-            latest[i] = repo.git.describe(repo.remotes.origin.refs[i].commit.hexsha, tags = True)
-        return tool.rt("update.html", dirty = repo.is_dirty(untracked_files=True), title = "업데이트", current = repo.git.describe(tags = True), latest = latest, branch = branch)
-@app.route("/admin/sysman/update/cancel")
-def update_cancel():
-    if not tool.has_perm("sysman"):
-        abort(403)
-    repo.git.merge("--abort")
-    return url_for("sysman")
-@app.route("/admin/sysman/restart")
+        return tool.rt("update.html", title = "업데이트", branch = (r.name[7:] for r in repo.remotes.origin.refs), current = data.version)
+@app.route("/admin/sysman/restart", methods = ["GET", "POST"])
 def restart():
-    return tool.rt("restart.html", title = "재시작")
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+    if request.method == "POST":
+        if tool.get_config("pythonanywhere") == "1":
+            requests.post(f"https://{'eu' if tool.get_config('pythonanywhere_eu') == '1' else 'www'}.pythonanywhere.com/api/v0/user/{tool.get_config('pythonanywhere_user')}/webapps/{tool.get_config('pythonanywhere_domain')}/reload/",
+                          headers={"Authorization": "Token " + os.getenv("API_TOKEN")})
+            return redirect("/")
+        else:
+            return tool.rt("error.html", error = "재시작 기능은 pythonanywhere에서만 사용 가능합니다."), 501
+    return tool.rt("restart.html", title = "재시작", paw = tool.get_config("pythonanywhere") == "1")
+@app.route("/admin/sysman/shutdown", methods = ["GET", "POST"])
+def shutdown():
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+    if request.method == "POST":
+        if tool.get_config("pythonanywhere") == "1":
+            requests.post(f"https://{'eu' if tool.get_config('pythonanywhere_eu') == '1' else 'www'}.pythonanywhere.com/api/v0/user/{tool.get_config('pythonanywhere_user')}/webapps/{tool.get_config('pythonanywhere_domain')}/disable/",
+                          headers={"Authorization": "Token " + os.getenv("API_TOKEN")})
+            return redirect("/")
+        else:
+            os._exit(0)
+    return tool.rt("shutdown.html", title = "종료")
 @app.route("/RecentChanges")
 def recent_changes():
     type = request.args.get("type", -1, type=int)
@@ -1405,4 +1424,4 @@ if __name__ == "__main__":
         @app.before_request
         def clear_template_cache():
             app.jinja_env.cache.clear()
-    app.run(debug=os.getenv("DEBUG"), host=os.getenv("HOST"), port=os.getenv("PORT"))
+    app.run(debug=os.getenv("DEBUG")=="1", host=os.getenv("HOST"), port=int(os.getenv("PORT")))

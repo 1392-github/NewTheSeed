@@ -5,9 +5,16 @@
 {% endblock %}
 
 {% block content %}
-이 기능은 개발 중입니다!
+{% if nokey %}
+<div class="error">
+    <b>[경고!]</b> pythonanywhere API 키가 없기 때문에 재시작, 종료를 사용할 수 없습니다.
+    <a href="https://1392year.pythonanywhere.com/w/NewTheSeed/튜토리얼/pythonanywhere API 키 오류 해결">해결법</a>
+</div>
+{% endif %}
 <ul>
     <li><a href="{{ url_for('update') }}">업데이트</a></li>
+    <li><a href="{{ url_for('restart') }}">재시작</a></li>
+    <li><a href="{{ url_for('shutdown') }}">종료</a></li>
 </ul>
 {% endblock %}
 

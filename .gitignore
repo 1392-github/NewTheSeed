@@ -9,3 +9,4 @@ __pycache__/
 !/skins/ntsds
 /file/*
 !/file/.gitkeep
+/INSTALL_COMPLETED
