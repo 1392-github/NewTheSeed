@@ -1,0 +1,67 @@
+{% extends "master.html" %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<h1>위키 이름, 대표색, 라이선스 설정</h1>
+<form method="post" name="config">
+    <label>위키 이름<br><input name="name" value="00위키"></label><br>
+    <label>위키 대표 색상 <input type="color" name="color"></label><br>
+    <label>위키 라이선스<br>
+        <select name="license_type">
+            <option value="" title="라이선스를 설정하지 않거나 CCL 이외 라이선스를 사용하려면 이 항목을 선택합니다.">라이선스 설정 안 함 (나중에 설정)</option>
+            <option value="ccl" selected title="CCL은 특정 조건을 준수하는 하에 이용허락 없이 저작물을 자유롭게 이용할 수 있게 합니다.">CCL (CC0 제외)</option>
+            <option value="cc0" title="CC0을 선택할 경우 저작권의 대부분을 포기하게 됩니다.">CC0</option>
+        </select>
+    </label>
+    <fieldset id="ccl-extra">
+        <legend>CCL 추가 설정</legend>
+        <label title="NC 조건을 적용할 경우 저작물을 상업적으로 사용할 수 없습니다."><input type="checkbox" name="nc">NC (비영리)</label><br>
+        <label title="SA 조건을 적용할 경우 저작물의 2차적 저작물은 동일한 라이선스로 배포되어야 합니다. SA와 ND는 동시에 적용할 수 없습니다."><input type="checkbox" name="sa">SA (동일조건 변경허락)</label><br>
+        <label title="ND 조건을 적용할 경우 저작자의 허가 없이 저작물의 2차적 저작물을 작성할 수 없습니다. SA와 ND는 동시에 적용할 수 없습니다. 일반적으로 위키에서는 개인 위키를 제외하고 사용되지 않습니다."><input type="checkbox" name="nd">ND (변경금지)</label><br>
+        <label>
+            CCL 버전
+            <select name="ccl_version">
+                <option value="1">1.0</option>
+                <option value="2">2.0</option>
+                <option value="2k">2.0 KR</option>
+                <option value="25">2.5</option>
+                <option value="3">3.0</option>
+                <option value="4" selected>4.0</option>
+            </select>
+        </label>
+    </fieldset><br>
+    <input type="submit" value="다음" class="ok">
+</form>
+<h1>라이선스 변경이 가능한 경우</h1>
+위키의 라이선스는 일반적으로 다음 경우에만 변경이 가능합니다.
+<ul>
+    <li>본인만이 기여한 위키인 경우</li>
+    <li>기여자 전원의 동의를 받은 이유</li>
+    <li>호환되는 라이선스로 변경하는 경우 (CC BY → CC BY-NC 등)</li>
+    <li>신규 문서에만 적용하고, 기존 문서에는 적용하지 않는 경우</li>
+</ul>
+<span style="color: red; font-weight: 700;">경고! CCL(CC0 포함)에 대한 라이선스 철회는 불가능합니다.</span>
+{% endblock %}
+
+{% block js %}
+<script>
+    var ccl_extra = document.getElementById("ccl-extra")
+    config.license_type.addEventListener("change", function () {
+        var notccl = this.value != "ccl";
+        ccl_extra.hidden = notccl;
+        config.nc.disabled = notccl;
+        config.sa.disabled = notccl;
+        config.nd.disabled = notccl;
+        config.ccl_version.disabled = notccl;
+    })
+    config.sa.addEventListener("change", function () {
+        if (this.checked) config.nd.checked = false;
+    })
+    config.nd.addEventListener("change", function () {
+        if (this.checked) config.sa.checked = false;
+    })
+</script>
+{% endblock %}

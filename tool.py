@@ -121,6 +121,7 @@ def rt(t, **kwargs):
     k["captcha"] = get_config("captcha_mode") != "0"
     k["sitekey"] = get_config("captcha_sitekey")
     k["brand_color"] = get_config("brand_color")
+    k["top_text_color"] = get_config("top_text_color")
     k["document_license"] = get_config("document_license")
     k["skin"] = "ntsds/master.html"
     if t == "error.html" and "title" not in k: k["title"] = "오류"

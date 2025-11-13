@@ -1,0 +1,23 @@
+{% extends "master.html" %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+{% if error %}
+오류! "비밀번호"와 "비밀번호 확인"이 일치하지 않습니다.
+{% endif %}
+<h1>소유자 계정 생성</h1>
+소유자 계정은 <span title="developer 권한이 부여되면 엔진 내의 일부 권한(disable_two_factor_login, hideip)을 제외한 모든 권한을 보유하고 있는 것으로 처리됩니다.">developer</span> 권한을 보유하고 있는 계정입니다.<br>
+<form method="post">
+    <label>소유자 계정 ID<br><input name="id"></label><br>
+    <label>소유자 계정 비밀번호<br><input type="password" name="pw"></label><br>
+    <label>소유자 계정 비밀번호 확인<br><input type="password" name="pw2"></label><br><br>
+    <input type="submit" value="다음" class="ok">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

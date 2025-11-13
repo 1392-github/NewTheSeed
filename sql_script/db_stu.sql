@@ -136,7 +136,8 @@ CREATE TABLE IF NOT EXISTS "thread_comment" (
 	"text2"	TEXT,
 	"author"	INTEGER NOT NULL,
 	"time"	INTEGER NOT NULL,
-	"blind"	INTEGER NOT NULL DEFAULT -1,
+	"blind"	INTEGER NOT NULL DEFAULT 0,
+	"blind_operator"	INTEGER,
 	"admin"	INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS "login_history" (

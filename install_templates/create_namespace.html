@@ -1,0 +1,32 @@
+{% extends "master.html" %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<h1>이름공간 생성</h1>
+다음의 이름공간은 필수로 생성됩니다.
+<ul>
+    <li>문서</li>
+    <li>파일</li>
+    <li>분류</li>
+    <li>사용자</li>
+</ul>
+추가로 다음 이름공간을 생성할 수 있습니다.<br>
+<form method="post">
+    <label title="이 이름공간은 보통 틀을 작성하는 데 사용합니다. 다만 특별한 기능은 없습니다."><input type="checkbox" name="frame" checked> 틀</label><br>
+    <label title="이 이름공간은 삭제된 사용자의 사용자 문서가 이동되는 이름공간입니다. 만약 이 이름공간이 없을 경우 사용자:*(사용자 번호)로 이동됩니다."><input type="checkbox" name="deluser" checked> 삭제된사용자</label><br>
+    <label title="이 이름공간은 보통 위키 운영과 관련된 문서를 작성하는 데 사용합니다."><input type="checkbox" name="wikiname"> {{wikiname}}</label><br>
+    <label title="이 이름공간은 템플릿을 작성하는 데 사용합니다."><input type="checkbox" name="templete"> 템플릿</label><br>
+    <label title="이 이름공간은 문서의 역사를 말소하기 위해 사용합니다. 관리자만 열람이 가능합니다."><input type="checkbox" name="trash"> 휴지통</label><br>
+    <label title="위의 휴지통 이름공간의 파일 버전입니다."><input type="checkbox" name="filetrash"> 파일휴지통</label><br>
+    <label title="이 이름공간은 보통 비공개 위키 운영 문서를 작성하는 데 사용합니다."><input type="checkbox" name="wikisec"> 위키운영</label><br>
+    이외의 이름공간은 위키 설치 완료 후 생성할 수 있습니다.<br>
+    <input type="submit" value="다음" class="ok">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

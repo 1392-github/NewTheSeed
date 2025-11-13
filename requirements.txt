@@ -2,3 +2,4 @@ flask
 requests
 gitpython
 python-dotenv
+distro

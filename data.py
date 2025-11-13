@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 40
+version = 41
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -48,12 +48,15 @@ default_config = {
     "user_namespace": "5",
     "deleted_user_namespace": "6",
     "brand_color": "#8080ff",
+    "top_text_color": "#ffffff",
     "document_read_acl": "1",
     "allow_muadt_subdoc": "1",
     "username_format": r"[\w_가-힣]{1,128}",
     "frontpage": "FrontPage",
     "use_x_real_ip": "0",
-    "document_license": '별도의 언급이 없는 경우 <a href="https://creativecommons.org/licenses/by/2.0">크리에이티브 커먼즈 저작자표시 2.0</a>에 따라 사용할 수 있습니다.',
+    "document_license": '이 저작물은 <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>에 따라 이용할 수 있습니다. (단, 라이선스가 명시된 일부 문서 및 삽화 제외)<br>\
+기여하신 문서의 저작권은 각 기여자에게 있으며, 각 기여자는 기여하신 부분의 저작권을 갖습니다.',
+    "document_license_checkbox": "문서 편집을 저장하면 당신은 기여한 내용을 <b>CC BY 4.0 KR</b>으로 배포하고 기여한 문서에 대한 하이퍼링크나 URL을 이용하여 저작자 표시를 하는 것으로 충분하다는 데 동의하는 것입니다. <b>이 동의는 철회할 수 없습니다.</b>",
     "update_local_change_commit": "Update local change commit",
     "limit_acl": "3",
     "keep_login_history": "0",
@@ -130,3 +133,6 @@ special_function = [
 allow_recentthread_type = {"normal_thread", "old_thread", "pause_thread", "closed_thread"}
 allow_file_extension = {"jpg", "png", "gif", "webp", "bmp", "svg", "webp", "ico"}
 file_namespace = [3]
+install_status = """This file indicates the progress/completion of the installation in the NewTheSeed installer.
+If the last character is "1", the installation is in progress, and if it's "2", the installation is complete.
+{0}"""

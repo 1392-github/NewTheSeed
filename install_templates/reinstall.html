@@ -1,0 +1,18 @@
+{% extends "master.html" %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<h1>초기화</h1>
+이미 설치가 완료된 상태입니다.
+[확인] 버튼을 클릭하면 모든 데이터를 삭제하고 처음부터 설치를 재시작합니다.
+<form action="/restart" method="post">
+    <input type="submit" value="확인" class="danger">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

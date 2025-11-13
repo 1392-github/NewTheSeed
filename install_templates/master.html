@@ -4,6 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NTS Installer</title>
+    <style>
+        body
+        {
+            max-width: 1300px;
+            margin: 8px auto;
+        }
+        a
+        {
+            text-decoration: none;
+            color: #0275d8;
+        }
+        .danger, .ok, .normal
+        {
+            border: 0;
+            height: 30px;
+            padding: 1px 13px;
+            cursor: default;
+        }
+        .danger, .ok
+        {
+            color: white;
+            border: 0;
+            height: 30px;
+            line-height: 30px;
+            padding: 1px 13px;
+            display: inline-block;
+        }
+        .danger
+        {
+            background-color: #d9534f;
+        }
+        .ok
+        {
+            background-color: #0275d8;
+        }
+        [title]
+        {
+            text-decoration: underline dotted;
+        }
+    </style>
     {% block css %}{% endblock %}
 </head>
 <body>

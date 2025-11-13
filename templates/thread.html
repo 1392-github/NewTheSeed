@@ -2,11 +2,90 @@
 
 {% block css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='opennamu_main.css') }}">
+<style>
+    #thread-menu-check-label
+    {
+        display: block;
+        width: 2rem;
+        height: 2rem;
+        border: 1px solid #dfe1e2;
+        border-radius: 4px;
+        text-align: center;
+        line-height: 2rem;
+    }
+    #thread-menu-check
+    {
+        display: none;
+    }
+    #thread-menu
+    {
+        display: none;
+        background-color: white;
+        max-width: 15rem;
+        min-width: 12rem;
+        border: 1px solid #dfe1e2;
+        border-radius: 6px;
+        position: absolute;
+        right: 0;
+    }
+    #thread-menu-check:checked ~ #thread-menu
+    {
+        display: block;
+    }
+</style>
+<style id="hide-comment-style">.comment-wrap-blind{display: none;}</style>
+{% endblock %}
+
+{% block outcontent %}
+<div id="batch-blind" class="modal">
+    <h2>토론 댓글 숨기기</h2>
+</div>
 {% endblock %}
 
 {% block content %}
-<h2>{{ topic }}</h2>
-<div id="comment-list">{{ comment|safe }}</div>
+<div style="display: flex; justify-content: space-between;">
+    <h2>{{ topic }}</h2>
+    <div style="position: relative;">
+        <label for="thread-menu-check" id="thread-menu-check-label"><i class="fa-solid fa-ellipsis-vertical"></i></label>
+        <input type="checkbox" id="thread-menu-check">
+        <div id="thread-menu">
+            <label><input type="checkbox" id="dontshow-blind" checked> 숨겨진 댓글 보이지 않기</label>
+        </div>
+    </div>
+</div>
+{#<div id="comment-list">{{ comment|safe }}</div>#}
+<div id="templete" class="comment-wrap" hidden>
+    <div class="comment">
+        <div class="comment-header">
+            <div class="comment-header-left">
+                <span class="comment-no"></span>
+                <span class="comment-author"></span>
+            </div>
+            <div class="comment-header-right">
+                <span class="comment-time"></span>
+            </div>
+        </div>
+        <div class="comment-text"></div>
+    </div>
+</div>
+<div id="comment-list">
+    {% for i in range(1, count + 1) %}
+    <div class="comment-wrap">
+        <div class="comment">
+            <div class="comment-header">
+                <div class="comment-header-left">
+                    <span class="comment-no" id="{{i}}">#{{i}}</span>
+                    <span class="comment-author"></span>
+                </div>
+                <div class="comment-header-right">
+                    <span class="comment-time"></span>
+                </div>
+            </div>
+            <div class="comment-text"></div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
 <hr>
 <h2>댓글 달기</h2>
 {% if has_perm("update_thread_status") %}
@@ -47,26 +126,74 @@
 
 {% block js %}
 <script>
-    function last() {
-        document.querySelectorAll('details:not(.already_accordion)').forEach((el) => {
-            new Accordion(el);
-            el.classList.add('already_accordion');
-        });
-        if(window.location.hash !== '' && document.getElementById(window.location.hash.replace(/^#/, ''))) {
-            document.getElementById(window.location.hash.replace(/^#/, '')).focus();
-        }
-    }
     preview = document.getElementById("preview")
     document.getElementById("preview_button").addEventListener("click", function () {
         callapi("/api/preview/thread", {"data": comment.value.value}, function (r) {
             preview.innerHTML = r.html
             eval(r.js)
         })
-    })
-    {{ js }}
-    last();
+    });
     var comment_list = document.getElementById("comment-list")
+    var templete = document.getElementById("templete")
+    var hide_comment_style = document.getElementById("hide-comment-style");
+    var count = {{count}};
+    function observerCallback(entries, observer) {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                var t = e.target
+                fetch(`/api/thread_comment/{{slug}}/${t.querySelector(".comment-no").id}/0`).then(r => {
+                    if (r.ok) return r.json()
+                    else if (r.status == 400) return r.text().then(t => {throw new Error(t)}) 
+                    else throw new Error(`Request failed with status code ${r.status}`)
+                })
+                .then(r => {
+                    t.querySelector(".comment").className = r.class;
+                    t.querySelector(".comment-author").innerHTML = r.author;
+                    t.querySelector(".comment-time").textContent = r.time;
+                    t.querySelector(".comment-text").innerHTML = r.html;
+                    if (r.blind) t.classList.add("comment-wrap-blind");
+                    eval(r.js);
+                })
+                .catch(e => {if (e.message != "Failed to fetch") alert(e.message)})
+                observer.unobserve(e.target);
+            }
+        })
+    }
+    var observer = new IntersectionObserver(observerCallback, {
+        root: null,
+        rootMargin: "300px 0px 300px 0px",
+        threshold: 0
+    })
+    comment_list.querySelectorAll(":scope > *").forEach(function (e) {
+        observer.observe(e)
+    })
+    document.getElementById("dontshow-blind").addEventListener("change", function () {
+        hide_comment_style.textContent = this.checked ? ".comment-wrap-blind{display: none;}" : "";
+    })
     setInterval(function () {
+        if (document.hidden) return;
+        fetch("/api/thread_comment_count/{{slug}}")
+        .then(r => {
+            return r.text();
+        })
+        .then(r => {
+            r = Number(r);
+            if (r > count) {
+                for (var i = count + 1; i <= r; i++) {
+                    var e = templete.cloneNode(true);
+                    var no = e.querySelector(".comment-no");
+                    no.id = i;
+                    no.textContent = `#${i}`
+                    e.removeAttribute("id");
+                    e.hidden = false;
+                    comment_list.appendChild(e);
+                    observer.observe(e);
+                    count = r;
+                }
+            }
+        })
+    }, 5000)
+    /*setInterval(function () {
         if (!document.hidden && window.getSelection().toString() == "") fetch("/api/render_thread/{{slug}}", {
             "headers": {"Content-Type": "application/json"}
             })
@@ -81,6 +208,6 @@
             last();
         })
         .catch(e => {if (e.message != "Failed to fetch") alert(e.message)})
-    }, 5000)
+    }, 5000)*/
 </script>
 {% endblock %}

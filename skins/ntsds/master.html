@@ -47,7 +47,7 @@
         {
             line-height: 42px;
             text-align: center;
-            color: white;
+            color: {{ top_text_color }};
             text-decoration: none;
         }
         #search *
@@ -310,6 +310,15 @@
         .comment-special > .comment-text
         {
             background-color: #fc6;
+        }
+        .comment-blind > .comment-text
+        {
+            background-color: #6b6b6b;
+            color: #fff;
+        }
+        .comment-weakblind > .comment-text
+        {
+            background-color: #a0a0a0;
         }
         .history-plus
         {

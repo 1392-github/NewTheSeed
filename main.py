@@ -181,7 +181,7 @@ with app.app_context():
             c.execute("DELETE FROM config WHERE name IN ('debug', 'host', 'port')")
         if db_version < 19 or tool.init:
             # 기본 이름공간 및 ACL 생성
-            tool.run_sqlscript("default_namespace.sql")
+            tool.run_sqlscript("default_namespace2.sql")
         if db_version < 22:
             c.execute("DROP TABLE discuss")
             c.execute("""CREATE TABLE "discuss" (
@@ -252,15 +252,29 @@ with app.app_context():
             # file 테이블 삭제
             c.execute("DROP TABLE file")
         if db_version < 35:
-            c.execute("UPDATE config SET name = 'ignore_developer_perm' WHERE name = 'ingore_developer_perm'")
+            c.execute("UPDATE config SET name = 'ignore_developer_perm' WHERE name = 'ignore_developer_perm'")
         if db_version < 39:
             c.execute("DELETE FROM perm WHERE perm in ('database', 'sysman')")
+        if db_version < 41:
+            c.execute("""CREATE TABLE "thread_comment_new" (
+	"slug"	INTEGER NOT NULL,
+	"no"	INTEGER NOT NULL,
+	"type"	INTEGER NOT NULL DEFAULT 0,
+	"text"	TEXT,
+	"text2"	TEXT,
+	"author"	INTEGER NOT NULL,
+	"time"	INTEGER NOT NULL,
+	"blind"	INTEGER NOT NULL DEFAULT 0,
+	"blind_operator"	INTEGER,
+	"admin"	INTEGER NOT NULL DEFAULT 0
+);
+""")
+            c.execute("INSERT INTO thread_comment_new (slug, no, type, text, text2, author, time, admin) SELECT slug, no, type, text, text2, author, time, admin FROM thread_comment")
+            c.execute("DROP TABLE thread_comment")
+            c.execute("ALTER TABLE thread_comment_new RENAME TO thread_comment")
         c.execute('''update config
         set value = ?
         where name = "version"''', (str(data.version),)) # 변환 후 버전 재설정
-        """c.execute('''update config
-        set value = ?
-        where name = "minorversion"''', (str(version[1]),))""" # 일단 철회
     tool.reload_config(app)
     g.db.close()
 if not os.getenv("SECRET_KEY"):
@@ -315,6 +329,7 @@ app.jinja_loader = ChoiceLoader([
 ])
 app.jinja_env.globals["has_perm"] = tool.has_perm
 app.jinja_env.globals["history_msg"] = history_msg
+app.jinja_env.globals["range"] = range
 app.jinja_env.filters["user"] = render_username
 app.jinja_env.filters["time"] = tool.utime_to_str
 # 초기화 부분 끝, API 부분 시작
@@ -1188,21 +1203,77 @@ def thread(slug):
 #SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), 0, ?2, ?3, ?4""", (slug, request.form["value"], tool.ipuser(), tool.get_utime()))
             #c.execute("UPDATE discuss SET seq = seq + 1 WHERE slug = ?", (slug,))
             return "", 204
-        html, js = tool.render_thread(slug)
-        return tool.rt("thread.html", topic = topic, title = tool.render_docname(ns, name), raw_title = fullname, subtitle = "토론", comment = html,
-                       js = js, status = status, slug = slug, menu = [
+        #html, js = tool.render_thread(slug)
+        return tool.rt("thread.html", topic = topic, title = tool.render_docname(ns, name), raw_title = fullname, subtitle = "토론", count = c.execute("SELECT COUNT(*) FROM thread_comment WHERE slug = ?", (slug,)).fetchone()[0],
+                       status = status, slug = slug, menu = [
             tool.Menu("토론 목록", url_for("discuss", doc = fullname)),
             tool.Menu("ACL", url_for("acl", doc_name = fullname))
         ])
-@app.route("/api/render_thread/<int:slug>")
+"""@app.route("/api/render_thread/<int:slug>")
 def render_thread(slug):
     with g.db.cursor() as c:
         ns, name, docid = c.execute("SELECT namespace, name, doc_id FROM discuss JOIN doc_name ON (doc_id = id) WHERE slug = ?", (slug,)).fetchone()
         acl = tool.check_document_acl(docid, ns, "read", name)
         if acl[0] == 0:
-            abort(403)
+            return "", 403
         html, js = tool.render_thread(slug)
-        return {"html": html, "js": js}
+        return {"html": html, "js": js}"""
+@app.route("/api/thread_comment/<int:slug>/<int:no>/<int:type1>")
+def api_thread_comment(slug, no, type1):
+    with g.db.cursor() as c:
+        ns, name, docid = c.execute("SELECT namespace, name, doc_id FROM discuss JOIN doc_name ON (doc_id = id) WHERE slug = ?", (slug,)).fetchone()
+        acl = tool.check_document_acl(docid, ns, "read", name)
+        if acl[0] == 0:
+            return "", 403
+        ignore_blind = type1 >= 2
+        if ignore_blind and not tool.has_perm("hide_thread_comment"): return "", 403
+        author, type, text, text2, time, admin, blind, blind_operator = c.execute("SELECT author, type, text, text2, time, admin, blind, blind_operator FROM thread_comment WHERE slug = ? AND no = ?", (slug, no)).fetchone()
+        clas = ["comment"]
+        if author == tool.get_thread_presenter(slug): clas.append("comment-presenter")
+        if blind == 2 and not ignore_blind:
+            html = f"[{render_username(blind_operator, 1)}에 의해 숨겨진 글입니다.]"
+            js = ""
+            clas.append("comment-blind")
+        else:
+            if type == 0:
+                if type1 % 2 == 0: html, js = render_set(g.db, "", text, "api_thread")
+                else:
+                    html = escape(text)
+                    js = ""
+            elif type == 1:
+                html = f"스레드 상태를 <b>{text}</b>로 변경"
+            elif type == 2:
+                html = f"스레드를 <b>{text}</b>에서 <b>{text2}</b>로 이동"
+            elif type == 3:
+                html = f"스레드 주제를 <b>{text}</b>에서 <b>{text2}</b>로 변경"
+            elif type == 4:
+                html = f"토론 ACL을 <b>{text}</b>로 변경"
+            elif type == 5:
+                html = f"<a href="#{text}">#{text}</a> 댓글을 고정"
+            elif type == 6:
+                html = "댓글 고정 해제"
+            if type != 0:
+                js = ""
+                clas.append("comment-special")
+            if blind == 1:
+                html = f"[{render_username(blind_operator, 1)}에 의해 숨겨진 글입니다.]<hr>{html}"
+                clas.append("comment-weakblind")
+        return {
+            "html": html,
+            "js": js,
+            "class": " ".join(clas),
+            "author": render_username(author, 1 if admin else 2),
+            "time": tool.utime_to_str(time),
+            "blind": blind >= 1
+        }
+@app.route("/api/thread_comment_count/<int:slug>")
+def thread_comment_count(slug):
+    with g.db.cursor() as c:
+        ns, name, docid = c.execute("SELECT namespace, name, doc_id FROM discuss JOIN doc_name ON (doc_id = id) WHERE slug = ?", (slug,)).fetchone()
+        acl = tool.check_document_acl(docid, ns, "read", name)
+        if acl[0] == 0:
+            return "", 403
+        return str(c.execute("SELECT COUNT(*) FROM thread_comment WHERE slug = ?", (slug,)).fetchone()[0]), 200, {"Content-Type": "text/plain"}
 @app.route("/topic/<int:slug>")
 def topic_redirect(slug):
     return redirect(url_for("thread", slug = slug))
@@ -1223,9 +1294,9 @@ def update():
     if os.getenv("DISABLE_SYSMAN") == "1":
         return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
     if request.method == "POST":
-        p = subprocess.Popen(["git", "pull", "origin", "main"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        r1 = p.communicate()[0]
         p = subprocess.Popen(["pip", "install", "-r", "requirements.txt"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        r1 = p.communicate()[0]
+        p = subprocess.Popen(["git", "pull", "origin", "main"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         return tool.rt("update_result.html", title = "업데이트 결과", result = r1.decode("utf-8") + "\n" + p.communicate()[0].decode("utf-8"))
     if repo is None:
         return tool.rt("error.html", error = "엔진이 git 저장소로 다운로드 되지 않았기 때문에 업데이트 기능을 사용할 수 없습니다.")
@@ -1418,6 +1489,9 @@ def google_site_verification(code):
     if valid == "": abort(404)
     if code != valid: abort(404)
     return f"google-site-verification: google{code}.html"
+@app.route("/batch_blind", methods = ["POST"])
+def batch_blind():
+    return ""
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == 1
     if DEBUG:
