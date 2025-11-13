@@ -1,12 +1,29 @@
 {% extends "master.html" %}
 
 {% block css %}
-
+<style>
+    .req-good
+    {
+        color: green;
+    }
+    .req-bad
+    {
+        color: red;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <h1>환영합니다.</h1>
-NewTheSeed는 Python으로 개발된 오픈 소스 위키 엔진으로, 
+NewTheSeed는 Python으로 개발된 오픈 소스 위키 엔진으로, MIT 라이선스에 따라 누구나 사용 가능합니다.
+<h1>권장 시스템 요구 사항</h1>
+<ul>
+    <li class="req-{% if os_good %}good{% else %}bad{% endif %}">OS: Windows 7 이상 or Ubuntu 20.04 이상 or Debian 12 이상 or RHEL 9 이상 or CentOS 9 이상 or SLES 15 이상 - 현재 {{ os }}</li>
+    <li class="req-{% if python_good %}good{% else %}bad{% endif %}">Python: 3.9 이상 - 현재 {{ python }}</li>
+    <li></li>
+    <li></li>
+    <li></li>
+</ul>
 {% endblock %}
 
 {% block js %}

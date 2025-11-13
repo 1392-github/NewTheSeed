@@ -1,7 +1,14 @@
-from flask import Flask, request, redirect, abort, Response, url_for, render_template
 from random import randint
+import os
+import platform
 
-print("아직 안 만든 기능입니다")
+from flask import Flask, request, redirect, abort, Response, url_for, render_template
+
+import tool
+import data
+
+print("Installing PIP Package")
+os.system("pip install -r requirements.txt")
 #install_pin = str(randint(0, 999999999)).zfill(9)
 install_pin = "000000000"
 
@@ -22,6 +29,7 @@ def select_lang():
     return render_template("select_lang.html")"""
 @app.route("/")
 def welcome():
+    platform.system()
     return render_template("welcome.html")
 
 if __name__ == "__main__": app.run(port = 5000, debug = True)
