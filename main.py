@@ -1204,8 +1204,8 @@ def thread(slug):
             #c.execute("UPDATE discuss SET seq = seq + 1 WHERE slug = ?", (slug,))
             return "", 204
         #html, js = tool.render_thread(slug)
-        return tool.rt("thread.html", topic = topic, title = tool.render_docname(ns, name), raw_title = fullname, subtitle = "토론", count = c.execute("SELECT COUNT(*) FROM thread_comment WHERE slug = ?", (slug,)).fetchone()[0],
-                       status = status, slug = slug, menu = [
+        return tool.rt("thread.html", topic = topic, title = tool.render_docname(ns, name), raw_title = fullname, subtitle = "토론", count = c.execute("SELECT seq - 1 FROM discuss WHERE slug = ?", (slug,)).fetchone()[0], comment = c.execute("SELECT no, blind FROM thread_comment WHERE slug = ?", (slug,)).fetchall(),
+                       status = status, slug = slug, whtc = tool.has_perm("weak_hide_thread_comment"), htc = tool.has_perm("hide_thread_comment"), menu = [
             tool.Menu("토론 목록", url_for("discuss", doc = fullname)),
             tool.Menu("ACL", url_for("acl", doc_name = fullname))
         ])
@@ -1264,7 +1264,7 @@ def api_thread_comment(slug, no, type1):
             "class": " ".join(clas),
             "author": render_username(author, 1 if admin else 2),
             "time": tool.utime_to_str(time),
-            "blind": blind >= 1
+            "blind": blind
         }
 @app.route("/api/thread_comment_count/<int:slug>")
 def thread_comment_count(slug):
@@ -1274,6 +1274,17 @@ def thread_comment_count(slug):
         if acl[0] == 0:
             return "", 403
         return str(c.execute("SELECT COUNT(*) FROM thread_comment WHERE slug = ?", (slug,)).fetchone()[0]), 200, {"Content-Type": "text/plain"}
+@app.route("/api/hide_thread_comment/<int:slug>/<int:no>/<int:type>", methods = ["POST"])
+def hide_thread_comment(slug, no, type):
+    if type < 0 or type > 2:
+        return "", 400
+    with g.db.cursor() as c:
+        status = c.execute("SELECT blind FROM thread_comment WHERE slug = ? AND no = ?", (slug, no)).fetchone()[0]
+        if type == status: return "", 400
+        if not tool.has_perm("weak_hide_thread_comment"): return "", 403
+        if (type == 2 or status == 2) and not tool.has_perm("hide_thread_comment"): return "", 403
+        c.execute("UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no = ?", (type, tool.ipuser(), slug, no))
+        return "", 204
 @app.route("/topic/<int:slug>")
 def topic_redirect(slug):
     return redirect(url_for("thread", slug = slug))

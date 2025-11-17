@@ -536,6 +536,12 @@
                 })
             })
         })
+        document.body.addEventListener("click", function (e) {
+            if (e.target.classList.contains("toggle-button")) {
+                var target = document.getElementById(e.target.dataset.target);
+                target.hidden = !target.hidden;
+            }
+        })
     </script>
     {% if req_captcha and captcha_time %}
     <script>

@@ -21,16 +21,56 @@
     {
         display: none;
         background-color: white;
+        min-width: 12rem;
+        border: 1px solid #dfe1e2;
+        border-radius: 6px;
+        position: absolute;
+        right: 0;
+        padding: 4px 0;
+        z-index: 1;
+    }
+    #thread-menu-check:checked ~ #thread-menu
+    {
+        display: block;
+    }
+    .comment-menu
+    {
+        height: 1.2rem;
+        width: 1.25rem;
+        background-color: white;
+        border: 1px solid #dfe1e2;
+        border-radius: 4px;
+        color: #373a3c;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        padding: 4px 0;
+    }
+    .comment-menu svg
+    {
+        fill: #555;
+        width: .5rem;
+    }
+    .comment-menu-inner
+    {
+        background-color: white;
         max-width: 15rem;
         min-width: 12rem;
         border: 1px solid #dfe1e2;
         border-radius: 6px;
         position: absolute;
         right: 0;
+        z-index: 1;
     }
-    #thread-menu-check:checked ~ #thread-menu
+    #thread-menu > *, .comment-menu-inner > *
     {
-        display: block;
+        margin: 0.125rem 0.25rem;
+        padding: 0.2rem 0.75rem;
+        white-space: nowrap;
+    }
+    .comment-header-right
+    {
+        position: relative;
     }
 </style>
 <style id="hide-comment-style">.comment-wrap-blind{display: none;}</style>
@@ -58,27 +98,49 @@
     <div class="comment">
         <div class="comment-header">
             <div class="comment-header-left">
-                <span class="comment-no"></span>
+                <span class="comment-no">#{{i}}</span>
                 <span class="comment-author"></span>
             </div>
             <div class="comment-header-right">
                 <span class="comment-time"></span>
+                <span class="comment-menu toggle-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512">
+                        <path d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"></path>
+                    </svg>
+                </span>
+                <div id="comment-menu-{{i}}" class="comment-menu-inner" hidden>
+                    <!-- <div data-comment-menu="1">원문 보기</div> -->
+                    {% if whtc %}<div data-comment-menu="2">[ADMIN] 숨기기 해제</div>
+                    <div data-comment-menu="3">[ADMIN] 부분 숨기기</div>{% endif %}
+                    {% if htc %}<div data-comment-menu="4">[ADMIN] 숨기기</div>{% endif %}
+                </div>
             </div>
         </div>
         <div class="comment-text"></div>
     </div>
 </div>
 <div id="comment-list">
-    {% for i in range(1, count + 1) %}
-    <div class="comment-wrap">
+    {% for i in comment %}
+    <div class="comment-wrap{% if i[1] %} comment-wrap-blind{% endif %}" data-no="{{i[0]}}">
         <div class="comment">
             <div class="comment-header">
                 <div class="comment-header-left">
-                    <span class="comment-no" id="{{i}}">#{{i}}</span>
+                    <span class="comment-no" id="{{i[0]}}">#{{i[0]}}</span>
                     <span class="comment-author"></span>
                 </div>
                 <div class="comment-header-right">
                     <span class="comment-time"></span>
+                    <span class="comment-menu toggle-button" data-target="comment-menu-{{i[0]}}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512">
+                            <path d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"></path>
+                        </svg>
+                    </span>
+                    <div id="comment-menu-{{i[0]}}" class="comment-menu-inner" hidden>
+                        <!-- <div data-comment-menu="1">원문 보기</div> -->
+                        {% if whtc %}<div data-comment-menu="2">[ADMIN] 숨기기 해제</div>
+                        <div data-comment-menu="3">[ADMIN] 부분 숨기기</div>{% endif %}
+                        {% if htc %}<div data-comment-menu="4">[ADMIN] 숨기기</div>{% endif %}
+                    </div>
                 </div>
             </div>
             <div class="comment-text"></div>
@@ -116,7 +178,7 @@
     <input type="submit" value="변경">
 </form>
 {% endif %}
-<form name="comment" method="post" class="refresh-on-submit">
+<form name="comment" method="post">
     <textarea name="value" rows="7" class="fullwidth"{% if status != "normal" %} disabled{% endif %}>{% if status == "close" %}닫힌 토론입니다.{% elif status == "pause" %}pause 상태입니다.{% endif %}</textarea>
     <div id="preview"></div>
     <input type="submit" class="ok" value="전송"{% if status != "normal" %} disabled{% endif %}>
@@ -133,29 +195,63 @@
             eval(r.js)
         })
     });
+    comment.addEventListener("submit", function (e) {
+        e.preventDefault();
+        fetch(this.action, {method: this.method, body: new FormData(this)})
+        .then((r) => {
+            if (r.ok) {
+                check_count();
+            }
+            else {
+                if (r.status >= 400 && r.status <= 499 && r.headers.get("Content-Type").startsWith("text/plain")) {
+                    r.text().then(function (err) {
+                        alert(err)
+                    })
+                }
+                else {
+                    alert(`Request failed with status code ${r.status}`)
+                }
+            }
+        })
+    })
     var comment_list = document.getElementById("comment-list")
     var templete = document.getElementById("templete")
     var hide_comment_style = document.getElementById("hide-comment-style");
     var count = {{count}};
+    var show_timeout = {};
+    function load(t) {
+        var id = Number(t.dataset.no);
+        console.log(`${id} load`);
+        fetch(`/api/thread_comment/{{slug}}/${id}/0`).then(r => {
+            if (r.ok) return r.json()
+            else if (r.status == 400) return r.text().then(t => {throw new Error(t)}) 
+            else throw new Error(`Request failed with status code ${r.status}`)
+        })
+        .then(r => {
+            t.querySelector(".comment").className = r.class;
+            t.querySelector(".comment-author").innerHTML = r.author;
+            t.querySelector(".comment-time").textContent = r.time;
+            t.querySelector(".comment-text").innerHTML = r.html;
+            t.querySelectorAll(`[data-comment-menu]`).forEach(function (e) {
+                var v = e.dataset.commentMenu;
+                if (v >= 2 && v <= 4) e.hidden = v == r.blind + 2;
+            })
+            if (r.blind) t.classList.add("comment-wrap-blind");
+            eval(r.js);
+        })
+        .catch(e => {if (e.message != "Failed to fetch") alert(e.message)})
+    }
     function observerCallback(entries, observer) {
         entries.forEach(e => {
+            var t = e.target;
             if (e.isIntersecting) {
-                var t = e.target
-                fetch(`/api/thread_comment/{{slug}}/${t.querySelector(".comment-no").id}/0`).then(r => {
-                    if (r.ok) return r.json()
-                    else if (r.status == 400) return r.text().then(t => {throw new Error(t)}) 
-                    else throw new Error(`Request failed with status code ${r.status}`)
-                })
-                .then(r => {
-                    t.querySelector(".comment").className = r.class;
-                    t.querySelector(".comment-author").innerHTML = r.author;
-                    t.querySelector(".comment-time").textContent = r.time;
-                    t.querySelector(".comment-text").innerHTML = r.html;
-                    if (r.blind) t.classList.add("comment-wrap-blind");
-                    eval(r.js);
-                })
-                .catch(e => {if (e.message != "Failed to fetch") alert(e.message)})
-                observer.unobserve(e.target);
+                show_timeout[t.dataset.no] = setTimeout(function () {
+                    load(t);
+                    observer.unobserve(e.target);
+                }, 500);
+            }
+            else {
+                clearTimeout(show_timeout[t.dataset.no]);
             }
         })
     }
@@ -170,8 +266,7 @@
     document.getElementById("dontshow-blind").addEventListener("change", function () {
         hide_comment_style.textContent = this.checked ? ".comment-wrap-blind{display: none;}" : "";
     })
-    setInterval(function () {
-        if (document.hidden) return;
+    function check_count() {
         fetch("/api/thread_comment_count/{{slug}}")
         .then(r => {
             return r.text();
@@ -181,18 +276,34 @@
             if (r > count) {
                 for (var i = count + 1; i <= r; i++) {
                     var e = templete.cloneNode(true);
+                    e.dataset.no = i;
                     var no = e.querySelector(".comment-no");
+                    var mid = `comment-menu-${i}`;
                     no.id = i;
                     no.textContent = `#${i}`
                     e.removeAttribute("id");
                     e.hidden = false;
+                    e.querySelector(".comment-menu").dataset.target = mid;
+                    e.querySelector(".comment-menu-inner").id = mid;
                     comment_list.appendChild(e);
                     observer.observe(e);
                     count = r;
                 }
             }
         })
+    }
+    setInterval(function () {
+        if (document.hidden) return;
+        check_count();
     }, 5000)
+    comment_list.addEventListener("click", function (e) {
+        var t = e.target;
+        if (t.dataset.commentMenu >= 2 && t.dataset.commentMenu <= 4) { 
+            var wrap = t.parentElement.parentElement.parentElement.parentElement.parentElement
+            fetch(`/api/hide_thread_comment/{{slug}}/${wrap.dataset.no}/${t.dataset.commentMenu - 2}`, {"method": "post"});
+            load(wrap);
+        }
+    })
     /*setInterval(function () {
         if (!document.hidden && window.getSelection().toString() == "") fetch("/api/render_thread/{{slug}}", {
             "headers": {"Content-Type": "application/json"}
