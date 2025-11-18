@@ -1232,6 +1232,7 @@ def api_thread_comment(slug, no, type1):
         if author == tool.get_thread_presenter(slug): clas.append("comment-presenter")
         if blind == 2 and not ignore_blind:
             html = f"[{render_username(blind_operator, 1)}에 의해 숨겨진 글입니다.]"
+            if tool.has_perm("hide_thread_comment"): html += ' <button class="danger show-blind">[ADMIN] SHOW</button>'
             js = ""
             clas.append("comment-blind")
         else:
@@ -1264,7 +1265,8 @@ def api_thread_comment(slug, no, type1):
             "class": " ".join(clas),
             "author": render_username(author, 1 if admin else 2),
             "time": tool.utime_to_str(time),
-            "blind": blind
+            "blind": blind,
+            "special": type > 0
         }
 @app.route("/api/thread_comment_count/<int:slug>")
 def thread_comment_count(slug):
@@ -1283,7 +1285,8 @@ def hide_thread_comment(slug, no, type):
         if type == status: return "", 400
         if not tool.has_perm("weak_hide_thread_comment"): return "", 403
         if (type == 2 or status == 2) and not tool.has_perm("hide_thread_comment"): return "", 403
-        c.execute("UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no = ?", (type, tool.ipuser(), slug, no))
+        if type == 0: c.execute("UPDATE thread_comment SET blind = 0, blind_operator = NULL WHERE slug = ? AND no = ?", (slug, no))
+        else: c.execute("UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no = ?", (type, tool.ipuser(), slug, no))
         return "", 204
 @app.route("/topic/<int:slug>")
 def topic_redirect(slug):
@@ -1500,9 +1503,33 @@ def google_site_verification(code):
     if valid == "": abort(404)
     if code != valid: abort(404)
     return f"google-site-verification: google{code}.html"
-@app.route("/batch_blind", methods = ["POST"])
+@app.route("/admin/batch_blind", methods = ["POST"])
 def batch_blind():
-    return ""
+    if not tool.has_perm("weak_hide_thread_comment"): abort(403)
+    type = int(request.form["type"])
+    if type < 0 or type > 2: abort(400)
+    if type == 2 and not tool.has_perm("hide_thread_comment"): abort(403)
+    slug = int(request.form["slug"])
+    comments = request.form["comments"].strip().splitlines()
+    user = tool.ipuser()
+    with g.db.cursor() as c:
+        c.execute("BEGIN")
+        for i in comments:
+            if i.isdecimal():
+                if type == 0: c.execute("UPDATE thread_comment SET blind = 0, blind_operator = NULL WHERE slug = ? AND no = ?", (slug, int(i)))
+                else: c.execute("UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no = ?", (type, user, slug, int(i)))
+            else:
+                ma = data.batch_blind_regex.match(i)
+                if ma is None:
+                    g.db.rollback()
+                    return tool.error_400(f"유효하지 않은 값 또는 범위: {i}")
+                st = int(ma.group(1))
+                en = int(ma.group(2))
+                if st > en: st, en = en, st
+                if type == 0: c.execute("UPDATE thread_comment SET blind = 0, blind_operator = NULL WHERE slug = ? AND no BETWEEN ? AND ?", (slug, st, en))
+                else: c.execute("UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no BETWEEN ? AND ?", (type, user, slug, st, en))
+        g.db.commit()
+        return "", 204
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == 1
     if DEBUG:

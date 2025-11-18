@@ -164,9 +164,10 @@
         .modal
         {
             position: fixed;
-            top: 40%;
-            left: 30%;
+            top: 50%;
+            left: 50%;
             width: 40%;
+            transform: translate(-50%, -50%);
             box-sizing: border-box;
             background-color: #ffffff;
             z-index: 1;
@@ -537,8 +538,9 @@
             })
         })
         document.body.addEventListener("click", function (e) {
-            if (e.target.classList.contains("toggle-button")) {
-                var target = document.getElementById(e.target.dataset.target);
+            var t = e.target.closest(".toggle-button");
+            if (t) {
+                var target = document.getElementById(t.dataset.target);
                 target.hidden = !target.hidden;
             }
         })

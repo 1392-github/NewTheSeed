@@ -77,9 +77,30 @@
 {% endblock %}
 
 {% block outcontent %}
+{% if whtc %}
 <div id="batch-blind" class="modal">
-    <h2>토론 댓글 숨기기</h2>
+    <h2>일괄 숨기기</h2>
+    한 줄에 숨길 댓글의 번호를 하나씩 적어주세요.<br>
+    111~222 또는 111-222 형태로 범위를 지정 가능합니다. (양 끝의 값을 포함합니다.)<br>
+    예시:
+    <pre>123
+456~789</pre>
+    는 123번 댓글과 456번에서 789번까지의 댓글을 숨깁니다.
+    범위 지정 시 순서는 무관합니다.
+    <form action="{{ url_for('batch_blind' )}}" method="post" class="refresh-on-submit">
+        <input type="hidden" name="slug" value="{{slug}}">
+        <textarea class="fullwidth" name="comments" style="height: 20rem;"></textarea>
+        <select name="type">
+            <option value="0">숨기기 해제</option>
+            <option value="1" selected>부분 숨김</option>
+            {% if htc %}
+            <option value="2">완전 숨김</option>
+            {% endif %}
+        </select><br><br>
+        <input type="submit" class="ok" value="확인"><button type="button" class="normal" onclick="closeModal('batch-blind')">취소</button>
+    </form>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -90,6 +111,9 @@
         <input type="checkbox" id="thread-menu-check">
         <div id="thread-menu">
             <label><input type="checkbox" id="dontshow-blind" checked> 숨겨진 댓글 보이지 않기</label>
+            {% if whtc %}
+            <div id="batch-blind" onclick="openModal('batch-blind');">[ADMIN] 일괄 숨기기</div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -109,7 +133,7 @@
                     </svg>
                 </span>
                 <div id="comment-menu-{{i}}" class="comment-menu-inner" hidden>
-                    <!-- <div data-comment-menu="1">원문 보기</div> -->
+                    <div data-comment-menu="1">원문 보기</div>
                     {% if whtc %}<div data-comment-menu="2">[ADMIN] 숨기기 해제</div>
                     <div data-comment-menu="3">[ADMIN] 부분 숨기기</div>{% endif %}
                     {% if htc %}<div data-comment-menu="4">[ADMIN] 숨기기</div>{% endif %}
@@ -136,7 +160,7 @@
                         </svg>
                     </span>
                     <div id="comment-menu-{{i[0]}}" class="comment-menu-inner" hidden>
-                        <!-- <div data-comment-menu="1">원문 보기</div> -->
+                        <div data-comment-menu="1">원문 보기</div>
                         {% if whtc %}<div data-comment-menu="2">[ADMIN] 숨기기 해제</div>
                         <div data-comment-menu="3">[ADMIN] 부분 숨기기</div>{% endif %}
                         {% if htc %}<div data-comment-menu="4">[ADMIN] 숨기기</div>{% endif %}
@@ -219,10 +243,10 @@
     var hide_comment_style = document.getElementById("hide-comment-style");
     var count = {{count}};
     var show_timeout = {};
-    function load(t) {
+    function load(t, ty = 0) {
         var id = Number(t.dataset.no);
         console.log(`${id} load`);
-        fetch(`/api/thread_comment/{{slug}}/${id}/0`).then(r => {
+        fetch(`/api/thread_comment/{{slug}}/${id}/${ty}`).then(r => {
             if (r.ok) return r.json()
             else if (r.status == 400) return r.text().then(t => {throw new Error(t)}) 
             else throw new Error(`Request failed with status code ${r.status}`)
@@ -234,6 +258,7 @@
             t.querySelector(".comment-text").innerHTML = r.html;
             t.querySelectorAll(`[data-comment-menu]`).forEach(function (e) {
                 var v = e.dataset.commentMenu;
+                if (v == 1 && r.special) e.remove();
                 if (v >= 2 && v <= 4) e.hidden = v == r.blind + 2;
             })
             if (r.blind) t.classList.add("comment-wrap-blind");
@@ -298,11 +323,32 @@
     }, 5000)
     comment_list.addEventListener("click", function (e) {
         var t = e.target;
-        if (t.dataset.commentMenu >= 2 && t.dataset.commentMenu <= 4) { 
-            var wrap = t.parentElement.parentElement.parentElement.parentElement.parentElement
-            fetch(`/api/hide_thread_comment/{{slug}}/${wrap.dataset.no}/${t.dataset.commentMenu - 2}`, {"method": "post"});
-            load(wrap);
+        if (t.dataset.commentMenu) {
+            var wrap = t.parentElement.parentElement.parentElement.parentElement.parentElement;
+            if (t.dataset.commentMenu == 1) {
+                if ("raw" in wrap.dataset) {
+                    load(wrap, "showBlind" in wrap.dataset ? 2 : 0);
+                    delete wrap.dataset.raw
+                    t.textContent = "원문 보기";
+                }
+                else {
+                    load(wrap, "showBlind" in wrap.dataset ? 3 : 1);
+                    wrap.dataset.raw = "";
+                    t.textContent = "위키 보기";
+                }
+            }
+            if (t.dataset.commentMenu >= 2 && t.dataset.commentMenu <= 4) { 
+                fetch(`/api/hide_thread_comment/{{slug}}/${wrap.dataset.no}/${t.dataset.commentMenu - 2}`, {"method": "post"});
+                load(wrap);
+            }
         }
+        {% if htc %}
+        if (t.classList.contains("show-blind")) {
+            var wrap = t.parentElement.parentElement.parentElement;
+            load(wrap, "raw" in wrap.dataset ? 3 : 2);
+            wrap.dataset.showBlind = "";
+        }
+        {% endif %}
     })
     /*setInterval(function () {
         if (!document.hidden && window.getSelection().toString() == "") fetch("/api/render_thread/{{slug}}", {

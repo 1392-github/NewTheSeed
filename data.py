@@ -136,3 +136,4 @@ file_namespace = [3]
 install_status = """This file indicates the progress/completion of the installation in the NewTheSeed installer.
 If the last character is "1", the installation is in progress, and if it's "2", the installation is complete.
 {0}"""
+batch_blind_regex = re.compile(r"(\d+)[~-](\d+)")
