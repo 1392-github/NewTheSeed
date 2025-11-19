@@ -137,3 +137,19 @@ install_status = """This file indicates the progress/completion of the installat
 If the last character is "1", the installation is in progress, and if it's "2", the installation is complete.
 {0}"""
 batch_blind_regex = re.compile(r"(\d+)[~-](\d+)")
+default_aclgroup_config = [
+    ("withdraw_period_hours", "0"),
+    ("signup_policy", "none"),
+    ("max_duration_ip", "0"),
+    ("max_duration_account", "0"),
+    ("max_ipv4_cidr", "0"),
+    ("max_ipv6_cidr", "0"),
+    ("access_flags", "any"),
+    ("add_flags", "admin"),
+    ("remove_flags", "admin"),
+    ("style", ""),
+    ("message", ""),
+    ("self_remove_note", "SELF REMOVE"),
+    ("show_user_document", "0"),
+    ("self_removable", "0"),
+]

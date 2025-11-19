@@ -57,11 +57,11 @@
     <div{% if g == current %} class="current"{% endif %}>
         <a href="/aclgroup?group={{g}}">{{g}}</a>
         {% if newgroup_perm %}
-        <form action="/aclgroup/delete_group" method="post" style="display: inline;" class="confirm" data-msg="삭제하시겠습니까?">
+        <a href="{{ url_for('aclgroup_manage', group=g) }}"><i class="fa-solid fa-gear" style="color: black;"></i></a>
+        <!--<form action="/aclgroup/delete_group" method="post" style="display: inline;" class="confirm" data-msg="삭제하시겠습니까?">
             <input type="hidden" name="group" value="{{g}}">
             <input type="submit" value="×" class="button_like_link">
-            <!--<a href="#"><i class="fa-solid fa-gear" style="color: black;"></i></a>-->
-        </form>
+        </form>-->
         {% endif %}
     </div>
     {% endfor %}

@@ -1051,6 +1051,9 @@ def aclgroup_new_group():
     with g.db.cursor() as c:
         c.execute("INSERT INTO aclgroup (name) VALUES(?)",
                 (request.form["group"],))
+        id = c.lastrowid
+        c.executemany("INSERT INTO aclgroup_config (gid, name, value) VALUES(?,?,?)",
+                      ((id, x[0], x[1]) for x in data.default_aclgroup_config))
         return redirect("/aclgroup?group={0}".format(request.form["group"]))
 @app.route("/aclgroup/delete_group", methods = ["POST"])
 def aclgroup_delete_group():
@@ -1064,6 +1067,72 @@ def aclgroup_delete_group():
         c.execute("UPDATE aclgroup SET deleted = 1 WHERE id = ?", (gid,))
         c.execute("DELETE FROM aclgroup_log WHERE gid = ?", (gid,))
         return redirect("/aclgroup")
+@app.route("/aclgroup/manage", methods = ["GET", "POST"])
+def aclgroup_manage():
+    if not tool.has_perm("aclgroup"):
+        abort(403)
+    with g.db.cursor() as c:
+        gid = c.execute("SELECT id FROM aclgroup WHERE name = ?", (request.args["group"],)).fetchone()
+        if gid == None:
+            abort(404)
+        gid = gid[0]
+        if request.method == "POST":
+            c.execute("BEGIN")
+            def fail():
+                g.db.rollback()
+                abort(400)
+            def remove_zero(n):
+                r = n.lstrip("0")
+                if r == "": return "0"
+                else: return r
+            """<label>
+    signup_policy<br>
+    <select name="signup_policy">
+        <option{% if config["signup_policy"] == "none" %} selected{% endif %}>none</option>
+        <option{% if config["signup_policy"] == "require_verification" %} selected{% endif %}>require_verification</option>
+        <option{% if config["signup_policy"] == "block" %} selected{% endif %}>block</option>
+    </select>
+</label><br>
+<label>max_duration_ip<br><input type="number" min="0" name="max_duration_ip" value="{{config['max_duration_ip']}}"></label><br>
+<label>max_duration_user<br><input type="number" min="0" name="max_duration_user" value="{{config['max_duration_user']}}"></label><br>
+<label>max_ipv4_cidr<br><input type="number" min="0" max="32" name="max_ipv4_cidr" value="{{config['max_ipv4_cidr']}}"></label><br>
+<label>max_ipv6_cidr<br><input type="number" min="0" max="128" name="max_ipv6_cidr" value="{{config['max_ipv6_cidr']}}"></label><br>
+<label>access_flags<br><input name="access_flags" value="{{config['access_flags']}}"></label><br>
+<label>add_flags<br><input name="add_flags" value="{{config['add_flags']}}"></label><br>
+<label>remove_flags<br><input name="remove_flags" value="{{config['remove_flags']}}"></label><br>
+<label>style<br><input name="style" value="{{config['style']}}"></label><br>
+<label>message<br><input name="message" value="{{config['message']}}"></label><br>
+<label>self_remove_note<br><input name="self_remove_note" value="{{config['self_remove_note']}}"></label><br>
+"""
+            tmp = request.form["withdraw_period_hours"]
+            if not tmp.isdecimal() and tmp != "-1": fail()
+            c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'withdraw_period_hours'", (remove_zero(tmp), gid))
+            tmp = request.form["signup_policy"]
+            if tmp not in ["none", "require_verification", "block"]: fail()
+            c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'signup_policy'", (tmp, gid))
+            tmp = request.form["max_duration_ip"]
+            if not tmp.isdecimal(): fail()
+            c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'max_duration_ip'", (remove_zero(tmp), gid))
+            tmp = request.form["max_duration_account"]
+            if not tmp.isdecimal(): fail()
+            c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'max_duration_account'", (remove_zero(tmp), gid))
+            tmp = request.form["max_ipv4_cidr"]
+            try: tmp2 = int(tmp)
+            except: fail()
+            if tmp2 < 0 or tmp2 > 32: fail()
+            c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'max_ipv4_cidr'", (remove_zero(tmp), gid))
+            tmp = request.form["max_ipv6_cidr"]
+            try: tmp2 = int(tmp)
+            except: fail()
+            if tmp2 < 0 or tmp2 > 128: fail()
+            c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'max_ipv6_cidr'", (remove_zero(tmp), gid))
+            for i in ["access_flags", "add_flags", "remove_flags", "style", "message", "self_remove_note"]:
+                c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = ?", (request.form[i], gid, i))
+            c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'show_user_document'", ("1" if "show_user_document" in request.form else "0", gid))
+            c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'self_removable'", ("1" if "self_removable" in request.form else "0", gid))
+            return redirect(url_for("aclgroup", group = request.args["group"]))
+        return tool.rt("aclgroup_manage.html", title="ACLGroup 설정", group = request.args["group"],
+                       config = dict(c.execute("SELECT name, value FROM aclgroup_config WHERE gid = ?", (gid,)).fetchall()))
 @app.route("/api/hasuser/<name>")
 def api_hasuser(name):
     return Response("1" if tool.has_user(name) else "0", mimetype="text/plain")
