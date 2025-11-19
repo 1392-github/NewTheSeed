@@ -94,6 +94,10 @@ with app.app_context():
             c.execute("INSERT INTO api_keys SELECT id, NULL, 0 FROM user WHERE isip = 0")
         if db_version < 16 or tool.init:
             c.execute("INSERT INTO aclgroup (name) VALUES('차단된 사용자')")
+            l = c.lastrowid
+            c.executemany("INSERT INTO aclgroup_config (gid, name, value) VALUES(?,?,?)",
+                          ((l, x[0], x[1]) for x in data.default_aclgroup_config))
+
         if db_version < 17:
             # owner 설정 삭제 및 권한 시스템으로 대체
             c.execute("DELETE FROM config WHERE name = 'owner'")
@@ -991,8 +995,17 @@ def config():
 def aclgroup():
     with g.db.cursor() as c:
         tool.delete_expired_aclgroup()
+        groups = []
+        for id, name in c.execute("SELECT id, name FROM aclgroup WHERE deleted = 0"):
+            if tool.check_aclgroup_flag(id, "access_flags"):
+                groups.append(name)
+        if len(groups) == 0:
+            abort(403)
+        grp = request.args.get("group", "")
+        current = grp if grp in groups else groups[0]
+        gid = c.execute("SELECT id FROM aclgroup WHERE name = ? AND deleted = 0", (current,)).fetchone()[0]
         if request.method == "POST":
-            if not tool.has_perm("admin"):
+            if not tool.check_aclgroup_flag(gid, "add_flags"):
                 abort(403)
             t = tool.get_utime()
             if tool.get_config("aclgroup_note_required") == "1" and request.form["note"] == "":
@@ -1000,10 +1013,6 @@ def aclgroup():
             dur = 0 if request.form["dur"] == "" else int(request.form["dur"])
             if tool.has_config("aclgroup_max_duration") and dur > int(tool.get_config("aclgroup_max_duration")):
                 return tool.error_400(f"expire의 값은 {tool.get_config('aclgroup_max_duration')} 이하여야 합니다.")
-            gid = c.execute("SELECT id FROM aclgroup WHERE name = ? AND deleted = 0", (request.form["group"],)).fetchone()
-            if gid is None:
-                return tool.error_400("aclgroup_group_not_found")
-            gid = gid[0]
             if request.form["mode"] == "ip":
                 ip = request.form["value"]
                 try:
@@ -1033,15 +1042,13 @@ def aclgroup():
                         (gid, request.form["value"], request.form["note"], t, None if dur == 0 else t + dur))
                 c.execute("INSERT INTO block_log (type, operator, target, id, gid, date, duration, note) VALUES(1, ?, (SELECT id FROM user WHERE name = ?), ?, ?, ?, ?, ?)",
                         (session["id"], request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))
-        groups = [x[0] for x in c.execute("SELECT name FROM aclgroup WHERE deleted = 0").fetchall()]
-        current = request.args.get("group", groups[0] if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE deleted = 0)").fetchone()[0] else "")
-        return tool.rt("aclgroup.html", title = "ACLGroup", groups = groups, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.has_perm("admin"), delete_perm = tool.has_perm("admin"), record = (
+        return tool.rt("aclgroup.html", title = "ACLGroup", groups = groups, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.check_aclgroup_flag(gid, "add_flags"), delete_perm = tool.check_aclgroup_flag(gid, "remove_flags"), record = (
             (x[0], x[1], x[2], tool.utime_to_str(x[3]), "영구" if x[4] is None else tool.utime_to_str(x[4]))
             for x in c.execute("SELECT id, (CASE WHEN ip IS NULL THEN (SELECT name FROM user WHERE id = user) ELSE ip END), note, start, end FROM aclgroup_log WHERE gid = (SELECT id FROM aclgroup WHERE name = ?)", (current,)).fetchall()
         ))
 @app.route("/aclgroup/delete", methods = ["POST"])
 def aclgroup_delete():
-    if not tool.has_perm("admin"):
+    if not tool.check_aclgroup_flag(gid, "remove_flags"):
         abort(403)
     with g.db.cursor() as c:
         if tool.get_config("aclgroup_note_required") == "1" and request.form["note"] == "":

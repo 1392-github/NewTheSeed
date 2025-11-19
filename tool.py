@@ -223,11 +223,11 @@ def user_in_aclgroup(group, user = None):
         elif c.execute("SELECT isip FROM user WHERE id = ?", (user,)).fetchone()[0] == 1:
             ip = c.execute("SELECT name FROM user WHERE id = ?", (user,)).fetchone()[0]
         if ip is not None:
-            for i in c.execute("SELECT ip, id FROM aclgroup_log WHERE gid = ?", (group,)).fetchall():
-                if i[0] is None:
-                    continue
-                if ip_in_cidr(ip, i[0]):
-                    return i[1]
+            ip = ipaddress.ip_network(ip)
+            for i in range(33 if ip.version == 4 else 129):
+                print(str(ip.supernet(i)))
+                r = c.execute("SELECT id FROM aclgroup_log WHERE gid = ? AND ip = ?", (group, str(ip.supernet(i)))).fetchone()
+                if r is not None: return r[0]
             return None
         else:
             r = c.execute("SELECT id FROM aclgroup_log WHERE gid = ? AND user = ?", (group, user)).fetchone()
@@ -587,3 +587,9 @@ def init_nsacl(ns):
 def get_aclgroup_config(gid, name):
     with g.db.cursor() as c:
         return c.execute("SELECT value FROM aclgroup_config WHERE gid = ? AND name = ?", (gid, name)).fetchone()[0]
+def check_aclgroup_flag(gid, name, user = None):
+    if has_perm("aclgroup", user): return True
+    if name != "access_flags" and not check_aclgroup_flag(gid, "access_flags", user): return False
+    for i in get_aclgroup_config(gid, name).split(","):
+        if has_perm(i, user): return True
+    return False
