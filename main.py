@@ -1239,7 +1239,7 @@ def api_thread_comment(slug, no, type1):
             if type == 0:
                 if type1 % 2 == 0: html, js = render_set(g.db, "", text, "api_thread")
                 else:
-                    html = escape(text)
+                    html = text
                     js = ""
             elif type == 1:
                 html = f"스레드 상태를 <b>{text}</b>로 변경"
