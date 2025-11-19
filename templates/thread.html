@@ -264,7 +264,9 @@
             t.querySelectorAll(`[data-comment-menu]`).forEach(function (e) {
                 var v = e.dataset.commentMenu;
                 if (v == 1 && r.special) e.remove();
-                if (v >= 2 && v <= 4) e.hidden = v == r.blind + 2;
+                if (v >= 2 && v <= 4) {
+                    e.hidden = {% if not htc %}r.blind == 2 || {% endif %}v == r.blind + 2;
+                }
             })
             if (r.blind) t.classList.add("comment-wrap-blind");
             eval(r.js);
