@@ -7,6 +7,7 @@ import types
 import os
 import shutil
 import subprocess
+import ipaddress
 
 from flask import Flask, request, redirect, session, send_file, abort, Response, url_for, g
 from jinja2 import ChoiceLoader, FileSystemLoader
@@ -1005,11 +1006,14 @@ def aclgroup():
             gid = gid[0]
             if request.form["mode"] == "ip":
                 ip = request.form["value"]
-                if '/' not in ip:
-                    ip += "/128" if ':' in ip else "/32"
-                if not tool.is_valid_cidr(ip):
+                try:
+                    ipn = ipaddress.ip_network(ip)
+                    ip = str(ipn)
+                except:
                     return tool.error_400("invalid_cidr")
-                ip = tool.convert_cidr(ip)
+                max_cidr = "max_ipv4_cidr" if ipn.version == 4 else "max_ipv6_cidr"
+                max_cidr_value = int(tool.get_aclgroup_config(gid, max_cidr))
+                if ipn.prefixlen < max_cidr_value: return tool.error_400(f"{max_cidr}은 {max_cidr_value}입니다.")
                 if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE ip = ? AND gid = ?)", (ip, gid)).fetchone()[0]:
                     return tool.error_400("aclgroup_already_exists")
                 c.execute("INSERT INTO aclgroup_log (gid, ip, note, start, end) VALUES(?, ?, ?, ?, ?)",

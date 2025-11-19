@@ -584,3 +584,6 @@ def init_nsacl(ns):
         c.execute("DELETE FROM nsacl WHERE ns_id = ?", (ns,))
         c.executemany("INSERT INTO nsacl (ns_id, acltype, idx, condtype, value, value2, no, action, expire, otherns) VALUES(?, ?, 1, 'perm', 'any', NULL, 0, 'gotootherns', NULL, ?)",
                       ([ns, x, default] for x in data.acl_type_key))
+def get_aclgroup_config(gid, name):
+    with g.db.cursor() as c:
+        return c.execute("SELECT value FROM aclgroup_config WHERE gid = ? AND name = ?", (gid, name)).fetchone()[0]
