@@ -1507,8 +1507,9 @@ def google_site_verification(code):
 def batch_blind():
     if not tool.has_perm("weak_hide_thread_comment"): abort(403)
     type = int(request.form["type"])
+    htc = tool.has_perm("hide_thread_comment")
     if type < 0 or type > 2: abort(400)
-    if type == 2 and not tool.has_perm("hide_thread_comment"): abort(403)
+    if type == 2 and not htc: abort(403)
     slug = int(request.form["slug"])
     comments = request.form["comments"].strip().splitlines()
     user = tool.ipuser()
@@ -1516,8 +1517,8 @@ def batch_blind():
         c.execute("BEGIN")
         for i in comments:
             if i.isdecimal():
-                if type == 0: c.execute("UPDATE thread_comment SET blind = 0, blind_operator = NULL WHERE slug = ? AND no = ?", (slug, int(i)))
-                else: c.execute("UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no = ?", (type, user, slug, int(i)))
+                if type == 0: c.execute(f"UPDATE thread_comment SET blind = 0, blind_operator = NULL WHERE slug = ? AND no = ?{'' if htc else ' AND blind != 2'}", (slug, int(i)))
+                else: c.execute(f"UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no = ?{'' if htc else ' AND blind != 2'}", (type, user, slug, int(i)))
             else:
                 ma = data.batch_blind_regex.match(i)
                 if ma is None:
@@ -1526,8 +1527,8 @@ def batch_blind():
                 st = int(ma.group(1))
                 en = int(ma.group(2))
                 if st > en: st, en = en, st
-                if type == 0: c.execute("UPDATE thread_comment SET blind = 0, blind_operator = NULL WHERE slug = ? AND no BETWEEN ? AND ?", (slug, st, en))
-                else: c.execute("UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no BETWEEN ? AND ?", (type, user, slug, st, en))
+                if type == 0: c.execute(f"UPDATE thread_comment SET blind = 0, blind_operator = NULL WHERE slug = ? AND no BETWEEN ? AND ?{'' if htc else ' AND blind != 2'}", (slug, st, en))
+                else: c.execute(f"UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no BETWEEN ? AND ?{'' if htc else ' AND blind != 2'}", (type, user, slug, st, en))
         g.db.commit()
         return "", 204
 if __name__ == "__main__":
