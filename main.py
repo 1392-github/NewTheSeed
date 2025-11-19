@@ -1014,6 +1014,8 @@ def aclgroup():
                 max_cidr = "max_ipv4_cidr" if ipn.version == 4 else "max_ipv6_cidr"
                 max_cidr_value = int(tool.get_aclgroup_config(gid, max_cidr))
                 if ipn.prefixlen < max_cidr_value: return tool.error_400(f"{max_cidr}은 {max_cidr_value}입니다.")
+                max_duration = tool.get_aclgroup_config(gid, "max_duration_ip")
+                if dur > int(max_duration): return tool.error_400(f"max_duration_ip는 {max_duration}입니다.")
                 if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE ip = ? AND gid = ?)", (ip, gid)).fetchone()[0]:
                     return tool.error_400("aclgroup_already_exists")
                 c.execute("INSERT INTO aclgroup_log (gid, ip, note, start, end) VALUES(?, ?, ?, ?, ?)",
@@ -1023,6 +1025,8 @@ def aclgroup():
             else:
                 if not tool.has_user(request.form["value"]):
                     return tool.error_400("사용자 이름이 올바르지 않습니다.")
+                max_duration = tool.get_aclgroup_config(gid, "max_duration_account")
+                if dur > int(max_duration): return tool.error_400(f"max_duration_account는 {max_duration}입니다.")
                 if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE user = (SELECT id FROM user WHERE name = ?) AND gid = ?)", (request.form["value"], gid)).fetchone()[0]:
                     return tool.error_400("aclgroup_already_exists")
                 c.execute("INSERT INTO aclgroup_log (gid, user, note, start, end) VALUES(?, (SELECT id FROM user WHERE name = ?), ?, ?, ?)",
