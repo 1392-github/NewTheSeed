@@ -147,3 +147,9 @@ CREATE TABLE IF NOT EXISTS "login_history" (
 	"ua"	TEXT NOT NULL,
 	"uach"	TEXT
 );
+CREATE TABLE IF NOT EXISTS "aclgroup_config" (
+	"gid"	INTEGER,
+	"name"	TEXT,
+	"value"	TEXT NOT NULL,
+	PRIMARY KEY("gid","name")
+);
