@@ -240,7 +240,7 @@ def user_in_aclgroup(group, user = None):
         else:
             r = c.execute("SELECT id, note, start, end FROM aclgroup_log WHERE gid = ? AND user = ?", (group, user)).fetchone()
             if r is None:
-                return ACLGroupInStatus(True, *r)
+                return ACLGroupInStatus(False)
             return ACLGroupInStatus(True, *r)
 def isip(user):
     with g.db.cursor() as c:
