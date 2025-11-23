@@ -28,10 +28,18 @@
     <label>self_remove_note<br><input name="self_remove_note" value="{{config['self_remove_note']}}"></label><br>
     <label><input type="checkbox" name="show_user_document"{% if config['show_user_document'] == '1' %} checked{% endif %}> show_user_document</label><br>
     <label><input type="checkbox" name="self_removable"{% if config['self_removable'] == '1' %} checked{% endif %}> self_removable</label><br>
+    <input id="delete_aclgroup" type="button" value="삭제" class="danger">
     <input type="submit" value="수정" class="ok">
+</form>
+<form action="{{ url_for('aclgroup_delete_group') }}" method="post" name="delete_aclgroup_form" hidden>
+    <input type="hidden" name="group" value="{{ group }}">
 </form>
 {% endblock %}
 
 {% block js %}
-
+<script>
+    document.getElementById("delete_aclgroup").addEventListener("click", function () {
+        delete_aclgroup_form.submit();
+    })
+</script>
 {% endblock %}

@@ -277,6 +277,11 @@ with app.app_context():
             c.execute("INSERT INTO thread_comment_new (slug, no, type, text, text2, author, time, admin) SELECT slug, no, type, text, text2, author, time, admin FROM thread_comment")
             c.execute("DROP TABLE thread_comment")
             c.execute("ALTER TABLE thread_comment_new RENAME TO thread_comment")
+        if db_version < 45:
+            for i in c.execute("SELECT id FROM aclgroup WHERE deleted = 0").fetchall():
+                i = i[0]
+                if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_config WHERE gid = ?)", (i,)).fetchone()[0] == 0:
+                    c.executemany("INSERT INTO aclgroup_config (gid, name, value) VALUES(?,?,?)", ((i, x[0], x[1]) for x in data.default_aclgroup_config))
         c.execute('''update config
         set value = ?
         where name = "version"''', (str(data.version),)) # 변환 후 버전 재설정
@@ -1075,11 +1080,12 @@ def aclgroup_delete_group():
         abort(403)
     with g.db.cursor() as c:
         gid = c.execute("SELECT id FROM aclgroup WHERE name = ?", (request.form["group"],)).fetchone()
-        if gid == None:
+        if gid is None:
             abort(400)
         gid = gid[0]
         c.execute("UPDATE aclgroup SET deleted = 1 WHERE id = ?", (gid,))
         c.execute("DELETE FROM aclgroup_log WHERE gid = ?", (gid,))
+        c.execute("DELETE FROM aclgroup_config WHERE gid = ?", (gid,))
         return redirect("/aclgroup")
 @app.route("/aclgroup/manage", methods = ["GET", "POST"])
 def aclgroup_manage():
