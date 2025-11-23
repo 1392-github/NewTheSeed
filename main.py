@@ -1011,8 +1011,6 @@ def aclgroup():
             if tool.get_config("aclgroup_note_required") == "1" and request.form["note"] == "":
                 return tool.error_400("note의 값은 필수입니다.")
             dur = 0 if request.form["dur"] == "" else int(request.form["dur"])
-            if tool.has_config("aclgroup_max_duration") and dur > int(tool.get_config("aclgroup_max_duration")):
-                return tool.error_400(f"expire의 값은 {tool.get_config('aclgroup_max_duration')} 이하여야 합니다.")
             if request.form["mode"] == "ip":
                 ip = request.form["value"]
                 try:
