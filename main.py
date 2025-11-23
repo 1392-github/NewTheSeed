@@ -1056,9 +1056,7 @@ def aclgroup_delete():
             abort(403)
         if tool.get_config("aclgroup_note_required") == "1" and request.form["note"] == "":
             return tool.error_400("note의 값은 필수입니다.")
-        c.execute("INSERT INTO block_log (type, operator, target_ip, target, id, gid, date, note) SELECT 2, ?1, ip, user, ?2, ?5, ?3, ?4 FROM aclgroup_log WHERE id = ?2",
-                (tool.ipuser(), id, tool.get_utime(), request.form["note"], gid))
-        c.execute("DELETE FROM aclgroup_log WHERE id = ?", (id,))
+        tool.aclgroup_delete(id, request.form["note"])
         return '', 204
 @app.route("/aclgroup/new_group", methods = ["POST"])
 def aclgroup_new_group():

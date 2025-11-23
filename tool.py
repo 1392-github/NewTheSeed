@@ -615,3 +615,8 @@ def check_aclgroup_flag(gid, name, user = None):
     for i in get_aclgroup_config(gid, name).split(","):
         if has_perm(i, user): return True
     return False
+def aclgroup_delete(id, note = "", operator = None):
+    with g.db.cursor() as c:
+        c.execute("INSERT INTO block_log (type, operator, target_ip, target, id, gid, date, note) SELECT 2, ?1, ip, user, ?2, gid, ?3, ?4 FROM aclgroup_log WHERE id = ?2",
+                (ipuser() if operator is None else operator, id, get_utime(), note))
+        c.execute("DELETE FROM aclgroup_log WHERE id = ?", (id,))
