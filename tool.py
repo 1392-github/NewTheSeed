@@ -620,3 +620,5 @@ def aclgroup_delete(id, note = "", operator = None):
         c.execute("INSERT INTO block_log (type, operator, target_ip, target, id, gid, date, note) SELECT 2, ?1, ip, user, ?2, gid, ?3, ?4 FROM aclgroup_log WHERE id = ?2",
                 (ipuser() if operator is None else operator, id, get_utime(), note))
         c.execute("DELETE FROM aclgroup_log WHERE id = ?", (id,))
+def is_login():
+    return "id" in session

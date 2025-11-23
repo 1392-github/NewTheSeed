@@ -1614,6 +1614,23 @@ def batch_blind():
                 else: c.execute(f"UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no BETWEEN ? AND ?{'' if htc else ' AND blind != 2'}", (type, user, slug, st, en))
         g.db.commit()
         return "", 204
+@app.route("/aclgroup/self_remove")
+def self_remove():
+    id = request.args.get("id", None)
+    if id is None: return tool.rt("error.html", error = "aclgroup_not_found"), 400
+    with g.db.cursor() as c:
+        f = c.execute("SELECT gid, ip, user FROM aclgroup_log WHERE id = ?", (id,)).fetchone()
+        if f is None: return tool.rt("error.html", error = "aclgroup_not_found"), 400
+        gid, ip, user = f
+        if ip is None:
+            if not tool.is_login(): return tool.rt("error.html", error = "aclgroup_not_found"), 400
+            user2 = tool.ipuser(False)
+            if user != user2: return tool.rt("error.html", error = "aclgroup_not_found"), 400
+        else:
+            if not tool.ip_in_cidr(tool.getip(), ip): return tool.rt("error.html", error = "aclgroup_not_found"), 400
+        if tool.get_aclgroup_config(gid, "self_removable") == "0": return tool.rt("error.html", error = "not_self_removable"), 400
+        tool.aclgroup_delete(id, tool.get_aclgroup_config(gid, "self_remove_note"))
+        return redirect("/")
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == 1
     if DEBUG:
