@@ -23,6 +23,15 @@ class Menu:
     link: str
     clas: str = ""
     style: str = ""
+@dataclass
+class ACLGroupInStatus:
+    result: bool
+    id: int | None = None
+    note: str | None = None
+    start: int | None = None
+    end: int | None = None
+    def __bool__(self):
+        return self.result
 class Connection2(sqlite3.Connection):
     def cursor(self, *args, **kwargs):
         return super().cursor(*args, factory = Cursor2, **kwargs)
@@ -225,15 +234,14 @@ def user_in_aclgroup(group, user = None):
         if ip is not None:
             ip = ipaddress.ip_network(ip)
             for i in range(33 if ip.version == 4 else 129):
-                print(str(ip.supernet(i)))
-                r = c.execute("SELECT id FROM aclgroup_log WHERE gid = ? AND ip = ?", (group, str(ip.supernet(i)))).fetchone()
-                if r is not None: return r[0]
-            return None
+                r = c.execute("SELECT id, note, start, end FROM aclgroup_log WHERE gid = ? AND ip = ?", (group, str(ip.supernet(i)))).fetchone()
+                if r is not None: return ACLGroupInStatus(True, *r)
+            return ACLGroupInStatus(False)
         else:
-            r = c.execute("SELECT id FROM aclgroup_log WHERE gid = ? AND user = ?", (group, user)).fetchone()
+            r = c.execute("SELECT id, note, start, end FROM aclgroup_log WHERE gid = ? AND user = ?", (group, user)).fetchone()
             if r is None:
-                return None
-            return r[0]
+                return ACLGroupInStatus(True, *r)
+            return ACLGroupInStatus(True, *r)
 def isip(user):
     with g.db.cursor() as c:
         if user == -1: return True
@@ -414,14 +422,14 @@ def delete_expired_acl():
         c.executemany("UPDATE nsacl SET idx = idx - 1 WHERE ns_id = ? AND acltype = ? AND idx > ?", idx)
 def check_cond(cond, value, value2, user, ip, basedoc = None, docname = None):
     if cond == "user":
-        return value2 == user, 0
+        return value2 == user, None
     elif cond == "ip":
         if "/" in value:
-            return ip_in_cidr(ip, value), 0
+            return ip_in_cidr(ip, value), None
         else:
-            return ip == value, 0
+            return ip == value, None
     elif cond == "perm":
-        return has_perm(value, user, basedoc, docname), 0
+        return has_perm(value, user, basedoc, docname), None
     elif cond == "aclgroup":
         t = user_in_aclgroup(value2, user)
         if t:
@@ -429,9 +437,9 @@ def check_cond(cond, value, value2, user, ip, basedoc = None, docname = None):
         t = user_in_aclgroup(value2, ip)
         if t:
             return True, t
-        return False, 0
-    return False, 0
-def cond_repr(cond, value, value2, no, denied, gid):
+        return False, None
+    return False, None
+def cond_repr(cond, value, value2, no, denied):
     r = None
     if cond == "user":
         r = "(not) 특정 사용자" if no else "특정 사용자"
@@ -443,7 +451,13 @@ def cond_repr(cond, value, value2, no, denied, gid):
     elif cond == "aclgroup":
         with g.db.cursor() as c:
             gname = c.execute("SELECT name FROM aclgroup WHERE id = ?", (value2,)).fetchone()[0]
-        return f'현재 사용중인 계정이 ACL그룹 {gname}{"" if no else " #" + str(gid)}에 {"있지 않기" if no else "있기"}' if denied else f'ACL그룹 {gname}에 속해 {"있지 않는" if no else "있는"} 사용자'
+        if denied:
+            if no:
+                return f"ACL그룹 {gname}에 없기"
+            else:
+                return f"ACL그룹 {gname}에 있기"
+        if not denied:
+            f'ACL그룹 {gname}에 속해 {"있지 않는" if no else "있는"} 사용자'
     if r is None: r = f"{cond}:{value}"
     if no:
         r = "not:" + r
@@ -467,6 +481,14 @@ def check_acl(acl, type = None, user = None, basedoc = None, docname = None, got
 
             if showmsg:
                 if r == 0:
+                    if i[0] == "aclgroup" and not i[3]:
+                        status = c[1]
+                        with g.db.cursor() as c2:
+                            gname = c2.execute("SELECT name FROM aclgroup WHERE id = ?", (i[2],)).fetchone()[0]
+                        msg = get_aclgroup_config(i[2], "message")
+                        if msg == "": msg = data.default_aclgroup_message
+                        return 0, msg.replace("{type}", "{{type}}").replace("{tab}", "{{tab}}").format(group = gname, id = status.id, start = utime_to_str(status.start),
+                                                                              end = "영구" if status.end == None else utime_to_str(status.end), note = status.note)
                     return 0, f'{escape(cond_repr(i[0], i[1], i[2], i[3], True, c[1]))} 때문에 {{type}} 권한이 부족합니다. {{tab}}'
                 else:
                     return r, None

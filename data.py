@@ -153,3 +153,4 @@ default_aclgroup_config = [
     ("show_user_document", "0"),
     ("self_removable", "0"),
 ]
+default_aclgroup_message = "ACL그룹 {group} #{id}에 있기 때문에 {type} 권한이 부족합니다.<br>만료일 : {end}<br>사유 : {note}"
