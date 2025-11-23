@@ -1046,16 +1046,19 @@ def aclgroup():
         ))
 @app.route("/aclgroup/delete", methods = ["POST"])
 def aclgroup_delete():
-    if not tool.check_aclgroup_flag(gid, "remove_flags"):
-        abort(403)
     with g.db.cursor() as c:
+        id = int(request.form["id"])
+        gid = c.execute("SELECT gid FROM aclgroup_log WHERE id = ?", (id,)).fetchone()
+        if gid is None:
+            return tool.error_400("aclgroup_not_found")
+        gid = gid[0]
+        if not tool.check_aclgroup_flag(gid, "remove_flags"):
+            abort(403)
         if tool.get_config("aclgroup_note_required") == "1" and request.form["note"] == "":
             return tool.error_400("note의 값은 필수입니다.")
-        if not c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE id = ?)", (request.form["id"],)).fetchone()[0]:
-            return tool.error_400("aclgroup_not_found")
-        c.execute("INSERT INTO block_log (type, operator, target_ip, target, id, gid, date, note) SELECT 2, ?1, ip, user, ?2, gid, ?3, ?4 FROM aclgroup_log WHERE id = ?2",
-                (session["id"], request.form["id"], tool.get_utime(), request.form["note"]))
-        c.execute("DELETE FROM aclgroup_log WHERE id = ?", (request.form["id"],))
+        c.execute("INSERT INTO block_log (type, operator, target_ip, target, id, gid, date, note) SELECT 2, ?1, ip, user, ?2, ?5, ?3, ?4 FROM aclgroup_log WHERE id = ?2",
+                (tool.ipuser(), id, tool.get_utime(), request.form["note"], gid))
+        c.execute("DELETE FROM aclgroup_log WHERE id = ?", (id,))
         return '', 204
 @app.route("/aclgroup/new_group", methods = ["POST"])
 def aclgroup_new_group():
