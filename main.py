@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import ipaddress
+import cssutils
 
 from flask import Flask, request, redirect, session, send_file, abort, Response, url_for, g
 from jinja2 import ChoiceLoader, FileSystemLoader
@@ -303,6 +304,7 @@ def errorhandler_404(e):
 @app.before_request
 def before_request():
     g.db = tool.getdb()
+    g.username_cache = {}
 @app.after_request
 def after_request(res):
     if tool.get_config("keep_login_history") != "0":
@@ -314,14 +316,31 @@ def after_request(res):
 def teardown_request(exc):
     g.db.close()
 def render_username(user, bold = 0):
-    name = tool.id_to_user_name(user)
     if bold == 0:
         b = not tool.isip(user)
     elif bold == 1:
         b = True
     elif bold == 2:
         b = False
-    return Markup(f'{"<b>" if b else ""}<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + name)}">{escape(name)}</a>{"</b>" if b else ""}')
+    if user in g.username_cache:
+        if b:
+            return Markup(f"<b>{g.username_cache[user]}</b>")
+        else:
+            return Markup(g.username_cache[user])
+    else:
+        name = tool.id_to_user_name(user)
+        css = cssutils.css.CSSStyleDeclaration()
+        with g.db.cursor() as c:
+            for gr in c.execute("SELECT gid, value FROM aclgroup_config WHERE name = 'style' AND value != ''").fetchall():
+                if tool.user_in_aclgroup(gr[0], user):
+                    for p in cssutils.parseStyle(gr[1]):
+                        css.setProperty(p.name, p.value, p.priority)
+        r = f'<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + escape(name))}" style="{css.cssText}">{escape(name)}</a>'
+        g.username_cache[user] = r
+        if b:
+            return Markup(f"<b>{r}</b>")
+        else:
+            return Markup(r)
 def history_msg(type, text2, text3):
     if type == 0:
         return ""

@@ -3,3 +3,4 @@ requests
 gitpython
 python-dotenv
 distro
+cssutils
