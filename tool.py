@@ -259,6 +259,7 @@ def has_perm(perm, user = None, basedoc = None, docname = None):
         if perm == "member":
             return not isip(user)
         if perm == "match_username_and_document_title":
+            if isip(user): return False
             if docname is None: return False
             if get_config("allow_muadt_subdoc") == "1":
                 slash = docname.find("/")
