@@ -10,6 +10,13 @@
     이 사용자는 특수 권한을 가지고 있습니다.
 </div>
 {% endif %}
+{% for i in aclgroup %}
+<div class="aclgroup-userdoc">
+    이 사용자는 {{i[0]}} 그룹에 있습니다 (#{{i[1]}})<br><br>
+    이 사용자는 {{i[2]|time}}에 {% if i[3] is none %}영구적으로{% else %}{{i[3]|time}}까지{% endif %} {{i[0]}} 그룹에 추가되었습니다.<br>
+    사유: {{i[4]}}
+</div>
+{% endfor %}
 {% if fr is not none %}
 <div class="alert">
     <a href="{{ url_for('doc_read', doc_title = fr, noredirect = 1) }}">{{ fr }}</a>에서 넘어옴

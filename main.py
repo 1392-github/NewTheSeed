@@ -440,10 +440,13 @@ def doc_read(doc_title):
         if "/" not in name and ns == int(tool.get_config("user_namespace")):
             user = tool.user_name_to_id(name)
             admin_userdoc = tool.has_perm("admin", user)
+            tool.delete_expired_aclgroup()
+            aclgroup = c.execute("SELECT A.name, L.id, L.start, L.end, L.note FROM aclgroup_log L JOIN aclgroup_config C ON (L.gid = C.gid) JOIN aclgroup A ON (L.gid = A.id) WHERE L.user = ? AND C.name = 'show_user_document' AND C.value = '1'", (user,)).fetchall()
             menu.append(tool.Menu("기여 목록", url_for("document_contribution", user = user)))
         else:
             admin_userdoc = False
-        return tool.rt("document_read.html", admin_userdoc = admin_userdoc, title=tool.render_docname(ns, name), raw_doc_title=doc_title,
+            aclgroup = []
+        return tool.rt("document_read.html", admin_userdoc = admin_userdoc, title=tool.render_docname(ns, name), raw_doc_title=doc_title, aclgroup=aclgroup,
                        doc_data=d, menu=menu, fr=request.args.get("from", None), image = ns in data.file_namespace, docid = docid
                        ), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
 @app.route("/raw/<path:doc_title>")
