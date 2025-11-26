@@ -490,7 +490,7 @@ def check_acl(acl, type = None, user = None, basedoc = None, docname = None, got
                         if msg == "": msg = data.default_aclgroup_message
                         return 0, msg.replace("{type}", "{{type}}").replace("{tab}", "{{tab}}").format(group = gname, id = status.id, start = utime_to_str(status.start),
                                                                               end = "영구" if status.end == None else utime_to_str(status.end), note = status.note)
-                    return 0, f'{escape(cond_repr(i[0], i[1], i[2], i[3], True, c[1]))} 때문에 {{type}} 권한이 부족합니다. {{tab}}'
+                    return 0, f'{escape(cond_repr(i[0], i[1], i[2], i[3], True))} 때문에 {{type}} 권한이 부족합니다. {{tab}}'
                 else:
                     return r, None
             else:
@@ -505,7 +505,7 @@ def check_acl(acl, type = None, user = None, basedoc = None, docname = None, got
         else:
             r = []
             for i in allow:
-                r.append(cond_repr(i[0], i[1], i[2], i[3], False, 0))
+                r.append(cond_repr(i[0], i[1], i[2], i[3], False))
             return 0, f'{{type}} 권한이 부족합니다. {escape(" OR ".join(r))}(이)여야 합니다. {{tab}}'
     else:
         return 0
