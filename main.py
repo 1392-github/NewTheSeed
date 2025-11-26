@@ -679,8 +679,7 @@ def history(doc_name):
     user
     where author = id
     order by rev desc''', (doc_name,)).fetchall()"""
-        c.execute("""SELECT rev, type, content, content2, content3, u1.name, edit_comment, datetime, length FROM history
-    LEFT JOIN user AS u1 ON (author = u1.id) WHERE doc_id = ? ORDER BY rev DESC""", (docid,))
+        c.execute("""SELECT rev, type, content, content2, content3, author, edit_comment, datetime, length FROM history WHERE doc_id = ? ORDER BY rev DESC""", (docid,))
         history = [(x[0], x[1], x[2], x[3], x[4], x[5], x[6], tool.utime_to_str(x[7]), x[8]) for x in c.fetchall()]
         return tool.rt("history.html", history=history, title=tool.render_docname(ns, name), subtitle="역사", raw_doc_name=doc_name)
 @app.route("/sql")
@@ -1166,10 +1165,8 @@ def api_hasuser1(name):
 def block_history():
     with g.db.cursor() as c:
         return tool.rt("block_history.html", title = "차단 내역", log = [
-            (x[0], x[1], (x[3] if x[2] is None else x[2]), x[2] != None, x[4], x[5], tool.utime_to_str(x[6]), None if x[7] is None else tool.time_to_str(x[7]), x[8], x[9]) for x in
-            c.execute("""SELECT type, u1.name, target_ip, u2.name, block_log.id, aclgroup.name, date, duration, grant_perm, note FROM block_log
-    LEFT JOIN user AS u1 ON block_log.operator = u1.id
-    LEFT JOIN user AS u2 ON block_log.target = u2.id
+            (x[0], x[1], x[2], x[3], x[4], x[5], x[6], None if x[7] is None else tool.time_to_str(x[7]), x[8], x[9]) for x in
+            c.execute("""SELECT type, operator, target, target_ip, block_log.id, aclgroup.name, date, duration, grant_perm, note FROM block_log
     LEFT JOIN aclgroup ON block_log.gid = aclgroup.id
     ORDER BY date DESC""").fetchall()], note_ext = tool.get_config("ext_note") == "1")
 @app.route("/admin/grant", methods = ["GET", "POST"])
