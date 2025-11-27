@@ -54,8 +54,7 @@ default_config = {
     "username_format": r"[\w_가-힣]{1,128}",
     "frontpage": "FrontPage",
     "use_x_real_ip": "0",
-    "document_license": '이 저작물은 <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>에 따라 이용할 수 있습니다. (단, 라이선스가 명시된 일부 문서 및 삽화 제외)<br>\
-기여하신 문서의 저작권은 각 기여자에게 있으며, 각 기여자는 기여하신 부분의 저작권을 갖습니다.',
+    "document_license": '이 저작물은 <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>에 따라 이용할 수 있습니다. (단, 라이선스가 명시된 일부 문서 및 삽화 제외)<br>기여하신 문서의 저작권은 각 기여자에게 있으며, 각 기여자는 기여하신 부분의 저작권을 갖습니다.',
     "document_license_checkbox": "문서 편집을 저장하면 당신은 기여한 내용을 <b>CC BY 4.0 KR</b>으로 배포하고 기여한 문서에 대한 하이퍼링크나 URL을 이용하여 저작자 표시를 하는 것으로 충분하다는 데 동의하는 것입니다. <b>이 동의는 철회할 수 없습니다.</b>",
     "update_local_change_commit": "Update local change commit",
     "limit_acl": "3",
