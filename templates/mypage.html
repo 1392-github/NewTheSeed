@@ -1,0 +1,35 @@
+{% extends skin %}
+
+{% block css %}
+<style>
+    .member-info-name
+    {
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="member-info-name">사용자 이름</div>
+{{ user }}
+<hr>
+<div class="member-info-name">Email</div>
+000@000.com
+<hr>
+<div class="member-info-name">비밀번호</div>
+<a href="#">
+    <button>변경</button>
+</a>
+<hr>
+<div class="member-info-name">권한</div>
+{{ perm }}
+<hr>
+<div class="member-info-name">계정</div>
+<a href="#">
+    <button class="danger">계정 삭제</button>
+</a>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

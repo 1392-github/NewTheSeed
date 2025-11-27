@@ -1656,6 +1656,13 @@ def self_remove():
         if tool.get_aclgroup_config(gid, "self_removable") == "0": return tool.rt("error.html", error = "not_self_removable"), 400
         tool.aclgroup_delete(id, tool.get_aclgroup_config(gid, "self_remove_note"))
         return redirect("/")
+@app.route("/member/mypage")
+def mypage():
+    if not tool.is_login(): return redirect("/")
+    with g.db.cursor() as c:
+        user = session["id"]
+        return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user),
+                       perm = ", ".join(x[0] for x in c.execute("SELECT perm FROM perm WHERE user = ?", (user,)).fetchall()))
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == 1
     if DEBUG:
