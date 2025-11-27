@@ -1663,6 +1663,19 @@ def mypage():
         user = session["id"]
         return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user),
                        perm = ", ".join(x[0] for x in c.execute("SELECT perm FROM perm WHERE user = ?", (user,)).fetchall()))
+@app.route("/member/change_password", methods = ["GET", "POST"])
+def change_password():
+    if not tool.is_login(): return redirect("/")
+    if request.method == "POST":
+        user = session["id"]
+        with g.db.cursor() as c:
+            if c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(request.form["cpw"].encode("utf-8")).hexdigest())).fetchone()[0] == 0:
+                return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
+            if request.form["pw"] != request.form["pw2"]:
+                return tool.rt("error.html", error = "패스워드 확인이 올바르지 않습니다.")
+            c.execute("UPDATE user SET password = ? WHERE id = ?", (hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest(), user))
+            return redirect("/")
+    return tool.rt("change_password.html", title="비밀번호 변경")
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == 1
     if DEBUG:

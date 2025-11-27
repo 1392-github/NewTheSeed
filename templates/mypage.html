@@ -17,7 +17,7 @@
 000@000.com
 <hr>
 <div class="member-info-name">비밀번호</div>
-<a href="#">
+<a href="{{ url_for('change_password') }}">
     <button>변경</button>
 </a>
 <hr>
@@ -26,7 +26,7 @@
 <hr>
 <div class="member-info-name">계정</div>
 <a href="#">
-    <button class="danger">계정 삭제</button>
+    <button class="danger" disabled>계정 삭제</button>
 </a>
 {% endblock %}
 

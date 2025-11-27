@@ -58,6 +58,7 @@
     {% if login %}
     <ul>
     <li><a href="/logout">로그아웃</a></li>
+    <li><a href="{{ url_for('mypage') }}">내 정보</a></li>
     {% if api %}
     <li><a href="javascript:openModal('apiconfirm')">API 키 발급</a></li>
     <li>API 키 상태 : {% if api_enable %}ON{% else %}OFF{% endif %} </li>
