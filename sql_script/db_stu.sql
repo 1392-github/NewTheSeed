@@ -153,3 +153,9 @@ CREATE TABLE IF NOT EXISTS "aclgroup_config" (
 	"value"	TEXT NOT NULL,
 	PRIMARY KEY("gid","name")
 );
+CREATE TABLE IF NOT EXISTS "user_config" (
+	"user"	INTEGER,
+	"name"	TEXT,
+	"value"	TEXT,
+	PRIMARY KEY("name","user")
+);

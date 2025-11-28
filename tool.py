@@ -629,3 +629,17 @@ def version_str(ver):
         return str(ver[0])
     else:
         return f"{ver[0]}-{ver[1]}"
+def has_user_config(user, name):
+    with g.db.cursor() as c:
+        return bool(c.execute("SELECT EXISTS (SELECT 1 FROM user_config WHERE user = ? AND name = ?)", (user, name)).fetchone()[0])
+def get_user_config(user, name, default = None):
+    with g.db.cursor() as c:
+        f = c.execute("SELECT value FROM user_config WHERE user = ? AND name = ?", (user, name)).fetchone()
+        if f is None: return default
+        else: return f[0]
+def set_user_config(user, name, value):
+    with g.db.cursor() as c:
+        if has_user_config(user, name):
+            c.execute("UPDATE user_config SET value = ? WHERE user = ? AND name = ?", (value, user, name))
+        else:
+            c.execute("INSERT INTO user_config (user, name, value) VALUES(?,?,?)", (user, name, value))
