@@ -279,6 +279,9 @@ with app.app_context():
                 i = i[0]
                 if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_config WHERE gid = ?)", (i,)).fetchone()[0] == 0:
                     c.executemany("INSERT INTO aclgroup_config (gid, name, value) VALUES(?,?,?)", ((i, x[0], x[1]) for x in data.default_aclgroup_config))
+        if db_version < (48, 2):
+            c.execute("UPDATE aclgroup_config SET name = 'withdraw_period' WHERE name = 'withdraw_period_hours'")
+            c.execute("UPDATE aclgroup_config SET value = CAST(CAST(value AS INTEGER) * 3600 AS TEXT) WHERE name = 'withdraw_period' AND value != '-1'")
         c.execute("""update config
         set value = ?
         where name =' version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
@@ -1125,28 +1128,9 @@ def aclgroup_manage():
                 r = n.lstrip("0")
                 if r == "": return "0"
                 else: return r
-            """<label>
-    signup_policy<br>
-    <select name="signup_policy">
-        <option{% if config["signup_policy"] == "none" %} selected{% endif %}>none</option>
-        <option{% if config["signup_policy"] == "require_verification" %} selected{% endif %}>require_verification</option>
-        <option{% if config["signup_policy"] == "block" %} selected{% endif %}>block</option>
-    </select>
-</label><br>
-<label>max_duration_ip<br><input type="number" min="0" name="max_duration_ip" value="{{config['max_duration_ip']}}"></label><br>
-<label>max_duration_user<br><input type="number" min="0" name="max_duration_user" value="{{config['max_duration_user']}}"></label><br>
-<label>max_ipv4_cidr<br><input type="number" min="0" max="32" name="max_ipv4_cidr" value="{{config['max_ipv4_cidr']}}"></label><br>
-<label>max_ipv6_cidr<br><input type="number" min="0" max="128" name="max_ipv6_cidr" value="{{config['max_ipv6_cidr']}}"></label><br>
-<label>access_flags<br><input name="access_flags" value="{{config['access_flags']}}"></label><br>
-<label>add_flags<br><input name="add_flags" value="{{config['add_flags']}}"></label><br>
-<label>remove_flags<br><input name="remove_flags" value="{{config['remove_flags']}}"></label><br>
-<label>style<br><input name="style" value="{{config['style']}}"></label><br>
-<label>message<br><input name="message" value="{{config['message']}}"></label><br>
-<label>self_remove_note<br><input name="self_remove_note" value="{{config['self_remove_note']}}"></label><br>
-"""
-            tmp = request.form["withdraw_period_hours"]
+            tmp = request.form["withdraw_period"]
             if not tmp.isdecimal() and tmp != "-1": fail()
-            c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'withdraw_period_hours'", (remove_zero(tmp), gid))
+            c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'withdraw_period'", (remove_zero(tmp), gid))
             tmp = request.form["signup_policy"]
             if tmp not in ["none", "require_verification", "block"]: fail()
             c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'signup_policy'", (tmp, gid))

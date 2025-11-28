@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = (48, 1)
+version = (48, 2)
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -138,7 +138,7 @@ If the last character is "1", the installation is in progress, and if it's "2", 
 {0}"""
 batch_blind_regex = re.compile(r"(\d+)[~-](\d+)")
 default_aclgroup_config = [
-    ("withdraw_period_hours", "0"),
+    ("withdraw_period", "0"),
     ("signup_policy", "none"),
     ("max_duration_ip", "0"),
     ("max_duration_account", "0"),
