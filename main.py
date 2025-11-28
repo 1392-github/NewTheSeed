@@ -1155,7 +1155,7 @@ def aclgroup_manage():
             c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'show_user_document'", ("1" if "show_user_document" in request.form else "0", gid))
             c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'self_removable'", ("1" if "self_removable" in request.form else "0", gid))
             return redirect(url_for("aclgroup", group = request.args["group"]))
-        return tool.rt("aclgroup_manage.html", title="ACLGroup 설정", group = request.args["group"],
+        return tool.rt("aclgroup_manage.html", title="ACLGroup 설정", group = request.args["group"], gid = gid,
                        config = dict(c.execute("SELECT name, value FROM aclgroup_config WHERE gid = ?", (gid,)).fetchall()))
 @app.route("/api/hasuser/<name>")
 def api_hasuser(name):
