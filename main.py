@@ -1556,10 +1556,6 @@ def grant2():
     if request.method == "POST":
         if tool.has_user(request.form["user"])
     return tool.rt("grant2.html")"""
-@app.route("/aclgroup/manage", methods = ["GET", "POST"])
-def manage_aclgroup():
-    if not tool.has_perm("aclgroup"): abort(403)
-    return tool.rt("manage_aclgroup.html", title = "ACLGroup 설정", group = "111")
 @app.route("/contribution/<int:user>/document")
 def document_contribution(user):
     type = request.args.get("logtype", -1, int)
