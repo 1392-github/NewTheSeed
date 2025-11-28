@@ -1091,6 +1091,7 @@ def aclgroup_new_group():
     if not tool.has_perm("aclgroup"):
         abort(403)
     with g.db.cursor() as c:
+        if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE name = ? AND deleted = 0)", (request.form["group"],)).fetchone()[0]: return tool.rt("error.html", error = "이미 존재하는 ACLGroup입니다.")
         c.execute("INSERT INTO aclgroup (name) VALUES(?)",
                 (request.form["group"],))
         id = c.lastrowid
