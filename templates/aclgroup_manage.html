@@ -42,7 +42,7 @@
 {% block js %}
 <script>
     document.getElementById("delete_aclgroup").addEventListener("click", function () {
-        delete_aclgroup_form.submit();
+        if (confirm("삭제하시겠습니까?")) delete_aclgroup_form.submit();
     })
 </script>
 {% endblock %}
