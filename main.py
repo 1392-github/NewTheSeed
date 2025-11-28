@@ -1070,7 +1070,7 @@ def aclgroup():
                         (session["id"], request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))
         return tool.rt("aclgroup.html", title = "ACLGroup", groups = groups, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.check_aclgroup_flag(gid, "add_flags"), delete_perm = tool.check_aclgroup_flag(gid, "remove_flags"), record = (
             (x[0], x[1], x[2], tool.utime_to_str(x[3]), "영구" if x[4] is None else tool.utime_to_str(x[4]))
-            for x in c.execute("SELECT id, (CASE WHEN ip IS NULL THEN (SELECT name FROM user WHERE id = user) ELSE ip END), note, start, end FROM aclgroup_log WHERE gid = (SELECT id FROM aclgroup WHERE name = ?)", (current,)).fetchall()
+            for x in c.execute("SELECT id, (CASE WHEN ip IS NULL THEN (SELECT name FROM user WHERE id = user) ELSE ip END), note, start, end FROM aclgroup_log WHERE gid = (SELECT id FROM aclgroup WHERE name = ? AND deleted = 0)", (current,)).fetchall()
         ))
 @app.route("/aclgroup/delete", methods = ["POST"])
 def aclgroup_delete():
@@ -1102,7 +1102,7 @@ def aclgroup_delete_group():
     if not tool.has_perm("aclgroup"):
         abort(403)
     with g.db.cursor() as c:
-        gid = c.execute("SELECT id FROM aclgroup WHERE name = ?", (request.form["group"],)).fetchone()
+        gid = c.execute("SELECT id FROM aclgroup WHERE name = ? AND deleted = 0", (request.form["group"],)).fetchone()
         if gid is None:
             abort(400)
         gid = gid[0]
@@ -1115,7 +1115,7 @@ def aclgroup_manage():
     if not tool.has_perm("aclgroup"):
         abort(403)
     with g.db.cursor() as c:
-        gid = c.execute("SELECT id FROM aclgroup WHERE name = ?", (request.args["group"],)).fetchone()
+        gid = c.execute("SELECT id FROM aclgroup WHERE name = ? AND deleted = 0", (request.args["group"],)).fetchone()
         if gid == None:
             abort(404)
         gid = gid[0]
