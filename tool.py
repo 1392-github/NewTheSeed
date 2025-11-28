@@ -125,7 +125,8 @@ where key = ?''', (key,)).fetchone()[0]
 def rt(t, **kwargs):
     k = kwargs
     k["wiki_name"] = get_config("wiki_name")
-    k["version"] = data.version
+    k["version"] = version_str(data.version)
+    k["raw_version"] = data.version
     k["timemode"] = get_config("time_mode")
     k["captcha"] = get_config("captcha_mode") != "0"
     k["sitekey"] = get_config("captcha_sitekey")
@@ -623,3 +624,8 @@ def aclgroup_delete(id, note = "", operator = None):
         c.execute("DELETE FROM aclgroup_log WHERE id = ?", (id,))
 def is_login():
     return "id" in session
+def version_str(ver):
+    if ver[1] == 0:
+        return str(ver[0])
+    else:
+        return f"{ver[0]}-{ver[1]}"

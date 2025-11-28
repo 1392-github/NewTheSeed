@@ -46,14 +46,10 @@ with app.app_context():
         for k in data.default_config:
             if c.execute("select exists (select 1 from config where name = ?)", (k,)).fetchone()[0] == 0:
                 c.execute('insert into config values(?, ?)', (k, data.default_config[k]() if isinstance(data.default_config[k], types.FunctionType) else data.default_config[k]))
-        print(f"NewTheSeed [Version {data.version}]")
+        print(f"NewTheSeed [Version {tool.version_str(data.version)}]")
         print("(c) 1392-github, 2023-2025, MIT License")
-        c.execute("UPDATE config SET name = 'version' WHERE name = 'majorversion'")
-        c.execute("DELETE FROM config WHERE name = 'minorversion'")
-        db_version = int(c.execute('''select value
-        from config
-        where name = "version"''').fetchone()[0])
-        print(f"DB Version : {db_version}")
+        db_version = (int(tool.get_config("version")), int(tool.get_config("version2", "0")))
+        print(f"DB Version : {tool.version_str(db_version)}")
         if db_version > data.version:
             print("경고 : 상위 버전 NewTheSeed의 DB입니다")
             print("DB 손상 위험이 있을 수도 있습니다")
@@ -61,21 +57,21 @@ with app.app_context():
                 sys.exit(0)
 
         # DB 변환 코드
-        if db_version < 6:
+        if db_version < (6, 0):
             # discuss_seq 컬럼 추가
             c.execute("alter table doc_name add discuss_seq INTEGER")
-        if db_version < 8:
+        if db_version < (8, 0):
             # discuss_seq 컬럼의 데이터 타입 오류 수정
             c.executescript('''alter table doc_name drop column discuss_seq;
                             alter table doc_name add column discuss_seq INTEGER;''')
             # config에 get_api_key 추가
             c.execute("insert into config values('get_api_key', 'disabled')")
-        if db_version < 10:
+        if db_version < (10, 0):
             # ban, reason 컬럼 추가
             c.executescript('''alter table user add ban INTEGER;
         alter table user add reason TEXT;
         update user set ban=0;''')
-        if db_version < 16:
+        if db_version < (16, 0):
             # ACL 테이블 다 갈아엎음
             c.execute('drop table acl')
             c.execute('drop table nsacl')
@@ -93,16 +89,16 @@ with app.app_context():
             end
         from api_policy''', c.execute("SELECT id FROM user WHERE isip = 0").fetchall())
             c.execute("INSERT INTO api_keys SELECT id, NULL, 0 FROM user WHERE isip = 0")
-        if db_version < 16 or tool.init:
+        if db_version < (16, 0) or tool.init:
             c.execute("INSERT INTO aclgroup (name) VALUES('차단된 사용자')")
             l = c.lastrowid
             c.executemany("INSERT INTO aclgroup_config (gid, name, value) VALUES(?,?,?)",
                           ((l, x[0], x[1]) for x in data.default_aclgroup_config))
 
-        if db_version < 17:
+        if db_version < (17, 0):
             # owner 설정 삭제 및 권한 시스템으로 대체
             c.execute("DELETE FROM config WHERE name = 'owner'")
-        if db_version < 19:
+        if db_version < (19, 0):
             # acl, nsacl 테이블 재생성
             c.execute("DROP TABLE acl")
             c.execute("DROP TABLE nsacl")
@@ -185,10 +181,10 @@ with app.app_context():
             c.execute("INSERT INTO user (id, name, password, isip) SELECT id, name, password, isip FROM user2")
             c.execute("DROP TABLE user2")
             c.execute("DELETE FROM config WHERE name IN ('debug', 'host', 'port')")
-        if db_version < 19 or tool.init:
+        if db_version < (19, 0) or tool.init:
             # 기본 이름공간 및 ACL 생성
             tool.run_sqlscript("default_namespace2.sql")
-        if db_version < 22:
+        if db_version < (22, 0):
             c.execute("DROP TABLE discuss")
             c.execute("""CREATE TABLE "discuss" (
             "slug"	INTEGER,
@@ -201,14 +197,14 @@ with app.app_context():
             PRIMARY KEY("slug" AUTOINCREMENT)
         )""")
             c.execute("DELETE FROM config WHERE name = 'wiki_title'")
-        if db_version < 27:
+        if db_version < (27, 0):
             # secret key 저장위치 변경
             dotenv.set_key(".env", "SECRET_KEY", tool.get_config("secret_key"))
             c.execute("DELETE FROM config WHERE name = 'secret_key'")
             # admin 컬럼 추가
             c.execute("ALTER TABLE thread_comment ADD COLUMN admin INTEGER NOT NULL DEFAULT 0")
             c.execute("UPDATE thread_comment SET admin = (SELECT EXISTS (SELECT 1 FROM perm WHERE user = author AND perm IN ('admin', 'developer')))")
-        if db_version < 31:
+        if db_version < (31, 0):
             # gotootherns 추가
             c.execute("""CREATE TABLE "acl_new" (
             "doc_id"	INTEGER,
@@ -254,14 +250,14 @@ with app.app_context():
             c.execute("INSERT INTO discuss_new SELECT * FROM discuss")
             c.execute("DROP TABLE discuss")
             c.execute("ALTER TABLE discuss_new RENAME TO discuss")
-        if db_version < 34:
+        if db_version < (34, 0):
             # file 테이블 삭제
             c.execute("DROP TABLE file")
-        if db_version < 35:
+        if db_version < (35, 0):
             c.execute("UPDATE config SET name = 'ignore_developer_perm' WHERE name = 'ignore_developer_perm'")
-        if db_version < 39:
+        if db_version < (39, 0):
             c.execute("DELETE FROM perm WHERE perm in ('database', 'sysman')")
-        if db_version < 41:
+        if db_version < (41, 0):
             c.execute("""CREATE TABLE "thread_comment_new" (
 	"slug"	INTEGER NOT NULL,
 	"no"	INTEGER NOT NULL,
@@ -278,14 +274,17 @@ with app.app_context():
             c.execute("INSERT INTO thread_comment_new (slug, no, type, text, text2, author, time, admin) SELECT slug, no, type, text, text2, author, time, admin FROM thread_comment")
             c.execute("DROP TABLE thread_comment")
             c.execute("ALTER TABLE thread_comment_new RENAME TO thread_comment")
-        if db_version < 45:
+        if db_version < (45, 0):
             for i in c.execute("SELECT id FROM aclgroup WHERE deleted = 0").fetchall():
                 i = i[0]
                 if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_config WHERE gid = ?)", (i,)).fetchone()[0] == 0:
                     c.executemany("INSERT INTO aclgroup_config (gid, name, value) VALUES(?,?,?)", ((i, x[0], x[1]) for x in data.default_aclgroup_config))
-        c.execute('''update config
+        c.execute("""update config
         set value = ?
-        where name = "version"''', (str(data.version),)) # 변환 후 버전 재설정
+        where name =' version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
+        c.execute("""update config
+        set value = ?
+        where name = 'version2'""", (str(data.version[1]),)) # 변환 후 버전 재설정
     tool.reload_config(app)
     g.db.close()
 if not os.getenv("SECRET_KEY"):

@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = 48
+version = (48, 1)
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -24,7 +24,8 @@ keyl = {'문서 읽기' : 'read_doc',
 rng_string = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 sql_max_detector = re.compile(r'\?(\d+)')
 default_config = {
-    "version": str(version),
+    "version": str(version[0]),
+    "version2": str(version[1]),
     "get_api_key": "disabled",
     "api_key_length": "64",
     "time_mode": "real",
