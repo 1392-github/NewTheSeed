@@ -1,6 +1,7 @@
 __pycache__/
 
 /data.db
+/data.db-journal
 /temp.*
 /.venv
 /.vscode
