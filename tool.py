@@ -639,4 +639,4 @@ def get_user_config(user, name, default = None):
         else: return f[0]
 def set_user_config(user, name, value):
     with g.db.cursor() as c:
-        c.execute("INSERT INTO user_config (user, name, value) VALUES(?, ?, ?) ON CONFLICT (user, name) DO UPDATE SET name = excluded.name, value = excluded.value", (user, name, value))
+        c.execute("INSERT INTO user_config (user, name, value) VALUES(?, ?, ?) ON CONFLICT (user, name) DO UPDATE SET value = excluded.value", (user, name, value))

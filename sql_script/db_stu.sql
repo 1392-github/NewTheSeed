@@ -157,5 +157,5 @@ CREATE TABLE IF NOT EXISTS "user_config" (
 	"user"	INTEGER,
 	"name"	TEXT,
 	"value"	TEXT,
-	PRIMARY KEY("name","user")
+	PRIMARY KEY("user","name")
 );
