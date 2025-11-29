@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = (48, 10)
+version = (49, 0)
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -101,7 +101,7 @@ perm_type = {
     "ip": "아이피 사용자",
     "member": "로그인된 사용자",
     "admin": "관리자",
-    #"member_signup_15days_ago": "가입한지 15일 지난 사용자",
+    "member_signup_15days_ago": "가입한지 15일 지난 사용자",
     "document_contributor": "해당 문서 기여자",
     "contributor": "위키 기여자",
     "match_username_and_document_title": "문서 제목과 사용자 이름이 일치"
@@ -110,7 +110,7 @@ perm_type_not = {
     "ip": "로그인된 사용자",
     "member": "아이피 사용자",
     "admin": "관리자가 아닌 사용자",
-    #"member_signup_15days_ago": "가입한지 15일 지나지 않은 사용자",
+    "member_signup_15days_ago": "가입한지 15일 지나지 않은 사용자",
     "document_contributor": "해당 문서 미기여자",
     "contributor": "위키 미기여자",
     "match_username_and_document_title": "문서 제목과 사용자 이름이 불일치"
@@ -154,3 +154,5 @@ default_aclgroup_config = [
     ("self_removable", "0"),
 ]
 default_aclgroup_message = "ACL그룹 {group} #{id}에 있기 때문에 {type} 권한이 부족합니다.<br>만료일 : {end}<br>사유 : {note}"
+member_signup_days_ago_regex = re.compile("member_signup_(\d+)days_ago")
+member_signup_ago_regex = re.compile("member_signup_(\d+)_ago")

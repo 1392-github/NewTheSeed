@@ -259,6 +259,14 @@ def has_perm(perm, user = None, basedoc = None, docname = None):
             return False
         if perm == "member":
             return not isip(user)
+        m = data.member_signup_days_ago_regex.match(perm)
+        if m is not None:
+            if isip(user): return False
+            return get_utime() >= int(get_user_config(user, "signup")) + int(m.group(1)) * 86400
+        m = data.member_signup_ago_regex.match(perm)
+        if m is not None:
+            if isip(user): return False
+            return int(get_user_config(user, "signup")) < int(m.group(1))
         if perm == "match_username_and_document_title":
             if isip(user): return False
             if docname is None: return False
@@ -383,21 +391,21 @@ def get_docid(ns, name, create = False):
                 return lr
             else: return -1
         else: return r[0]
-def record_history(docid, type, content, content2, content3, author, edit_comment, length):
+def record_history(docid, type, content, content2, content3, author, edit_comment, length, time = None):
     with g.db.cursor() as c:
         c.execute("""INSERT INTO history (doc_id, rev, type, content, content2, content3, author, edit_comment, datetime, length, hide, hidecomm, troll)
                 SELECT ?1, (SELECT history_seq FROM doc_name WHERE id = ?1), ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, -1, -1""",
-                (docid, type, content, content2, content3, author, edit_comment, get_utime(), length))
+                (docid, type, content, content2, content3, author, edit_comment, get_utime() if time is None else time, length))
         c.execute("UPDATE doc_name SET history_seq = history_seq + 1 WHERE id = ?", (docid,))
 def render_acl(acl, type):
     # index, condtype, value, value2, not, action, expire, otherns 순으로 입력
     r = []
     for n in acl:
-        perml = (data.perm_type_not if n[4] else data.perm_type)
         trg = True
-        if n[1] == "perm" and n[2] in perml:
-            cond = perml[n[2]]
-            trg = False
+        if n[1] == "perm":
+            cond = repr_perm(n[2], n[4])
+            if cond is None: cond = "perm:" + n[2]
+            else: trg = False
         elif n[1] == "aclgroup":
             with g.db.cursor() as c:
                 cond = "aclgroup:" + c.execute("SELECT name FROM aclgroup WHERE id = ?", (n[3],)).fetchone()[0]
@@ -446,10 +454,8 @@ def cond_repr(cond, value, value2, no, denied):
     if cond == "user":
         r = "(not) 특정 사용자" if no else "특정 사용자"
     elif cond == "perm":
-        l = data.perm_type_not if no else data.perm_type
-        if value in l:
-            r = l[value]
-            no = False
+        r = repr_perm(value, no)
+        if r is not None: no = False
     elif cond == "aclgroup":
         with g.db.cursor() as c:
             gname = c.execute("SELECT name FROM aclgroup WHERE id = ?", (value2,)).fetchone()[0]
@@ -640,3 +646,14 @@ def get_user_config(user, name, default = None):
 def set_user_config(user, name, value):
     with g.db.cursor() as c:
         c.execute("INSERT INTO user_config (user, name, value) VALUES(?, ?, ?) ON CONFLICT (user, name) DO UPDATE SET value = excluded.value", (user, name, value))
+def repr_perm(perm, no):
+    l = data.perm_type_not if no else data.perm_type
+    m = data.member_signup_days_ago_regex.match(perm)
+    if m:
+        return f"가입한지 {int(m.group(1))}일 {'지나지 않은' if no else '지난'} 사용자"
+    m = data.member_signup_ago_regex.match(perm)
+    if m:
+        return f"{utime_to_str(int(m.group(1)))} {'이후' if no else '이전'} 가입자"
+    if perm in l:
+        return l[perm]
+    return None

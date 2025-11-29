@@ -282,6 +282,17 @@ with app.app_context():
         if db_version < (48, 2):
             c.execute("UPDATE aclgroup_config SET name = 'withdraw_period' WHERE name = 'withdraw_period_hours'")
             c.execute("UPDATE aclgroup_config SET value = CAST(CAST(value AS INTEGER) * 3600 AS TEXT) WHERE name = 'withdraw_period' AND value != '-1'")
+        if db_version < (49, 0):
+            userns = int(tool.get_config("user_namespace"))
+            time = tool.get_utime()
+            for id, name in c.execute("SELECT id, name FROM user WHERE isip = 0").fetchall():
+                docid = tool.get_docid(userns, name)
+                if docid == -1:
+                    tool.set_user_config(id, "signup", time)
+                else:
+                    f = c.execute("SELECT datetime FROM history WHERE doc_id = ? AND rev = 1", (docid,)).fetchone()
+                    if f is None: tool.set_user_config(id, "signup", time)
+                    else: tool.set_user_config(id, "signup", f[0])
         c.execute("""update config
         set value = ?
         where name =' version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
@@ -640,9 +651,11 @@ def signup_form():
         c.execute('''insert into user (name, password, isip)
     values (?,?,0)''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest()))
         u = c.lastrowid
+        time = tool.get_utime()
         docid = tool.get_docid(int(tool.get_config("user_namespace")), request.form["id"], True)
         c.execute("UPDATE data SET value = '' WHERE id = ?", (docid,))
-        tool.record_history(docid, 1, "", None, None, u, "", 0)
+        tool.record_history(docid, 1, "", None, None, u, "", 0, time = time)
+        tool.set_user_config(u, "signup", str(time))
         if first:
             c.execute("INSERT INTO perm VALUES(?, 'developer')", (u,))
         return redirect('/')
@@ -850,12 +863,19 @@ def acl(doc_name):
                 not isinstance(no, bool) or \
                 not isinstance(duration, int):
                     return tool.error_400("invalid_acl_condition")
-                if no and condtype == "perm" and cond == "member":
-                    no = False
-                    cond = "ip"
-                if no and condtype == "perm" and cond == "ip":
-                    no = False
-                    cond = "member"
+                if condtype == "perm":
+                    if no and cond == "member":
+                        no = False
+                        cond = "ip"
+                    if no and cond == "ip":
+                        no = False
+                        cond = "member"
+                    m = data.member_signup_days_ago_regex.match(cond)
+                    if m is not None:
+                        cond = f"member_signup_{int(m.group(1))}days_ago"
+                    m = data.member_signup_ago_regex.match(cond)
+                    if m is not None:
+                        cond = f"member_signup_{int(m.group(1))}_ago"
                 if type2 not in data.acl_type_key:
                     return tool.error_400("invalid_acl_condition")
                 if action != "allow" and action != "deny" and (nsacl or action != "gotons") and action != "gotootherns":
