@@ -786,6 +786,7 @@ from user, api_keys
 where user.id = api_keys.user_id''').fetchall()])"""
 @app.route("/move/<path:doc_name>", methods = ["GET", "POST"])
 def move(doc_name):
+    tool.clean_docid()
     ns, name = tool.split_ns(doc_name)
     docid = tool.get_docid(ns, name)
     acl = tool.check_document_acl(docid, ns, "move", name)
@@ -1508,6 +1509,7 @@ def login_history():
 @app.route("/Upload", methods=['GET','POST'])
 def upload():
     if request.method == "POST":
+        tool.clean_docid()
         with g.db.cursor() as c:
             if "file" not in request.files: abort(400)
             file = request.files["file"]

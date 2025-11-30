@@ -657,3 +657,6 @@ def repr_perm(perm, no):
     if perm in l:
         return l[perm]
     return None
+def clean_docid():
+    with g.db.cursor() as c:
+        c.execute("DELETE FROM doc_name WHERE history_seq = 1 AND NOT EXISTS (SELECT 1 FROM discuss WHERE doc_id = id)")
