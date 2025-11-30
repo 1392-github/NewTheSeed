@@ -71,18 +71,16 @@ def ipuser(create = True):
     with g.db.cursor() as c:
         if 'id' in session:
             return session['id']
-        c.execute('''insert into user (name, isip)
-    select ?1, 1
-    where not exists (
-        select *
-        from user
-        where name = ?1
-        and isip = 1
-    )''', (getip(),))
-        return c.execute('''select id
-    from user
-    where name = ?
-    and isip = 1''', (getip(),)).fetchone()[0]
+        ip = getip()
+        f = c.execute("SELECT id FROM user WHERE name = ? AND isip = 1", (ip,)).fetchone()
+        if f is None:
+            if create:
+                c.execute("INSERT INTO user (name, isip) VALUES(?, 1)", (ip,))
+                return c.lastrowid
+            else:
+                return -1
+        else:
+            return f[0]
 
 # API 키 요구여부 확인 및 키에 연결된 사용자 가져오기
 # 유효하지 않은 키인경우 None 반환
