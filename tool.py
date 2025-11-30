@@ -658,3 +658,17 @@ def repr_perm(perm, no):
 def clean_docid():
     with g.db.cursor() as c:
         c.execute("DELETE FROM doc_name WHERE history_seq = 1 AND NOT EXISTS (SELECT 1 FROM discuss WHERE doc_id = id)")
+def change_name(user, name):
+    with g.db.cursor() as c:
+        old_name = id_to_user_name(user)
+        le = len(old_name)
+        time = get_utime()
+        userns = int(get_config("user_namespace"))
+        prefix = id_to_ns_name(userns) + ":"
+        for id, dname in c.execute("SELECT id, name FROM doc_name WHERE namespace = ?2 AND (name = ?1 OR name LIKE ?1 || '/%')", (old_name, userns)).fetchall():
+            if dname == old_name: new_name = name
+            else: new_name = name + dname[le:]
+            c.execute("UPDATE doc_name SET name = ? WHERE id = ?", (new_name, id))
+            record_history(id, 3, get_doc_data(id), prefix + dname, prefix + new_name, user, "", 0, time)
+        c.execute("UPDATE user SET name = ? WHERE id = ?", (name, user))
+        set_user_config(user, "change_name", time)

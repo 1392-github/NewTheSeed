@@ -293,6 +293,10 @@ with app.app_context():
                     f = c.execute("SELECT datetime FROM history WHERE doc_id = ? AND rev = 1", (docid,)).fetchone()
                     if f is None: tool.set_user_config(id, "signup", time)
                     else: tool.set_user_config(id, "signup", f[0])
+        if db_version < (50, 0):
+            for id in c.execute("SELECT id FROM user WHERE isip = 0").fetchall():
+                id = id[0]
+                tool.set_user_config(id, "change_name", tool.get_user_config(id, "signup"))
         c.execute("""update config
         set value = ?
         where name =' version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
@@ -1663,7 +1667,7 @@ def mypage():
     if not tool.is_login(): return redirect("/")
     with g.db.cursor() as c:
         user = session["id"]
-        return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user),
+        return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user), change_name = tool.get_config("change_name_enable") == "1",
                        perm = ", ".join(x[0] for x in c.execute("SELECT perm FROM perm WHERE user = ?", (user,)).fetchall()))
 @app.route("/member/change_password", methods = ["GET", "POST"])
 def change_password():
@@ -1678,6 +1682,29 @@ def change_password():
             c.execute("UPDATE user SET password = ? WHERE id = ?", (hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest(), user))
             return redirect("/")
     return tool.rt("change_password.html", title="비밀번호 변경")
+@app.route("/member/change_name", methods = ["GET", "POST"])
+def change_name():
+    if not tool.is_login(): return redirect("/")
+    user = tool.ipuser()
+    cooltime = int(tool.get_user_config(user, "change_name")) + int(tool.get_config("change_name_cooltime"))
+    if cooltime <= tool.get_utime():
+        cooltime = None
+    if request.method == "POST":
+        if cooltime is not None:
+            return tool.rt("error.html", error="최근에 계정을 생성했거나 최근에 이름 변경을 이미 했습니다.")
+        with g.db.cursor() as c:
+            if c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest())).fetchone()[0] == 0:
+                return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
+        name = request.form["name"]
+        if tool.has_user(name):
+            return tool.rt("error.html", error="이미 존재하는 사용자 이름입니다.")
+        if tool.is_valid_ip(name) or tool.is_valid_cidr(name):
+            return tool.rt("error.html", error="IP나 CIDR 형식의 사용자 이름은 사용이 불가능합니다.")
+        if data.username_format.fullmatch(name) is None:
+            return tool.rt("error.html", error=f'계정명은 정규식 {escape(tool.get_config("username_format"))}을 충족해야 합니다.')  
+        tool.change_name(user, name)
+        return redirect("/")
+    return tool.rt("change_name.html", title = "이름 변경", user = tool.id_to_user_name(user), cooltime = cooltime, cool = tool.time_to_str(int(tool.get_config("change_name_cooltime"))))
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == 1
     if DEBUG:

@@ -6,11 +6,20 @@
     {
         font-weight: 600;
     }
+    .member-info-name a
+    {
+        font-weight: normal;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="member-info-name">사용자 이름</div>
+<div class="member-info-name">
+    사용자 이름
+    {% if change_name %}
+    <a href="{{ url_for('change_name')}}">변경</a>
+    {% endif %}
+</div>
 {{ user }}
 <hr>
 <div class="member-info-name">Email</div>

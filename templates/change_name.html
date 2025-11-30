@@ -1,0 +1,31 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+{% if cooltime is not none %}
+<div class="error"><b>[오류!]</b> 최근에 계정을 생성했거나 최근에 이름 변경을 이미 했습니다. {{ cooltime|time }}부터 변경이 가능합니다.</div>
+{% endif %}
+<form method="post">
+    <label>
+        비밀번호<br>
+        <input type="password" name="pw">
+    </label><br>
+    <label>
+        이름<br>
+        <input value="{{ user }}" disabled>
+    </label><br>
+    <label>
+        새 이름<br>
+        <input name="name">
+    </label><br>
+    {{ cool }}마다 변경할 수 있습니다.<br><br>
+    <input type="submit" value="이름 변경" class="ok"{% if cooltime is not none %} disabled{% endif %}>
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}
