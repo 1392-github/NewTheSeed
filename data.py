@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = (49, 1)
+version = (49, 2)
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -72,7 +72,10 @@ default_config = {
     "pythonanywhere": "0",
     "pythonanywhere_eu": "0",
     "pythonanywhere_user": "Your pythonanywhere user name",
-    "pythonanywhere_domain": "Your pythonanywhere domain name"
+    "pythonanywhere_domain": "Your pythonanywhere domain name",
+    "change_name_enable": "1",
+    "change_name_block": "1",
+    "change_name_cooltime": "2592000"
 }
 grantable = None
 captcha_bypass_cnt = {}
