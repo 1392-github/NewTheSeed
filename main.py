@@ -1685,6 +1685,7 @@ def change_password():
     return tool.rt("change_password.html", title="비밀번호 변경")
 @app.route("/member/change_name", methods = ["GET", "POST"])
 def change_name():
+    if tool.get_config("change_name_enable") == "0": return tool.rt("error.html", error = "이름 변경이 비활성화되어 있습니다."), 501
     if not tool.is_login(): return redirect("/")
     user = tool.ipuser()
     cooltime = int(tool.get_user_config(user, "change_name", 0)) + int(tool.get_config("change_name_cooltime"))
