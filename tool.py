@@ -488,13 +488,7 @@ def check_acl(acl, type = None, user = None, basedoc = None, docname = None, got
             if showmsg:
                 if r == 0:
                     if i[0] == "aclgroup" and not i[3]:
-                        status = c[1]
-                        with g.db.cursor() as c2:
-                            gname = c2.execute("SELECT name FROM aclgroup WHERE id = ?", (i[2],)).fetchone()[0]
-                        msg = get_aclgroup_config(i[2], "message")
-                        if msg == "": msg = data.default_aclgroup_message
-                        return 0, msg.replace("{type}", "{{type}}").replace("{tab}", "{{tab}}").format(group = gname, id = status.id, start = utime_to_str(status.start),
-                                                                              end = "영구" if status.end == None else utime_to_str(status.end), note = status.note)
+                        return 0, get_aclgroup_deny_message(c[1], i[2])
                     return 0, f'{escape(cond_repr(i[0], i[1], i[2], i[3], True))} 때문에 {{type}} 권한이 부족합니다. {{tab}}'
                 else:
                     return r, None
@@ -672,3 +666,12 @@ def change_name(user, name):
             record_history(id, 3, get_doc_data(id), prefix + dname, prefix + new_name, user, "", 0, time)
         c.execute("UPDATE user SET name = ? WHERE id = ?", (name, user))
         set_user_config(user, "change_name", time)
+def get_aclgroup_deny_message(status: ACLGroupInStatus, group=None):
+    with g.db.cursor() as c:
+        if group is None:
+            group = c.execute("SELECT gid FROM aclgroup_log WHERE id = ?", (status.id,)).fetchone()[0]
+        gname = c.execute("SELECT name FROM aclgroup WHERE id = ?", (group,)).fetchone()[0]
+        msg = get_aclgroup_config(group, "message")
+        if msg == "": msg = data.default_aclgroup_message
+        return msg.replace("{type}", "{{type}}").replace("{tab}", "{{tab}}").format(group = gname, id = status.id, start = utime_to_str(status.start),
+                                                            end = "영구" if status.end == None else utime_to_str(status.end), note = status.note)
