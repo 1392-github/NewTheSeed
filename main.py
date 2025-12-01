@@ -299,7 +299,7 @@ with app.app_context():
                 tool.set_user_config(id, "change_name", tool.get_user_config(id, "signup"))
         c.execute("""update config
         set value = ?
-        where name =' version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
+        where name = 'version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
         c.execute("""update config
         set value = ?
         where name = 'version2'""", (str(data.version[1]),)) # 변환 후 버전 재설정
@@ -660,6 +660,7 @@ def signup_form():
         c.execute("UPDATE data SET value = '' WHERE id = ?", (docid,))
         tool.record_history(docid, 1, "", None, None, u, "", 0, time = time)
         tool.set_user_config(u, "signup", str(time))
+        tool.set_user_config(u, "change_name", str(time))
         if first:
             c.execute("INSERT INTO perm VALUES(?, 'developer')", (u,))
         return redirect('/')
@@ -1686,7 +1687,7 @@ def change_password():
 def change_name():
     if not tool.is_login(): return redirect("/")
     user = tool.ipuser()
-    cooltime = int(tool.get_user_config(user, "change_name")) + int(tool.get_config("change_name_cooltime"))
+    cooltime = int(tool.get_user_config(user, "change_name", 0)) + int(tool.get_config("change_name_cooltime"))
     if cooltime <= tool.get_utime():
         cooltime = None
     if request.method == "POST":
