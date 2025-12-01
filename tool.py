@@ -316,6 +316,7 @@ def reload_config(app):
     if has_config("captcha_always"): data.captcha_always = set(get_config("captcha_always").split(","))
     data.username_format = re.compile(get_config("username_format"))
     data.file_namespace = [int(x) for x in get_config("file_namespace").split(",")]
+    data.change_name_block = [int(x) for x in get_config("change_name_block").split(",")]
     app.permanent_session_lifetime = datetime.timedelta(seconds = int(get_config("keep_login_time")))
     with g.db.cursor() as c:
         exp = int(get_config("keep_login_history"))

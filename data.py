@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = (50, 3)
+version = (51, 0)
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -159,3 +159,4 @@ default_aclgroup_config = [
 default_aclgroup_message = "ACL그룹 {group} #{id}에 있기 때문에 {type} 권한이 부족합니다.<br>만료일 : {end}<br>사유 : {note}"
 member_signup_days_ago_regex = re.compile("member_signup_(\d+)days_ago")
 member_signup_ago_regex = re.compile("member_signup_(\d+)_ago")
+change_name_block = []

@@ -1694,6 +1694,10 @@ def change_name():
     if request.method == "POST":
         if cooltime is not None:
             return tool.rt("error.html", error="최근에 계정을 생성했거나 최근에 이름 변경을 이미 했습니다.")
+        for i in data.change_name_block:
+            st = tool.user_in_aclgroup(i, user)
+            if st:
+                return tool.rt("error.html", error=tool.get_aclgroup_deny_message(st, i).format(type="이름 변경", tab=""))
         with g.db.cursor() as c:
             if c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest())).fetchone()[0] == 0:
                 return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
