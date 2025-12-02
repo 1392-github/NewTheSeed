@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = (51, 0)
+version = (51, 1)
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -75,7 +75,11 @@ default_config = {
     "pythonanywhere_domain": "Your pythonanywhere domain name",
     "change_name_enable": "1",
     "change_name_block": "1",
-    "change_name_cooltime": "2592000"
+    "change_name_cooltime": "2592000",
+    "withdraw_enable": "1",
+    "withdraw_cooltime": "86400",
+    "withdraw_pledgeinput": '본인은 계정 삭제를 하면 본인이 기여한 문서나 그 복제물에 또는 해당 문서의 공표 매체(이하 "문서등")에 본인의 실명 또는 이명 대신에 <삭제된 사용자>로 표시됨을 동의합니다. 또한, 본인은 계정 삭제 이후 문서등의 기여자임을 증명할 수 없게 된다는 사실을 인지하고, 문서등에 대하여 저작인격권을 행사하지 않을 것에 동의합니다.',
+    "withdraw_resignup_block": "2592000"
 }
 grantable = None
 captcha_bypass_cnt = {}
