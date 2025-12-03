@@ -333,8 +333,9 @@ def after_request(res):
 def teardown_request(exc):
     g.db.close()
 def render_username(user, bold = 0):
+    name = tool.id_to_user_name(user)
     if bold == 0:
-        b = not tool.isip(user)
+        b = False if name is None else not tool.isip(user)
     elif bold == 1:
         b = True
     elif bold == 2:
@@ -345,14 +346,19 @@ def render_username(user, bold = 0):
         else:
             return Markup(g.username_cache[user])
     else:
-        name = tool.id_to_user_name(user)
-        css = cssutils.css.CSSStyleDeclaration()
-        with g.db.cursor() as c:
-            for gr in c.execute("SELECT gid, value FROM aclgroup_config WHERE name = 'style' AND value != ''").fetchall():
-                if tool.user_in_aclgroup(gr[0], user):
-                    for p in cssutils.parseStyle(gr[1]):
-                        css.setProperty(p.name, p.value, p.priority)
-        r = f'<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + escape(name))}" style="{css.cssText}">{escape(name)}</a>'
+        if name is None:
+            if tool.has_perm("admin"):
+                r = f'<a href="{url_for("document_contribution", user = user)}" class="deleted-user">(삭제된 사용자)</a>'
+            else:
+                r = '<span class="deleted-user">(삭제된 사용자)</span>'
+        else:
+            css = cssutils.css.CSSStyleDeclaration()
+            with g.db.cursor() as c:
+                for gr in c.execute("SELECT gid, value FROM aclgroup_config WHERE name = 'style' AND value != ''").fetchall():
+                    if tool.user_in_aclgroup(gr[0], user):
+                        for p in cssutils.parseStyle(gr[1]):
+                            css.setProperty(p.name, p.value, p.priority)
+            r = f'<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + escape(name))}" style="{css.cssText}">{escape(name)}</a>'
         g.username_cache[user] = r
         if b:
             return Markup(f"<b>{r}</b>")
@@ -1590,7 +1596,8 @@ def document_contribution(user):
     with g.db.cursor() as c:
         if c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ?)", (user,)).fetchone()[0] == 0:
             abort(404)
-        return tool.rt("document_contribution.html", title = f'"{tool.id_to_user_name(user)}" 기여 목록', contribution = [(tool.get_doc_full_name(x[0]), x[1], None if x[2] == 0 and x[6] == "" else f"{x[6]} <i>{escape(history_msg(x[2], x[4], x[5]))}</i>", tool.time_to_str(x[7]), x[8]) for x in
+        name = tool.id_to_user_name(user)
+        return tool.rt("document_contribution.html", title = f'"{"<삭제된 사용자>" if name is None else name}" 기여 목록', contribution = [(tool.get_doc_full_name(x[0]), x[1], None if x[2] == 0 and x[6] == "" else f"{x[6]} <i>{escape(history_msg(x[2], x[4], x[5]))}</i>", tool.time_to_str(x[7]), x[8]) for x in
                 c.execute(f"SELECT doc_id, rev, type, content, content2, content3, edit_comment, ? - datetime, length FROM history WHERE author = ?{'' if type == -1 else ' AND type = ?'} ORDER BY datetime DESC", (tool.get_utime(), user) if type == -1 else (tool.get_utime(), user, type)).fetchall()], menu2 = [[
                     tool.Menu("문서", url_for("document_contribution", user = user), "menu2-selected"),
                     #tool.Menu("토론", url_for("discuss_contribution", user = user))
