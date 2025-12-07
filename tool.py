@@ -466,7 +466,7 @@ def cond_repr(cond, value, value2, no, denied):
             else:
                 return f"ACL그룹 {gname}에 있기"
         if not denied:
-            f'ACL그룹 {gname}에 속해 {"있지 않는" if no else "있는"} 사용자'
+            return f'ACL그룹 {gname}에 속해 {"있지 않는" if no else "있는"} 사용자'
     if r is None: r = f"{cond}:{value}"
     if no:
         r = "not:" + r
