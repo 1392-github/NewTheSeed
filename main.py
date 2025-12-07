@@ -384,6 +384,7 @@ app.jinja_env.globals["history_msg"] = history_msg
 app.jinja_env.globals["range"] = range
 app.jinja_env.filters["user"] = render_username
 app.jinja_env.filters["time"] = tool.utime_to_str
+app.jinja_env.policies['json.dumps_kwargs']['ensure_ascii'] = False
 # 초기화 부분 끝, API 부분 시작
 """@app.route("/api/read_doc", methods=['POST'])
 def api_read_doc():
@@ -406,7 +407,7 @@ having rev = max(rev)''', (request.json['name'],)).fetchone()[0]
     return {'content':d}
 @app.route("/api/edit_doc", methods=['POST'])
 def api_edit_doc():
-    if 'id' in session:
+    if tool.is_login():
         i = session['id']
     else:
         i = tool.ipuser()
@@ -512,7 +513,7 @@ def doc_edit(doc_title):
     with g.db.cursor() as c:
         ns, name = tool.split_ns(doc_title)
         docid = tool.get_docid(ns, name)
-        if 'id' in session:
+        if tool.is_login():
             i = session['id']
         else:
             i = tool.ipuser()
@@ -618,7 +619,7 @@ end''', (api[0], api[1]))
 @app.route("/user")
 def user():
     with g.db.cursor() as c:
-        if 'id' in session:
+        if tool.is_login():
             try:
                 api = c.execute('''select exists (
         select 1
@@ -629,10 +630,10 @@ def user():
                 
                 key = c.execute('''select key
     from api_keys
-    where user_id = ?''', (session["id"],)).fetchone()
+    where user_id = ?''', (tool.ipuser(),)).fetchone()
                 return tool.rt("user.html", user_name = c.execute('''select name
     from user
-    where id = ?''', (session["id"],)).fetchone()[0], login=True, api=api, key=None if key==None else key[0], api_enable=True)
+    where id = ?''', (tool.ipuser(),)).fetchone()[0], login=True, api=api, key=None if key==None else key[0], api_enable=True)
             except:
                 session.pop("id", None)
                 return tool.rt("user.html", user_name = tool.getip(), login=False, api=False)
@@ -1088,7 +1089,7 @@ def aclgroup():
                 c.execute("INSERT INTO aclgroup_log (gid, ip, note, start, end) VALUES(?, ?, ?, ?, ?)",
                         (gid, ip, request.form["note"], t, None if dur == 0 else t + dur))
                 c.execute("INSERT INTO block_log (type, operator, target_ip, id, gid, date, duration, note) VALUES(1, ?, ?, ?, ?, ?, ?, ?)",
-                        (session["id"], ip, c.lastrowid, gid, t, dur, request.form["note"]))
+                        (tool.ipuser(), ip, c.lastrowid, gid, t, dur, request.form["note"]))
             else:
                 if not tool.has_user(request.form["value"]):
                     return tool.error_400("사용자 이름이 올바르지 않습니다.")
@@ -1099,7 +1100,7 @@ def aclgroup():
                 c.execute("INSERT INTO aclgroup_log (gid, user, note, start, end) VALUES(?, (SELECT id FROM user WHERE name = ?), ?, ?, ?)",
                         (gid, request.form["value"], request.form["note"], t, None if dur == 0 else t + dur))
                 c.execute("INSERT INTO block_log (type, operator, target, id, gid, date, duration, note) VALUES(1, ?, (SELECT id FROM user WHERE name = ?), ?, ?, ?, ?, ?)",
-                        (session["id"], request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))
+                        (tool.ipuser(), request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))
         return tool.rt("aclgroup.html", title = "ACLGroup", groups = groups, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.check_aclgroup_flag(gid, "add_flags"), delete_perm = tool.check_aclgroup_flag(gid, "remove_flags"), record = (
             (x[0], x[1], x[2], tool.utime_to_str(x[3]), "영구" if x[4] is None else tool.utime_to_str(x[4]))
             for x in c.execute("SELECT id, (CASE WHEN ip IS NULL THEN (SELECT name FROM user WHERE id = user) ELSE ip END), note, start, end FROM aclgroup_log WHERE gid = (SELECT id FROM aclgroup WHERE name = ? AND deleted = 0)", (current,)).fetchall()
@@ -1674,14 +1675,14 @@ def self_remove():
 def mypage():
     if not tool.is_login(): return redirect("/")
     with g.db.cursor() as c:
-        user = session["id"]
+        user = tool.ipuser()
         return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user), change_name = tool.get_config("change_name_enable") == "1",
                        perm = ", ".join(x[0] for x in c.execute("SELECT perm FROM perm WHERE user = ?", (user,)).fetchall()))
 @app.route("/member/change_password", methods = ["GET", "POST"])
 def change_password():
     if not tool.is_login(): return redirect("/")
     if request.method == "POST":
-        user = session["id"]
+        user = tool.ipuser()
         with g.db.cursor() as c:
             if c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(request.form["cpw"].encode("utf-8")).hexdigest())).fetchone()[0] == 0:
                 return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
@@ -1700,7 +1701,7 @@ def change_name():
         cooltime = None
     if request.method == "POST":
         if cooltime is not None:
-            return tool.rt("error.html", error="최근에 계정을 생성했거나 최근에 이름 변경을 이미 했습니다.")
+            return tool.rt("error.html", error="최근에 계정을 생성했거나 최근에 이름 변경을 이미 했습니다."), 403
         for i in data.change_name_block:
             st = tool.user_in_aclgroup(i, user)
             if st:
@@ -1718,10 +1719,43 @@ def change_name():
         tool.change_name(user, name)
         return redirect("/")
     return tool.rt("change_name.html", title = "이름 변경", user = tool.id_to_user_name(user), cooltime = cooltime, cool = tool.time_to_str(int(tool.get_config("change_name_cooltime"))))
+@app.route("/member/withdraw", methods = ["GET", "POST"])
+def withdraw():
+    if tool.get_config("withdraw_enable") == "0": return tool.rt("error.html", error = "계정 삭제가 비활성화되어 있습니다."), 501
+    if not tool.is_login(): return redirect("/")
+    user = tool.ipuser()
+    with g.db.cursor() as c:
+        withdraw_block = None
+        wait = int(tool.get_config("withdraw_cooltime"))
+        for gid, value in c.execute("SELECT gid, CAST(value AS INTEGER) FROM aclgroup_config WHERE name = 'withdraw_period' AND value != '0' ORDER BY CASE WHEN value = '-1' THEN 0 ELSE 1 END, CAST(value AS INTEGER) DESC").fetchall():
+            st = tool.user_in_aclgroup(gid, user)
+            if st:
+                if value == -1:
+                    withdraw_block = tool.get_aclgroup_deny_message(st, gid).format(type = "계정 삭제", tab = "")
+                else:
+                    wait = value
+                break
+        if withdraw_block is None:            
+            cooltime = c.execute("SELECT max(r) FROM (SELECT max(datetime) r FROM history WHERE author = ?1 UNION ALL SELECT max(time) r FROM thread_comment WHERE author = ?1)", (user,)).fetchone()[0] + wait
+            if cooltime <= tool.get_utime():
+                cooltime = None
+        else:
+            cooltime = None
+        if request.method == "POST":
+            if cooltime is not None or withdraw_block is not None:
+                return tool.rt("error.html", error="계정 삭제가 불가능한 상태입니다."), 403
+            if c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest())).fetchone()[0] == 0:
+                return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
+            if request.form["pledgeinput"] != tool.get_config("withdraw_pledgeinput"):
+                return tool.rt("error.html", error = "동일하게 입력해주세요.")
+            tool.delete_user(user)
+            session.clear()
+            return redirect("/")
+        return tool.rt("withdraw.html", title = "계정 삭제", pledgeinput = tool.get_config("withdraw_pledgeinput"), cool = tool.time_to_str(wait), cooltime = cooltime, withdraw_block = withdraw_block)
 if __name__ == "__main__":
-    DEBUG = os.getenv("DEBUG") == 1
+    DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:
         @app.before_request
         def clear_template_cache():
             app.jinja_env.cache.clear()
-    app.run(debug=os.getenv("DEBUG")=="1", host=os.getenv("HOST"), port=int(os.getenv("PORT")))
+    app.run(debug=DEBUG, host=os.getenv("HOST"), port=int(os.getenv("PORT")))

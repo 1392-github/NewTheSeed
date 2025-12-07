@@ -1,0 +1,51 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+{% if withdraw_block is not none %}
+<div class="error"><b>[오류!]</b> {{ withdraw_block|safe }}</div>
+{% endif %}
+{% if cooltime is not none %}
+<div class="error"><b>[오류!]</b> 마지막 활동으로부터 {{cool}}이 경과해야 계정 삭제가 가능합니다. {{ cooltime|time }}부터 계정 삭제가 가능합니다.</div>
+{% endif %}
+<form method="post">
+    <label>
+        비밀번호<br>
+        <input type="password" name="pw" class="fullwidth" >
+    </label>
+    <div style="user-select: none;" ><span id="pledge1"></span><span id="pledge2">{{pledgeinput}}</span></div>
+    <input id="pledgeinput" name="pledgeinput" placeholder="{{pledgeinput}}" class="fullwidth">
+    <p>마지막 활동후 {{cool}}이 지나야 삭제할 수 있습니다.</p>
+    <p>계정 삭제 버튼을 누르면 모든 데이터가 즉시 삭제되며 복구가 불가능합니다.</p>
+    <input type="submit" value="계정 삭제" class="danger"{% if cooltime is not none or withdraw_block is not none %} disabled{% endif %}>
+</form>
+{% endblock %}
+
+{% block js %}
+<script>
+    const pledge = {{pledgeinput|tojson}};
+    const pledgeinput = document.getElementById("pledgeinput");
+    const pledge1 = document.getElementById("pledge1");
+    const pledge2 = document.getElementById("pledge2");
+    pledgeinput.addEventListener("input", function () {
+        var v = this.value;
+        var flag = true;
+        for (var i = 0; i < {{pledgeinput|length}}; i++) {
+            if (v[i] != pledge[i]) {
+                console.log(`${v[i]} ${i}`)
+                pledge1.textContent = pledge.slice(0, i);
+                pledge2.textContent = pledge.slice(i);
+                flag = false;
+                break;
+            }
+        }
+        if (flag) {
+            pledge1.textContent = pledge;
+            pledge2.textContent = "";
+        }
+    })
+</script>
+{% endblock %}

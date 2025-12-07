@@ -70,7 +70,9 @@ def getip():
 def ipuser(create = True):
     with g.db.cursor() as c:
         if 'id' in session:
-            return session['id']
+            id = session['id']
+            if id_to_user_name(id) is not None:
+                return id
         ip = getip()
         f = c.execute("SELECT id FROM user WHERE name = ? AND isip = 1", (ip,)).fetchone()
         if f is None:
@@ -622,7 +624,10 @@ def aclgroup_delete(id, note = "", operator = None):
                 (ipuser() if operator is None else operator, id, get_utime(), note))
         c.execute("DELETE FROM aclgroup_log WHERE id = ?", (id,))
 def is_login():
-    return "id" in session
+    if "id" in session:
+        if id_to_user_name(session["id"]) is not None:
+            return True
+    return False
 def version_str(ver):
     if ver[1] == 0:
         return str(ver[0])
@@ -654,6 +659,8 @@ def clean_docid():
     with g.db.cursor() as c:
         c.execute("DELETE FROM doc_name WHERE history_seq = 1 AND NOT EXISTS (SELECT 1 FROM discuss WHERE doc_id = id)")
 def change_name(user, name):
+    if isip(user):
+        raise ValueError("Cannot change name IP user")
     with g.db.cursor() as c:
         old_name = id_to_user_name(user)
         le = len(old_name)
@@ -676,3 +683,40 @@ def get_aclgroup_deny_message(status: ACLGroupInStatus, group=None):
         if msg == "": msg = data.default_aclgroup_message
         return msg.replace("{type}", "{{type}}").replace("{tab}", "{{tab}}").format(group = gname, id = status.id, start = utime_to_str(status.start),
                                                             end = "영구" if status.end == None else utime_to_str(status.end), note = status.note)
+def delete_user(user):
+    if isip(user):
+        raise ValueError("Cannot delete IP user")
+    with g.db.cursor() as c:
+        time = get_utime()
+        userns = int(get_config("user_namespace"))
+        deluserns = int(get_config("deleted_user_namespace"))
+        prefix = id_to_ns_name(userns) + ":"
+        if deluserns == 0:
+            prefix2 = prefix + "*"
+        else:
+            prefix2 = id_to_ns_name(deluserns) + ":"
+        name = id_to_user_name(user)
+        le = len(name)
+        suser = str(user)
+        for id, dname in c.execute("SELECT id, name FROM doc_name WHERE namespace = ?2 AND (name = ?1 OR name LIKE ?1 || '/%')", (name, userns)).fetchall():
+            print(id, dname)
+            flag = False
+            if deluserns == 0:
+                new = "*" + suser + dname[le:]
+                if c.execute("SELECT EXISTS (SELECT 1 FROM doc_name WHERE namespace = ? AND name = ?)", (userns, new)).fetchone()[0] == 0:
+                    flag = True
+                    c.execute("UPDATE doc_name SET name = ? WHERE id = ?", (new, id))
+            else:
+                new = suser + dname[le:]
+                if c.execute("SELECT EXISTS (SELECT 1 FROM doc_name WHERE namespace = ? AND name = ?)", (deluserns, new)).fetchone()[0] == 0:
+                    flag = True
+                    c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (deluserns, new, id))
+            data = get_doc_data(id)
+            if data is not None: record_history(id, 2, None, None, None, user, "", -len(data), time)
+            c.execute("UPDATE data SET value = NULL WHERE id = ?", (id,))
+            if flag: record_history(id, 3, None, prefix + dname, prefix2 + suser + dname[le:], user, "", 0, time)
+        c.execute("UPDATE user SET name = NULL, password = NULL WHERE id = ?", (user,))
+        c.execute("DELETE FROM login_history WHERE user = ?", (user,))
+        c.execute("DELETE FROM user_config WHERE user = ?", (user,))
+        c.execute("DELETE FROM aclgroup_log WHERE user = ?", (user,))
+        c.execute("DELETE FROM perm WHERE user = ?", (user,))

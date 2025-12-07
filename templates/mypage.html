@@ -34,8 +34,8 @@
 {{ perm }}
 <hr>
 <div class="member-info-name">계정</div>
-<a href="#">
-    <button class="danger" disabled>계정 삭제</button>
+<a href="{{ url_for('withdraw') }}">
+    <button class="danger">계정 삭제</button>
 </a>
 {% endblock %}
 
