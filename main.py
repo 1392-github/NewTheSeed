@@ -1475,7 +1475,7 @@ def recent_changes():
     with g.db.cursor() as c:
         return tool.rt("recent_changes.html", title = "최근 변경", recent = 
             ((tool.get_doc_full_name(x[0]), x[1], None if x[2] == 0 and x[7] == "" else f"{x[7]} <i>{escape(history_msg(x[2], x[3], x[4]))}</i>", x[5], tool.time_to_str(x[6])) for x in
-            c.execute(f"SELECT doc_id, length, type, content2, content3, author, ? - datetime, edit_comment FROM history{'' if type == -1 else ' WHERE type = ?'} ORDER BY datetime DESC LIMIT 100", (tool.get_utime(),) if type == -1 else (tool.get_utime(),type)).fetchall()), menu2 = [[
+            c.execute(f"SELECT doc_id, length, type, content2, content3, author, ? - datetime, edit_comment FROM history{'' if type == -1 else ' WHERE type = ?'} ORDER BY datetime DESC, rev DESC LIMIT 100", (tool.get_utime(),) if type == -1 else (tool.get_utime(),type)).fetchall()), menu2 = [[
             tool.Menu("전체", url_for("recent_changes"), "menu2-selected" if type == -1 else ""),
             tool.Menu("일반", url_for("recent_changes"), "menu2-selected" if type == 0 else ""),
             tool.Menu("새 문서", url_for("recent_changes", type = 1), "menu2-selected" if type == 1 else ""),
@@ -1496,7 +1496,7 @@ def recent_discuss():
     with g.db.cursor() as c:
         return tool.rt("recent_discuss.html", title = "최근 토론", recent =
             ((x[0], tool.get_doc_full_name(x[1]), x[2], x[3], tool.time_to_str(x[4])) for x in
-            c.execute("SELECT D.slug, D.doc_id, D.topic, C.author, ? - D.last FROM discuss D JOIN thread_comment C ON (D.slug = C.slug AND D.seq - 1 = C.no) WHERE D.status = ? ORDER BY D.last {0} LIMIT 100".format("ASC" if old else "DESC"), (tool.get_utime(), status)).fetchall()), menu2 = [[
+            c.execute("SELECT D.slug, D.doc_id, D.topic, C.author, ? - D.last FROM discuss D JOIN thread_comment C ON (D.slug = C.slug AND D.seq - 1 = C.no) WHERE D.status = ? ORDER BY D.last {0}, D.no {0} LIMIT 100".format("ASC" if old else "DESC"), (tool.get_utime(), status)).fetchall()), menu2 = [[
             tool.Menu("열린 토론", url_for("recent_discuss", logtype = "normal_thread"), "menu2-selected" if logtype == "normal_thread" else ""),
             tool.Menu("오래된 토론", url_for("recent_discuss", logtype = "old_thread"), "menu2-selected" if logtype == "old_thread" else ""),
             tool.Menu("중지된 토론", url_for("recent_discuss", logtype = "pause_thread"), "menu2-selected" if logtype == "pause_thread" else ""),
@@ -1599,7 +1599,7 @@ def document_contribution(user):
             abort(404)
         name = tool.id_to_user_name(user)
         return tool.rt("document_contribution.html", title = f'"{"<삭제된 사용자>" if name is None else name}" 기여 목록', contribution = [(tool.get_doc_full_name(x[0]), x[1], None if x[2] == 0 and x[6] == "" else f"{x[6]} <i>{escape(history_msg(x[2], x[4], x[5]))}</i>", tool.time_to_str(x[7]), x[8]) for x in
-                c.execute(f"SELECT doc_id, rev, type, content, content2, content3, edit_comment, ? - datetime, length FROM history WHERE author = ?{'' if type == -1 else ' AND type = ?'} ORDER BY datetime DESC", (tool.get_utime(), user) if type == -1 else (tool.get_utime(), user, type)).fetchall()], menu2 = [[
+                c.execute(f"SELECT doc_id, rev, type, content, content2, content3, edit_comment, ? - datetime, length FROM history WHERE author = ?{'' if type == -1 else ' AND type = ?'} ORDER BY datetime DESC, rev DESC", (tool.get_utime(), user) if type == -1 else (tool.get_utime(), user, type)).fetchall()], menu2 = [[
                     tool.Menu("문서", url_for("document_contribution", user = user), "menu2-selected"),
                     #tool.Menu("토론", url_for("discuss_contribution", user = user))
                 ],
