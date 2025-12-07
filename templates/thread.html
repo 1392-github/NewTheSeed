@@ -345,8 +345,7 @@
                 }
             }
             if (t.dataset.commentMenu >= 2 && t.dataset.commentMenu <= 4) { 
-                fetch(`/api/hide_thread_comment/{{slug}}/${wrap.dataset.no}/${t.dataset.commentMenu - 2}`, {"method": "post"});
-                load(wrap);
+                fetch(`/api/hide_thread_comment/{{slug}}/${wrap.dataset.no}/${t.dataset.commentMenu - 2}`, {"method": "post"}).then(() => load(wrap));
             }
         }
         {% if htc %}
