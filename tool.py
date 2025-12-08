@@ -1,19 +1,17 @@
-from flask import request, session, Response, render_template, g, has_app_context, url_for
-from markupsafe import escape
 from io import BytesIO
 import re
 import sqlite3
-import hashlib
-import sys
 import datetime
 import time
-import random
-import types
 import ipaddress
 import os
-from requests import post
-import data
+
 from dataclasses import dataclass
+from flask import request, session, Response, render_template, g, has_app_context, url_for
+from markupsafe import escape
+from requests import post
+
+import data
 
 init = not os.path.exists("data.db")
 
