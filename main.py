@@ -26,7 +26,6 @@ if sys.version_info < (3, 9):
         sys.exit()
 
 # 초기 설정
-
 try:
     repo = Repo(".", search_parent_directories=False)
 except:
@@ -1755,6 +1754,13 @@ def withdraw():
             session.clear()
             return redirect("/")
         return tool.rt("withdraw.html", title = "계정 삭제", pledgeinput = tool.get_config("withdraw_pledgeinput"), cool = tool.time_to_str(wait), cooltime = cooltime, withdraw_block = withdraw_block)
+@app.route("/admin/config/smtp_test", methods = ["GET", "POST"])
+def smtp_test():
+    if not tool.has_perm("config"): abort(403)
+    if request.method == "POST":
+        tool.email(request.form["to"], "NewTheSeed SMTP Test", "If this email arrived normally, SMTP is working properly.")
+        return redirect(url_for("config"))
+    return tool.rt("smtp_test.html", title = "SMTP 테스트", to = os.getenv("SMTP_USER"))
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:

@@ -5,11 +5,13 @@ import datetime
 import time
 import ipaddress
 import os
+from email.mime.text import MIMEText
 
 from dataclasses import dataclass
 from flask import request, session, Response, render_template, g, has_app_context, url_for
 from markupsafe import escape
 from requests import post
+import smtplib
 
 import data
 
@@ -30,6 +32,8 @@ class ACLGroupInStatus:
     end: int | None = None
     def __bool__(self):
         return self.result
+class SMTPDisabledError(Exception):
+    def __init__(self): super().__init__("SMTP is disabled. please set SMTP_SERVER in .env file.")
 class Connection2(sqlite3.Connection):
     def cursor(self, *args, **kwargs):
         return super().cursor(*args, factory = Cursor2, **kwargs)
@@ -718,3 +722,18 @@ def delete_user(user):
         c.execute("DELETE FROM user_config WHERE user = ?", (user,))
         c.execute("DELETE FROM aclgroup_log WHERE user = ?", (user,))
         c.execute("DELETE FROM perm WHERE user = ?", (user,))
+def email(to, subject, text):
+    if not os.getenv("SMTP_SERVER"): raise SMTPDisabledError()
+    encrypt = os.getenv("SMTP_ENCRYPTION")
+    with (smtplib.SMTP_SSL if encrypt == "SSL" else smtplib.SMTP)(os.getenv("SMTP_SERVER"), int(os.getenv("SMTP_SERVER_PORT"))) as smtp:
+        smtp.ehlo()
+        if encrypt == "TLS":
+            smtp.starttls()
+            smtp.ehlo()
+        if os.getenv("SMTP_USER"):
+            smtp.login(os.getenv("SMTP_USER"), os.getenv("SMTP_PASSWORD"))
+        msg = MIMEText(text, "html")
+        msg["Subject"] = subject
+        msg["From"] = os.getenv("SMTP_USER")
+        msg["To"] = to
+        smtp.send_message(msg)
