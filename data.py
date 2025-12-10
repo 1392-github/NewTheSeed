@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = (54, 2)
+version = (54, 3)
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -55,8 +55,6 @@ default_config = {
     "username_format": r"[\w_가-힣]{1,128}",
     "frontpage": "FrontPage",
     "use_x_real_ip": "0",
-    "document_license": '이 저작물은 <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>에 따라 이용할 수 있습니다. (단, 라이선스가 명시된 일부 문서 및 삽화 제외)<br>기여하신 문서의 저작권은 각 기여자에게 있으며, 각 기여자는 기여하신 부분의 저작권을 갖습니다.',
-    "document_license_checkbox": "문서 편집을 저장하면 당신은 기여한 내용을 <b>CC BY 4.0 KR</b>으로 배포하고 기여한 문서에 대한 하이퍼링크나 URL을 이용하여 저작자 표시를 하는 것으로 충분하다는 데 동의하는 것입니다. <b>이 동의는 철회할 수 없습니다.</b>",
     "update_local_change_commit": "Update local change commit",
     "limit_acl": "3",
     "keep_login_history": "0",
@@ -78,8 +76,12 @@ default_config = {
     "change_name_cooltime": "2592000",
     "withdraw_enable": "1",
     "withdraw_cooltime": "86400",
-    "withdraw_pledgeinput": '본인은 계정 삭제를 하면 본인이 기여한 문서나 그 복제물에 또는 해당 문서의 공표 매체(이하 "문서등")에 본인의 실명 또는 이명 대신에 <삭제된 사용자>로 표시됨을 동의합니다. 또한, 본인은 계정 삭제 이후 문서등의 기여자임을 증명할 수 없게 된다는 사실을 인지하고, 문서등에 대하여 저작인격권을 행사하지 않을 것에 동의합니다.',
     "withdraw_resignup_block": "2592000"
+}
+default_string_config = {
+    "document_license": '이 저작물은 <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>에 따라 이용할 수 있습니다. (단, 라이선스가 명시된 일부 문서 및 삽화 제외)<br>기여하신 문서의 저작권은 각 기여자에게 있으며, 각 기여자는 기여하신 부분의 저작권을 갖습니다.',
+    "document_license_checkbox": "문서 편집을 저장하면 당신은 기여한 내용을 <b>CC BY 4.0 KR</b>으로 배포하고 기여한 문서에 대한 하이퍼링크나 URL을 이용하여 저작자 표시를 하는 것으로 충분하다는 데 동의하는 것입니다. <b>이 동의는 철회할 수 없습니다.</b>",
+    "withdraw_pledgeinput": '본인은 계정 삭제를 하면 본인이 기여한 문서나 그 복제물에 또는 해당 문서의 공표 매체(이하 "문서등")에 본인의 실명 또는 이명 대신에 <삭제된 사용자>로 표시됨을 동의합니다. 또한, 본인은 계정 삭제 이후 문서등의 기여자임을 증명할 수 없게 된다는 사실을 인지하고, 문서등에 대하여 저작인격권을 행사하지 않을 것에 동의합니다.',
 }
 grantable = None
 captcha_bypass_cnt = {}

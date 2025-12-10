@@ -134,7 +134,7 @@ def rt(t, **kwargs):
     k["sitekey"] = get_config("captcha_sitekey")
     k["brand_color"] = get_config("brand_color")
     k["top_text_color"] = get_config("top_text_color")
-    k["document_license"] = get_config("document_license")
+    k["document_license"] = get_string_config("document_license")
     k["skin"] = "ntsds/master.html"
     if t == "error.html" and "title" not in k: k["title"] = "오류"
     func = []
@@ -152,6 +152,9 @@ def rt(t, **kwargs):
 def has_config(key):
     with g.db.cursor() as c:
         return c.execute("SELECT EXISTS (SELECT 1 FROM config WHERE name = ?)", (key,)).fetchone()[0] == 1
+def has_string_config(key):
+    with g.db.cursor() as c:
+        return c.execute("SELECT EXISTS (SELECT 1 FROM string_config WHERE name = ?)", (key,)).fetchone()[0] == 1
 def get_config(key, default = None):
     with g.db.cursor() as c:
         # 16 버전에서는 임시로 API 비활성화
@@ -159,6 +162,12 @@ def get_config(key, default = None):
             return "disabled"
         if has_config(key):
             return c.execute("SELECT value FROM config WHERE name = ?", (key,)).fetchone()[0]
+        else:
+            return default
+def get_string_config(key, default = None):
+    with g.db.cursor() as c:
+        if has_string_config(key):
+            return c.execute("SELECT value FROM string_config WHERE name = ?", (key,)).fetchone()[0]
         else:
             return default
 def user_name_to_id(name):

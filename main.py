@@ -45,6 +45,9 @@ with app.app_context():
         for k in data.default_config:
             if c.execute("select exists (select 1 from config where name = ?)", (k,)).fetchone()[0] == 0:
                 c.execute('insert into config values(?, ?)', (k, data.default_config[k]() if isinstance(data.default_config[k], types.FunctionType) else data.default_config[k]))
+        for k in data.default_string_config:
+            if c.execute("select exists (select 1 from string_config where name = ?)", (k,)).fetchone()[0] == 0:
+                c.execute('insert into string_config values(?, ?)', (k, data.default_string_config[k]() if isinstance(data.default_string_config[k], types.FunctionType) else data.default_string_config[k]))
         print(f"NewTheSeed [Version {tool.version_str(data.version)}]")
         print("(c) 1392-github, 2023-2025, MIT License")
         db_version = (int(tool.get_config("version")), int(tool.get_config("version2", "0")))
@@ -296,6 +299,11 @@ with app.app_context():
             for id in c.execute("SELECT id FROM user WHERE isip = 0").fetchall():
                 id = id[0]
                 tool.set_user_config(id, "change_name", tool.get_user_config(id, "signup"))
+        if db_version < (54, 3):
+            c.execute("UPDATE string_config SET value = (SELECT value FROM config WHERE name = 'document_license') WHERE name = 'document_license'")
+            c.execute("UPDATE string_config SET value = (SELECT value FROM config WHERE name = 'document_license_checkbox') WHERE name = 'document_license_checkbox'")
+            c.execute("UPDATE string_config SET value = (SELECT value FROM config WHERE name = 'withdraw_pledgeinput') WHERE name = 'withdraw_pledgeinput'")
+            c.execute("DELETE FROM config WHERE name IN ('document_license', 'document_license_checkbox', 'withdraw_pledgeinput')")
         c.execute("""update config
         set value = ?
         where name = 'version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
@@ -1051,6 +1059,16 @@ def config():
             c.executemany("INSERT INTO config VALUES(?,?)", request.form.items())
         tool.reload_config(app)
         return tool.rt("config.html", title="Config", settings = c.execute("SELECT name, value FROM config").fetchall(), save = request.method == "POST")
+@app.route("/admin/config/string", methods = ["GET", "POST"])
+def string_config():
+    with g.db.cursor() as c:
+        if not tool.has_perm("config"):
+            abort(403)
+        if request.method == "POST":
+            c.execute("DELETE FROM string_config")
+            c.executemany("INSERT INTO string_config VALUES(?,?)", request.form.items())
+        tool.reload_config(app)
+        return tool.rt("string_config.html", title="String config", settings = c.execute("SELECT name, value FROM string_config").fetchall(), save = request.method == "POST")
 @app.route("/aclgroup", methods = ["GET", "POST"])
 def aclgroup():
     with g.db.cursor() as c:
@@ -1748,12 +1766,12 @@ def withdraw():
                 return tool.rt("error.html", error="계정 삭제가 불가능한 상태입니다."), 403
             if c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest())).fetchone()[0] == 0:
                 return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
-            if request.form["pledgeinput"] != tool.get_config("withdraw_pledgeinput"):
+            if request.form["pledgeinput"] != tool.get_string_config("withdraw_pledgeinput"):
                 return tool.rt("error.html", error = "동일하게 입력해주세요.")
             tool.delete_user(user)
             session.clear()
             return redirect("/")
-        return tool.rt("withdraw.html", title = "계정 삭제", pledgeinput = tool.get_config("withdraw_pledgeinput"), cool = tool.time_to_str(wait), cooltime = cooltime, withdraw_block = withdraw_block)
+        return tool.rt("withdraw.html", title = "계정 삭제", pledgeinput = tool.get_string_config("withdraw_pledgeinput"), cool = tool.time_to_str(wait), cooltime = cooltime, withdraw_block = withdraw_block)
 @app.route("/admin/config/smtp_test", methods = ["GET", "POST"])
 def smtp_test():
     if not tool.has_perm("config"): abort(403)

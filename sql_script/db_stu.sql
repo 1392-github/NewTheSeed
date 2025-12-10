@@ -25,6 +25,11 @@ CREATE TABLE IF NOT EXISTS "config" (
 	"value"	TEXT,
 	PRIMARY KEY("name")
 );
+CREATE TABLE IF NOT EXISTS "string_config" (
+	"name"	TEXT,
+	"value"	TEXT,
+	PRIMARY KEY("name")
+);
 CREATE TABLE IF NOT EXISTS "user" (
 	"id"	INTEGER,
 	"name"	TEXT UNIQUE,
