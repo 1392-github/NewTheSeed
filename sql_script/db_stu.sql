@@ -47,17 +47,6 @@ CREATE TABLE IF NOT EXISTS "discuss" (
 	"seq"	INTEGER NOT NULL DEFAULT 1,
 	PRIMARY KEY("slug" AUTOINCREMENT)
 );
-CREATE TABLE IF NOT EXISTS "api_policy" (
-	"name"	TEXT,
-	"value"	INTEGER,
-	PRIMARY KEY("name")
-);
-CREATE TABLE IF NOT EXISTS "api_key_perm" (
-	"user"	INTEGER,
-	"name"	TEXT,
-	"value"	INTEGER,
-	PRIMARY KEY("user","name")
-);
 CREATE TABLE IF NOT EXISTS "namespace" (
 	"id"	INTEGER,
 	"name"	TEXT,
@@ -89,12 +78,6 @@ CREATE TABLE IF NOT EXISTS "nsacl" (
 );
 CREATE TABLE IF NOT EXISTS "extension" (
 	"name"	TEXT
-);
-CREATE TABLE IF NOT EXISTS "api_keys" (
-	"user_id"	INTEGER,
-	"key"	TEXT,
-	"enable"	INTEGER,
-	PRIMARY KEY("user_id")
 );
 CREATE TABLE IF NOT EXISTS "aclgroup_log" (
 	"id"	INTEGER,

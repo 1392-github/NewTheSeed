@@ -304,6 +304,11 @@ with app.app_context():
             c.execute("UPDATE string_config SET value = (SELECT value FROM config WHERE name = 'document_license_checkbox') WHERE name = 'document_license_checkbox'")
             c.execute("UPDATE string_config SET value = (SELECT value FROM config WHERE name = 'withdraw_pledgeinput') WHERE name = 'withdraw_pledgeinput'")
             c.execute("DELETE FROM config WHERE name IN ('document_license', 'document_license_checkbox', 'withdraw_pledgeinput')")
+        if db_version < (54, 4):
+            # 폐지된 테이블 삭제
+            c.execute("DROP TABLE api_policy")
+            c.execute("DROP TABLE api_key_perm")
+            c.execute("DROP TABLE api_keys")
         c.execute("""update config
         set value = ?
         where name = 'version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
@@ -628,24 +633,12 @@ def user():
     with g.db.cursor() as c:
         if tool.is_login():
             try:
-                api = c.execute('''select exists (
-        select 1
-        from config
-        where name = 'get_api_key'
-        and value <> 'disabled'
-    )''').fetchone()[0]==1
-                
-                key = c.execute('''select key
-    from api_keys
-    where user_id = ?''', (tool.ipuser(),)).fetchone()
-                return tool.rt("user.html", user_name = c.execute('''select name
-    from user
-    where id = ?''', (tool.ipuser(),)).fetchone()[0], login=True, api=api, key=None if key==None else key[0], api_enable=True)
+                return tool.rt("user.html", user_name = tool.id_to_user_name(tool.ipuser()).fetchone()[0], login=True)
             except:
                 session.pop("id", None)
-                return tool.rt("user.html", user_name = tool.getip(), login=False, api=False)
+                return tool.rt("user.html", user_name = tool.getip(), login=False)
         else:
-            return tool.rt("user.html", user_name = tool.getip(), login=False, api=False)
+            return tool.rt("user.html", user_name = tool.getip(), login=False)
 @app.route("/login")
 def login():
     return tool.rt("login.html", req_captcha = tool.is_required_captcha("login"))
