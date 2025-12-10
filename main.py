@@ -397,59 +397,6 @@ app.jinja_env.globals["range"] = range
 app.jinja_env.filters["user"] = render_username
 app.jinja_env.filters["time"] = tool.utime_to_str
 app.jinja_env.policies['json.dumps_kwargs']['ensure_ascii'] = False
-# 초기화 부분 끝, API 부분 시작
-"""@app.route("/api/read_doc", methods=['POST'])
-def api_read_doc():
-    t = tool.key_req('read_doc', request.json.get('key', None))
-    if t is None:
-        abort(403)
-    try:
-        d = c.execute('''select content
-from history
-where doc_id = (
-select id
-from doc_name
-where name = ?
-and type = 0
-)
-group by doc_id
-having rev = max(rev)''', (request.json['name'],)).fetchone()[0]
-    except:
-        return {'content':None}
-    return {'content':d}
-@app.route("/api/edit_doc", methods=['POST'])
-def api_edit_doc():
-    if tool.is_login():
-        i = session['id']
-    else:
-        i = tool.ipuser()
-    doc_name = request.json["name"]
-    value = request.json["value"]
-    
-    try:
-        prev_content = c.execute('''select content
-from history
-where doc_id = (
-	select id
-	from doc_name
-	where name = ?
-)
-group by doc_id
-having rev = max(rev)''', (doc_name,)).fetchone()[0]
-    except:
-        prev_content = ""
-    i = tool.key_req('write_doc', request.json.get('key', None))
-    if i is None:
-        abort(403)
-    tool.run_sqlscript("doc_edit.sql", (doc_name, value, 0, i, request.json.get('edit_comment', None), str(datetime.datetime.now()), len(value) - len(prev_content)))
-    return {}
-@app.route("/api/randompage", methods=['POST'])
-def api_randompage():
-    if tool.key_req('randompage', request.json.get('key', None)) is None:
-        abort(403)
-    c.execute('select name from doc_name order by random() limit 1')
-    r = c.fetchone()[0]
-    return {'name':r}"""
 @app.route("/api/preview", methods=["POST"])
 def api_preview():
     json = request.json
@@ -460,7 +407,6 @@ def api_thread():
     json = request.json
     r = render_set(g.db, json["data"], "api_thread")
     return {"html": r[0], "js": r[1]}
-# API 부분 끝, 주 페이지 시작
 @app.route("/")
 def redirect_frontpage():
     return redirect(url_for("doc_read", doc_title = tool.get_config("frontpage")))
@@ -571,63 +517,6 @@ def doc_edit_form():
 def license():
     update = int(os.path.getmtime("data.py"))
     return tool.rt("license.html", title = "라이선스", engine_commit = commit_id, update = update, before = tool.time_to_str(tool.get_utime() - update))
-"""@app.route("/admin/config")
-def owner_settings():
-    if not tool.has_perm("config"):
-        abort(403)
-    config = c.execute('''select value
-from (
-select name, value
-from config
-where name = "host"
-or name = "port"
-or name = "owner"
-or name = "debug"
-or name = "get_api_key"
-order by name)''').fetchall()
-    
-    keys = []
-    for i in keyl:
-        a = c.execute('''select value
-from api_policy
-where name = ?''', (keyl[i],)).fetchone()
-        try:
-            keys.append([i, keyl[i], a[0]])
-        except:
-            keys.append([i, keyl[i], 2])
-    return tool.rt("config.html",
-                           wiki_host = config[2][0], wiki_port = config[4][0], wiki_owner = config[3][0], debug = config[0][0]=='1', token = config[1][0],
-              keys = keys)
-@app.route("/owner_settings_form", methods = ['POST'])
-def owner_settings_save():
-    if not tool.has_perm("config"):
-        abort(403)
-    if request.form.get('debug'):
-        g.dbg = "1"
-    else:
-        g.dbg = "0"
-    tool.run_sqlscript("save_owner_settings.sql", (request.form['host'], request.form['port'], request.form['owner'], g.dbg, request.form['apitoken']))
-    apis = [(x[4:], request.form.to_dict()[x]) for x in request.form.to_dict() if x[:4] == "api_"]
-    #g.db.autocommit = False
-    c.execute('BEGIN')
-    c.execute('DELETE FROM api_policy')
-    for api in apis:
-        if api[1] in ['allowed_without_key', 'allowed', 'request']:
-            c.execute('''insert into api_policy
-select ?, case ?
-	when 'allowed_without_key' then 0
-	when 'allowed' then 1
-	when 'request' then 2
-end''', (api[0], api[1]))
-        else:
-            c.execute('ROLLBACK')
-            #g.db.autocommit = True
-            abort(400)
-            return
-    else:
-        c.execute('COMMIT')
-        #g.db.autocommit = True
-    return redirect('/')"""
 @app.route("/user")
 def user():
     with g.db.cursor() as c:
@@ -707,24 +596,6 @@ def history(doc_name):
         docid = tool.get_docid(ns, name)
         if docid == -1:
             return tool.rt("error.html", error = "문서를 찾을 수 없습니다."), 404
-        """h = c.execute('''select name, datetime, length, rev, edit_comment, dsc
-    from (
-        select author, edit_comment, datetime, length, rev, case
-            when type = 0 then NULL
-            when type = 1 then "삭제"
-            when type = 2 then content
-            else NULL
-        end dsc
-        from history
-        where doc_id = (
-            select id
-            from doc_name
-            where name = ?
-        )
-    ),
-    user
-    where author = id
-    order by rev desc''', (doc_name,)).fetchall()"""
         c.execute("""SELECT rev, type, content, content2, content3, author, edit_comment, datetime, length FROM history WHERE doc_id = ? ORDER BY rev DESC""", (docid,))
         history = [(x[0], x[1], x[2], x[3], x[4], x[5], x[6], tool.utime_to_str(x[7]), x[8]) for x in c.fetchall()]
         return tool.rt("history.html", history=history, title=tool.render_docname(ns, name), subtitle="역사", raw_doc_name=doc_name)
@@ -770,32 +641,6 @@ def delete(doc_name):
         return redirect(url_for("doc_read", doc_title = doc_name))
     else:
         return tool.rt("document_delete.html", title = tool.render_docname(ns, name), subtitle = "삭제")
-"""@app.route("/delete_full/<path:doc_name>")
-def delete_full(doc_name):
-    if not tool.has_perm("manage_history"):
-        abort(403)
-    return tool.rt("document_full_delete.html", doc_title = doc_name)
-@app.route("/delete_full_form", methods=['POST'])
-def delete_full_form():
-    if not tool.has_perm("manage_history"):
-        abort(403)
-    tool.run_sqlscript("doc_full_delete.sql", (request.form['doc_name'],))
-    return redirect("/")"""
-"""@app.route("/api_tool.key_requests")
-def api_tool.key_requests():
-    if not isowner():
-        abort(403)
-    return tool.rt("api_request.html", reqs = c.execute('''select api_tool.key_requests.id, name
-from user, api_tool.key_requests
-where user.id = user_id''').fetchall())"""
-"""@app.route("/api_keys")
-def api_keys():
-    with g.db.cursor() as c:
-    if not tool.has_perm("grant"):
-        abort(403)
-    return tool.rt("api_key.html", keys = [x[0] for x in c.execute('''select name
-from user, api_keys
-where user.id = api_keys.user_id''').fetchall()])"""
 @app.route("/move/<path:doc_name>", methods = ["GET", "POST"])
 def move(doc_name):
     tool.clean_docid()
@@ -969,61 +814,6 @@ def acl(doc_name):
                 tool.Menu("이름공간 ACL", url_for("acl", doc_name = doc_name, type1 = "namespace"), "menu2-selected" if nsacl else "")
             ], acls
         ))
-"""@app.route("/api_request_accept_or_decline", methods=['POST'])
-def api_request_accept_or_decline():
-    if not isowner():
-        abort(403)
-    if request.form['result'] == 'accept':
-        k = gen_random_str(int(tool.get_config("api_key_length")))
-        c.execute('''insert into api_keys
-select user_id, NULL, 1
-from api_tool.key_requests
-where id = ?''', (request.form['id']))
-        c.execute('''insert into api_key_perm
-select ?, name, case value
-	when 0 then 1
-	when 1 then 1
-	when 2 then 0
-	end
-from api_policy''', (k,))
-    c.execute('''delete from api_tool.key_requests
-where id=?''', (request.form['id']))
-    return redirect('/')"""
-"""@app.route("/api_perm/<id>", methods=['GET', 'POST'])
-def api_perm(id):
-    if not tool.get_config("grant"):
-        abort(403)
-    i = tool.user_name_to_id(id)
-    if request.method == 'POST':
-        c.execute('DELETE FROM api_key_perm WHERE user=?', (i,))
-        for k in data.keyl:
-            if request.form.get(data.keyl[k]):
-                c.execute('''insert into api_key_perm
-values(?,?,1)''', (i, data.keyl[k]))
-            else:
-                c.execute('''insert into api_key_perm
-values(?,?,0)''', (i, data.keyl[k]))
-        return redirect('/')
-    tmp = []
-    for k in data.keyl:
-        try:
-            p = c.execute("SELECT value FROM api_key_perm WHERE user = ? AND name = ?", (i, data.keyl[k])).fetchone()[0]
-        except:
-            p = 0
-        tmp.append([k, data.keyl[k], p])
-    return tool.rt('api_perm.html', ps=tmp, id=id)"""
-@app.route("/getkey")
-def getkey():
-    return tool.rt("error.html", error="API 키 시스템 개편을 위해 현재 버전에서는 API를 사용할 수 없습니다. 이후 다시 사용 가능해질 예정입니다.")
-    """if tool.get_config("get_api_key") == "disabled":
-        return tool.rt("error.html", error="API가 비활성화된 위키입니다.")
-    else:
-        return tool.rt("api_key_ok.html", key = gen_random_str(int(tool.get_config("api_key_length"))))"""
-"""@app.route("/api_key_delete", methods=['GET', 'POST'])
-def api_key_delete():
-    c.execute('delete from api_keys where key=?', (request.form['id'],))
-    c.execute('delete from api_key_perm where key=?', (request.form['id'],))
-    return redirect('/')"""
 @app.route("/random")
 def random_document():
     with g.db.cursor() as c:
