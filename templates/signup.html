@@ -5,23 +5,21 @@
 {% endblock %}
 
 {% block content %}
-<form action="/signup_form" method="post">
-    <label>
-        아이디 <input type="text" name="id">
-    </label>
+<form method="post" style="max-width: 40rem;">
+    <textarea style="height: 30rem;" class="fullwidth" readonly>{{ policy }}</textarea>
+    <label><input type="checkbox" name="agree"> 동의합니다.</label><br>
+    {% if email_must %}
+    <label>Email<br><input type="email" name="email" class="fullwidth"></label><br>
+    {% if wblist is not none %}
+    {{ wblist|safe }}
+    {% else %}
     <br>
-    <label>
-        비밀번호 <input type="password" name="pw">
-    </label>
-    <br>
-    <label>
-        비밀번호 확인 <input type="password" name="pw2">
-    </label>
-    <br>
+    {% endif %}
+    {% endif %}
     {% if req_captcha %}
     <div class="g-recaptcha" data-sitekey="{{ sitekey }}" data-callback="onCaptchaCompleted"></div>
     {% endif %}
-    <input type="submit" class="ok" value="회원가입"{% if req_captcha %} id="on-captcha" style="display: none;"{% endif %}>
+    <input type="submit" value="가입" class="ok"{% if req_captcha %} id="on-captcha" style="display: none;"{% endif %}>
 </form>
 {% endblock %}
 

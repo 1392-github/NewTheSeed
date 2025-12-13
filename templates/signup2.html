@@ -1,0 +1,21 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<form method="post" style="max-width: 40rem;">
+    {% if email is not none %}
+    <label>이메일<br><input value="{{ email }}" class="fullwidth" disabled></label><br>
+    {% endif %}
+    <label>사용자 이름<br><input name="name" class="fullwidth"></label><br>
+    <label>암호<br><input type="password" name="pw" class="fullwidth"></label><br>
+    <label>암호 확인<br><input type="password" name="pw2" class="fullwidth"></label><br><br>
+    <input type="submit" value="가입" class="ok">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

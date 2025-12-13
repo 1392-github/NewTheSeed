@@ -522,44 +522,73 @@ def user():
     with g.db.cursor() as c:
         if tool.is_login():
             try:
-                return tool.rt("user.html", user_name = tool.id_to_user_name(tool.ipuser()).fetchone()[0], login=True)
+                return tool.rt("user.html", user_name = tool.id_to_user_name(tool.ipuser()), login=True)
             except:
                 session.pop("id", None)
                 return tool.rt("user.html", user_name = tool.getip(), login=False)
         else:
             return tool.rt("user.html", user_name = tool.getip(), login=False)
-@app.route("/login")
+@app.route("/member/login")
 def login():
     return tool.rt("login.html", req_captcha = tool.is_required_captcha("login"))
-@app.route("/signup")
+@app.route("/member/signup", methods = ["GET", "POST"])
 def signup():
-    return tool.rt("signup.html", req_captcha = tool.is_required_captcha("signup"))
-@app.route("/signup_form", methods=['POST'])
-def signup_form():
-    with g.db.cursor() as c:
+    if request.method == "POST":
         if not tool.captcha("signup"):
             return tool.captcha_failed()
-        if tool.has_user(request.form["id"]):
-            return tool.rt("error.html", error="이미 존재하는 사용자 이름입니다.")
-        if data.username_format.fullmatch(request.form["id"]) is None:
-            return tool.rt("error.html", error=f'계정명은 정규식 {escape(tool.get_config("username_format"))}을 충족해야 합니다.')
-        if tool.is_valid_ip(request.form["id"]) or tool.is_valid_cidr(request.form["id"]):
-            return tool.rt("error.html", error="IP나 CIDR 형식의 사용자 이름은 사용이 불가능합니다.")
+        if tool.get_config("email_verification_level") == "3":
+            with g.db.cursor() as c:
+                token = secrets.token_hex(64)
+                email = tool.sanitize_email(request.form["email"])
+                if email is None:
+                    return tool.rt("error.html", error = "이메일의 값을 형식에 맞게 입력해주세요."), 400
+                if not tool.check_email_wblist(email):
+                    return tool.rt("error.html", error = "이메일 허용 목록에 있는 이메일이 아닙니다." if data.email_wblist_type else "이메일 차단 목록에 있는 이메일입니다."), 400
+                if "agree" not in request.form:
+                    return tool.rt("error.html", error = "동의의 값은 필수입니다."), 400
+                wiki_name = tool.get_config("wiki_name")
+                ip = tool.getip()
+                title = tool.get_string_config("email_verification_signup_title").format(wiki_name = wiki_name)
+                limit = int(tool.get_config("email_limit"))
+                if limit != 0 and c.execute("SELECT count(*) FROM user_config WHERE name = 'email' and value = ?", (email,)).fetchone()[0] >= limit:
+                    tool.email(email, title, tool.get_string_config("email_verification_signup_max").format(wiki_name = wiki_name, max = limit, ip = ip))
+                else:
+                    c.execute("INSERT INTO signup_link (token, email, ip, expire) VALUES(?,?,?,?)", (token, email, ip, tool.get_utime() + 86400))
+                    tool.email(email, title, tool.get_string_config("email_verification_signup").format(wiki_name = wiki_name, link = tool.get_config("base_url") + url_for("signup2", token = token), ip = ip))
+                return tool.rt("signup_email.html", title = "계정 만들기", email = email)
+        else:
+            return redirect(url_for("signup2", token = "0"))
+    return tool.rt("signup.html", title = "계정 만들기", policy = tool.get_string_config("policy"), email_must = tool.get_config("email_verification_level") == "3", req_captcha = tool.is_required_captcha("signup"), wblist = tool.show_email_wblist())
+@app.route("/member/signup/<token>", methods = ["GET", "POST"])
+def signup2(token):
+    tool.delete_expired_signup_link()
+    if tool.get_config("email_verification_level") != "3" or tool.has_perm("bypass_email_verify"):
+        email = None
+    else:
+        with g.db.cursor() as c:
+            f = c.execute("SELECT email, ip FROM signup_link WHERE token = ?", (token,)).fetchone()
+        if f is None:
+            return tool.rt("error.html", error = "인증 요청이 만료되었거나 올바르지 않습니다."), 400
+        email, ip = f
+        if ip != tool.getip():
+            return tool.rt("error.html", error = "보안 상의 이유로 요청한 아이피 주소와 현재 아이피 주소가 같아야 합니다."), 400
+    if request.method == "POST":
         if request.form['pw'] != request.form['pw2']:
             return tool.rt("error.html", error="비밀번호가 일치하지 않습니다.")
-        first = c.execute("SELECT NOT EXISTS (SELECT 1 FROM user WHERE isip = 0)").fetchone()[0]
-        c.execute('''insert into user (name, password, isip)
-    values (?,?,0)''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest()))
-        u = c.lastrowid
-        time = tool.get_utime()
-        docid = tool.get_docid(int(tool.get_config("user_namespace")), request.form["id"], True)
-        c.execute("UPDATE data SET value = '' WHERE id = ?", (docid,))
-        tool.record_history(docid, 1, "", None, None, u, "", 0, time = time)
-        tool.set_user_config(u, "signup", str(time))
-        tool.set_user_config(u, "change_name", str(time))
-        if first:
-            c.execute("INSERT INTO perm VALUES(?, 'developer')", (u,))
-        return redirect('/')
+        check = tool.check_username(request.form["name"])
+        if check is not None:
+            return tool.rt("error.html", error=check)
+        with g.db.cursor() as c:
+            first = c.execute("SELECT NOT EXISTS (SELECT 1 FROM user WHERE isip = 0)").fetchone()[0]
+            u = tool.signup(request.form["name"], request.form["pw"])
+            if first:
+                c.execute("INSERT INTO perm VALUES(?, 'developer')", (u,))
+            if email is not None:
+                tool.set_user_config(u, "email", email)
+                c.execute("DELETE FROM signup_link WHERE email = ?", (email,))
+        session["id"] = u
+        return tool.rt("signup_completed.html", title = "계정 만들기", user = request.form["name"])
+    return tool.rt("signup2.html", title = "계정 만들기", email = email)
 @app.route("/login_form", methods=['POST'])
 def login_form():
     with g.db.cursor() as c:
@@ -826,7 +855,6 @@ def file(id):
     if name is None: abort(404)
     ns, name = name
     if ns not in data.file_namespace: abort(404)
-    print(tool.check_document_acl(id, ns, "read", name, showmsg=False))
     if tool.check_document_acl(id, ns, "read", name, showmsg=False) == 0: return "", 403
     try:
         return send_file(os.path.join("file", str(id)), mimetypes.guess_type(name)[0])
@@ -1479,7 +1507,7 @@ def mypage():
     if not tool.is_login(): return redirect("/")
     with g.db.cursor() as c:
         user = tool.ipuser()
-        return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user), change_name = tool.get_config("change_name_enable") == "1",
+        return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user), email = tool.get_user_config(user, "email", "(미설정)"), change_name = tool.get_config("change_name_enable") == "1",
                        perm = ", ".join(x[0] for x in c.execute("SELECT perm FROM perm WHERE user = ?", (user,)).fetchall()))
 @app.route("/member/change_password", methods = ["GET", "POST"])
 def change_password():

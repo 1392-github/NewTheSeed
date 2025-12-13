@@ -5,6 +5,7 @@ import datetime
 import time
 import ipaddress
 import os
+import hashlib
 from email.mime.text import MIMEText
 
 from dataclasses import dataclass
@@ -160,6 +161,8 @@ def get_config(key, default = None):
         # 16 버전에서는 임시로 API 비활성화
         if key == "get_api_key":
             return "disabled"
+        if key == "email_verification_level" and not os.getenv("SMTP_SERVER"):
+            return "0"
         if has_config(key):
             return c.execute("SELECT value FROM config WHERE name = ?", (key,)).fetchone()[0]
         else:
@@ -330,6 +333,9 @@ def reload_config(app):
     data.username_format = re.compile(get_config("username_format"))
     data.file_namespace = [int(x) for x in get_config("file_namespace").split(",")]
     data.change_name_block = [int(x) for x in get_config("change_name_block").split(",")]
+    email_wblist = get_config("email_wblist")
+    data.email_wblist = email_wblist.split(",") if email_wblist else []
+    data.email_wblist_type = get_config("email_wblist_type") == "white"
     app.permanent_session_lifetime = datetime.timedelta(seconds = int(get_config("keep_login_time")))
     with g.db.cursor() as c:
         exp = int(get_config("keep_login_history"))
@@ -655,6 +661,9 @@ def get_user_config(user, name, default = None):
 def set_user_config(user, name, value):
     with g.db.cursor() as c:
         c.execute("INSERT INTO user_config (user, name, value) VALUES(?, ?, ?) ON CONFLICT (user, name) DO UPDATE SET value = excluded.value", (user, name, value))
+def del_user_config(user, name):
+    with g.db.cursor() as c:
+        c.execute("DELETE FROM user_config WHERE user = ? AND name = ?", (user, name))
 def repr_perm(perm, no):
     l = data.perm_type_not if no else data.perm_type
     m = data.member_signup_days_ago_regex.match(perm)
@@ -746,3 +755,48 @@ def email(to, subject, text):
         msg["From"] = os.getenv("SMTP_USER")
         msg["To"] = to
         smtp.send_message(msg)
+def signup(name, password = None, userdoc = True):
+    with g.db.cursor() as c:
+        c.execute('''INSERT INTO user (name, password, isip) VALUES (?,?,0)''', (name, hashlib.sha3_512(password.encode("utf-8")).hexdigest()))
+        u = c.lastrowid
+        time = get_utime()
+        if userdoc:
+            docid = get_docid(int(get_config("user_namespace")), name, True)
+            c.execute("UPDATE data SET value = '' WHERE id = ?", (docid,))
+            record_history(docid, 1, "", None, None, u, "", 0, time = time)
+        set_user_config(u, "signup", str(time))
+        set_user_config(u, "change_name", str(time))
+        return u
+def check_username(name):
+    if has_user(name):
+            return "이미 존재하는 사용자 이름입니다."
+    if data.username_format.fullmatch(name) is None:
+        return f'계정명은 정규식 {escape(get_config("username_format"))}을 충족해야 합니다.'
+    if is_valid_ip(name) or is_valid_cidr(name):
+        return "IP나 CIDR 형식의 사용자 이름은 사용이 불가능합니다."
+    return None
+def sanitize_email(email):
+    email = email.split("@")
+    if len(email) != 2:
+        return None
+    email, email2 = email
+    if "." not in email2:
+        return None
+    if email2 == "gmail.com": email = email.replace(".", "").split("+")[0]
+    return f"{email}@{email2}"
+def delete_expired_signup_link():
+    with g.db.cursor() as c:
+        c.execute("DELETE FROM signup_link WHERE expire < ?", (get_utime(),))
+def show_email_wblist(ignore_public_flag = False):
+    print(data.email_wblist)
+    if len(data.email_wblist) == 0: return None
+    if not ignore_public_flag and get_config("email_wblist_public") == "0": return None
+    l = []
+    for i in data.email_wblist:
+        l.append(f"<li>{i}</li>")
+    return f"이메일 허용 목록이 활성화 되어 있습니다.<br>이메일 허용 목록에 존재하는 메일만 사용할 수 있습니다.<ul>{''.join(l)}</ul>" if data.email_wblist_type else f"이메일 차단 목록이 활성화 되어 있습니다.<br>이메일 차단 목록에 존재하는 메일은 사용할 수 없습니다.<ul>{''.join(l)}</ul>"
+def check_email_wblist(email):
+    if len(data.email_wblist) == 0: return True
+    i = email.find("@")
+    if i == -1: raise ValueError("Wrong email address")
+    return (email[i+1:] in data.email_wblist) == data.email_wblist_type

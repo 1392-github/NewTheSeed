@@ -147,3 +147,10 @@ CREATE TABLE IF NOT EXISTS "user_config" (
 	"value"	TEXT,
 	PRIMARY KEY("user","name")
 );
+CREATE TABLE IF NOT EXISTS "signup_link" (
+	"token"	TEXT,
+	"email"	TEXT NOT NULL,
+	"ip"	TEXT NOT NULL,
+	"expire"	INTEGER NOT NULL,
+	PRIMARY KEY("token")
+);

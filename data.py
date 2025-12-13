@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = (54, 5)
+version = (54, 6)
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -76,12 +76,42 @@ default_config = {
     "change_name_cooltime": "2592000",
     "withdraw_enable": "1",
     "withdraw_cooltime": "86400",
-    "withdraw_resignup_block": "2592000"
+    "withdraw_resignup_block": "2592000",
+    "email_verification_level": "0",
+    "email_wblist_type": "white",
+    "email_wblist": "",
+    "email_wblist_public": "1",
+    "email_limit": "1",
+    "email_limit2": "",
+    "base_url": "127.0.0.1"
 }
 default_string_config = {
     "document_license": '이 저작물은 <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>에 따라 이용할 수 있습니다. (단, 라이선스가 명시된 일부 문서 및 삽화 제외)<br>기여하신 문서의 저작권은 각 기여자에게 있으며, 각 기여자는 기여하신 부분의 저작권을 갖습니다.',
     "document_license_checkbox": "문서 편집을 저장하면 당신은 기여한 내용을 <b>CC BY 4.0 KR</b>으로 배포하고 기여한 문서에 대한 하이퍼링크나 URL을 이용하여 저작자 표시를 하는 것으로 충분하다는 데 동의하는 것입니다. <b>이 동의는 철회할 수 없습니다.</b>",
     "withdraw_pledgeinput": '본인은 계정 삭제를 하면 본인이 기여한 문서나 그 복제물에 또는 해당 문서의 공표 매체(이하 "문서등")에 본인의 실명 또는 이명 대신에 <삭제된 사용자>로 표시됨을 동의합니다. 또한, 본인은 계정 삭제 이후 문서등의 기여자임을 증명할 수 없게 된다는 사실을 인지하고, 문서등에 대하여 저작인격권을 행사하지 않을 것에 동의합니다.',
+    "policy": "여기에 약관을 입력해주세요.",
+    "email_verification_signup_title": "[{wiki_name}] 계정 생성 이메일 주소 인증",
+    "email_verification_signup": '''안녕하세요. {wiki_name} 입니다.<br><br>
+{wiki_name} 계정 생성 이메일 인증 메일입니다.<br>
+직접 계정 생성을 진행하신 것이 맞다면 아래 링크를 클릭해서 계정 생성을 계속 진행해주세요.<br>
+<a href="{link}">[인증]</a><br><br>
+이 메일은 24시간동안 유효합니다.<br>
+요청 아이피 : {ip}''',
+    "email_verification_signup_max": '''안녕하세요. {wiki_name} 입니다.<br><br>
+{wiki_name} 계정 생성 이메일 인증 메일입니다.<br>
+누군가 이 이메일로 계정 생성을 시도했지만 이미 이 이메일로 계정 생성을 할 수 있는 최대 횟수({max}번)를 초과해서 더 이상 계정을 생성할 수 없습니다.<br><br>
+요청 아이피 : {ip}''',
+    "email_verification_change_title": "[{wiki_name}] {user}님의 이메일 변경 인증 메일 입니다.",
+    "email_verification_change": '''안녕하세요. {wiki_name}입니다.<br><br>
+{user}님의 이메일 변경 인증 메일입니다.<br>
+해당 아이디로 변경한게 맞으시면 아래 링크를 클릭해주세요.<br>
+<a href="{link}">[인증]</a><br><br>
+이 메일은 24시간동안 유효합니다.<br>
+요청 아이피 : {ip}''',
+    "email_verification_change_max": '''안녕하세요. {wiki_name}입니다.<br><br>
+{user}님의 이메일 변경 인증 메일입니다.<br>
+이 이메일로 이메일 변경을 시도했지만 이미 이 이메일로 계정 생성을 할 수 있는 최대 횟수({max}번)를 초과해서 더 이상 계정을 생성할 수 없습니다.<br><br>
+요청 아이피 : {ip}'''
 }
 grantable = None
 captcha_bypass_cnt = {}
@@ -166,3 +196,5 @@ default_aclgroup_message = "ACL그룹 {group} #{id}에 있기 때문에 {type} �
 member_signup_days_ago_regex = re.compile("member_signup_(\d+)days_ago")
 member_signup_ago_regex = re.compile("member_signup_(\d+)_ago")
 change_name_block = []
+email_wblist_type = None
+email_wblist = []
