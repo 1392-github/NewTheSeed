@@ -536,7 +536,7 @@ def signup():
     if request.method == "POST":
         if not tool.captcha("signup"):
             return tool.captcha_failed()
-        if tool.get_config("email_verification_level") == "3":
+        if tool.get_config("email_verification_level") == "3" or tool.has_perm("bypass_email_verify"):
             with g.db.cursor() as c:
                 token = secrets.token_hex(64)
                 email = tool.sanitize_email(request.form["email"])
@@ -1346,7 +1346,7 @@ def login_history():
             user = request.args["user"]
             id = tool.user_name_to_id(user)
             c.execute("INSERT INTO block_log (type, operator, target, date, note) VALUES(4,?,?,?,?)", (tool.ipuser(), id, tool.get_utime(), request.args["note"] if tool.get_config("ext_note") == "1" else ""))
-            return tool.rt("login_history_1.html", title = f"{user} 로그인 내역", lh = c.execute("SELECT date, ip, ua, uach FROM login_history WHERE user = ? ORDER BY date DESC", (id,)).fetchall())
+            return tool.rt("login_history_1.html", title = f"{user} 로그인 내역", email = tool.get_user_config(id, "email", "(미설정)"), lh = c.execute("SELECT date, ip, ua, uach FROM login_history WHERE user = ? ORDER BY date DESC", (id,)).fetchall())
         else:
             return tool.rt("login_history.html", title = "로그인 내역", ext_note = tool.get_config("ext_note") == "1")
 @app.route("/Upload", methods=['GET','POST'])
@@ -1601,7 +1601,7 @@ def change_email():
             return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
         email = request.form["email"]
         if email == "":
-            if evm == "3":
+            if evm == "3" or not tool.has_perm("bypass_email_verify"):
                 return tool.rt("error.html", error = "이메일의 값은 필수입니다."), 400
             else:
                 tool.del_user_config(user, "email")
@@ -1611,7 +1611,7 @@ def change_email():
             return tool.rt("error.html", error = "이메일의 값을 형식에 맞게 입력해주세요."), 400
         if not tool.check_email_wblist(email):
             return tool.rt("error.html", error = "이메일 허용 목록에 있는 이메일이 아닙니다." if data.email_wblist_type else "이메일 차단 목록에 있는 이메일입니다."), 400
-        if evm == "1":
+        if evm == "1" or tool.has_perm("bypass_email_verify"):
             tool.set_user_config(user, "email", email)
         else:
             token = secrets.token_hex(64)
