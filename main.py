@@ -1515,7 +1515,7 @@ def change_password():
     if request.method == "POST":
         user = tool.ipuser()
         with g.db.cursor() as c:
-            if c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(request.form["cpw"].encode("utf-8")).hexdigest())).fetchone()[0] == 0:
+            if not tool.check_password(user, request.form["cpw"]).fetchone()[0] == 0:
                 return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
             if request.form["pw"] != request.form["pw2"]:
                 return tool.rt("error.html", error = "패스워드 확인이 올바르지 않습니다.")
@@ -1538,7 +1538,7 @@ def change_name():
             if st:
                 return tool.rt("error.html", error=tool.get_aclgroup_deny_message(st, i).format(type="이름 변경", tab=""))
         with g.db.cursor() as c:
-            if c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest())).fetchone()[0] == 0:
+            if not tool.check_password(user, request.form["pw"]):
                 return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
         name = request.form["name"]
         if tool.has_user(name):
@@ -1575,7 +1575,7 @@ def withdraw():
         if request.method == "POST":
             if cooltime is not None or withdraw_block is not None:
                 return tool.rt("error.html", error="계정 삭제가 불가능한 상태입니다."), 403
-            if c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest())).fetchone()[0] == 0:
+            if not tool.check_password(user, request.form["pw"]):
                 return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
             if request.form["pledgeinput"] != tool.get_string_config("withdraw_pledgeinput"):
                 return tool.rt("error.html", error = "동일하게 입력해주세요.")
@@ -1590,6 +1590,57 @@ def smtp_test():
         tool.email(request.form["to"], "NewTheSeed SMTP Test", "If this email arrived normally, SMTP is working properly.")
         return redirect(url_for("config"))
     return tool.rt("smtp_test.html", title = "SMTP 테스트", to = os.getenv("SMTP_USER"))
+@app.route("/member/change_email", methods = ["GET", "POST"])
+def change_email():
+    if not tool.is_login(): return redirect("/")
+    evm = tool.get_config("email_verification_level")
+    if evm == "0": return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+    user = tool.ipuser()
+    if request.method == "POST":
+        if not tool.check_password(user, request.form["pw"]):
+            return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
+        email = request.form["email"]
+        if email == "":
+            if evm == "3":
+                return tool.rt("error.html", error = "이메일의 값은 필수입니다."), 400
+            else:
+                tool.del_user_config(user, "email")
+                return redirect(url_for("mypage"))
+        email = tool.sanitize_email(email)
+        if email is None:
+            return tool.rt("error.html", error = "이메일의 값을 형식에 맞게 입력해주세요."), 400
+        if not tool.check_email_wblist(email):
+            return tool.rt("error.html", error = "이메일 허용 목록에 있는 이메일이 아닙니다." if data.email_wblist_type else "이메일 차단 목록에 있는 이메일입니다."), 400
+        if evm == "1":
+            tool.set_user_config(user, "email", email)
+        else:
+            token = secrets.token_hex(64)
+            wiki_name = tool.get_config("wiki_name")
+            ip = tool.getip()
+            username = tool.id_to_user_name(user)
+            title = tool.get_string_config("email_verification_change_title").format(wiki_name = wiki_name, user = username)
+            limit = int(tool.get_config("email_limit"))
+            with g.db.cursor() as c:
+                if limit != 0 and c.execute("SELECT count(*) FROM user_config WHERE name = 'email' and value = ?", (email,)).fetchone()[0] >= limit:
+                    tool.email(email, title, tool.get_string_config("email_verification_change_max").format(wiki_name = wiki_name, max = limit, ip = ip, user = username))
+                else:
+                    c.execute("INSERT INTO change_email_link (token, user, email, ip, expire) VALUES(?,?,?,?,?)", (token, user, email, ip, tool.get_utime() + 86400))
+                    tool.email(email, title, tool.get_string_config("email_verification_change").format(wiki_name = wiki_name, link = tool.get_config("base_url") + url_for("change_email2", user = username, token = token), ip = ip, user = username))
+        return redirect(url_for("mypage"))
+    return tool.rt("change_email.html", title = "이메일 변경", email = tool.get_user_config(user, "email", ""), wblist = tool.show_email_wblist())
+@app.route("/member/auth/<user>/<token>")
+def change_email2(user, token):
+    with g.db.cursor() as c:
+        user1 = tool.user_name_to_id(user)
+        f = c.execute("SELECT email, ip FROM change_email_link WHERE token = ? AND user = ?", (token, user1)).fetchone()
+        if f is None:
+            return tool.rt("error.html", error = "인증 요청이 만료되었거나 올바르지 않습니다."), 400
+        email, ip = f
+        if ip != tool.getip():
+            return tool.rt("error.html", error = "보안 상의 이유로 요청한 아이피 주소와 현재 아이피 주소가 같아야 합니다."), 400
+        tool.set_user_config(user1, "email", email)
+        c.execute("DELETE FROM change_email_link WHERE email = ?", (email,))
+        return tool.rt("change_email_completed.html", title = "인증 완료", user = user)
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:

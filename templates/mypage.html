@@ -22,7 +22,10 @@
 </div>
 {{ user }}
 <hr>
-<div class="member-info-name">Email</div>
+<div class="member-info-name">
+    Email
+    <a href="{{ url_for('change_email')}}">변경</a>
+</div>
 {{ email }}
 <hr>
 <div class="member-info-name">비밀번호</div>

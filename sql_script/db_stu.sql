@@ -154,3 +154,11 @@ CREATE TABLE IF NOT EXISTS "signup_link" (
 	"expire"	INTEGER NOT NULL,
 	PRIMARY KEY("token")
 );
+CREATE TABLE IF NOT EXISTS "change_email_link" (
+	"token"	TEXT,
+	"user"	INTEGER NOT NULL,
+	"email"	TEXT NOT NULL,
+	"ip"	TEXT,
+	"expire"	INTEGER NOT NULL,
+	PRIMARY KEY("token")
+);

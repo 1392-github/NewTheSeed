@@ -1,0 +1,23 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<form method="post">
+    <label>비밀번호<br><input type="password" name="pw"></label><br>
+    <label>이메일<br><input disabled value="{{ email }}"></label><br>
+    <label>새 이메일<br><input name="email"></label><br>
+    {% if wblist is not none %}
+    {{ wblist|safe }}
+    {% else %}
+    <br>
+    {% endif %}
+    <input type="submit" value="이메일 변경" class="ok">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

@@ -175,7 +175,11 @@ def get_string_config(key, default = None):
             return default
 def user_name_to_id(name):
     with g.db.cursor() as c:
-        return c.execute("SELECT id FROM user WHERE name = ?", (name,)).fetchone()[0]
+        f = c.execute("SELECT id FROM user WHERE name = ?", (name,)).fetchone()
+        if f is None:
+            return -1
+        else:
+            return f[0]
 def id_to_user_name(id):
     with g.db.cursor() as c:
         return c.execute("SELECT name FROM user WHERE id = ?", (id,)).fetchone()[0]
@@ -787,8 +791,10 @@ def sanitize_email(email):
 def delete_expired_signup_link():
     with g.db.cursor() as c:
         c.execute("DELETE FROM signup_link WHERE expire < ?", (get_utime(),))
+def delete_expired_change_email_link():
+    with g.db.cursor() as c:
+        c.execute("DELETE FROM change_email_link WHERE expire < ?", (get_utime(),))
 def show_email_wblist(ignore_public_flag = False):
-    print(data.email_wblist)
     if len(data.email_wblist) == 0: return None
     if not ignore_public_flag and get_config("email_wblist_public") == "0": return None
     l = []
@@ -800,3 +806,6 @@ def check_email_wblist(email):
     i = email.find("@")
     if i == -1: raise ValueError("Wrong email address")
     return (email[i+1:] in data.email_wblist) == data.email_wblist_type
+def check_password(user, password):
+    with g.db.cursor() as c:
+        return bool(c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(password.encode("utf-8")).hexdigest())).fetchone()[0])
