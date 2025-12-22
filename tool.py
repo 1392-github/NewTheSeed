@@ -434,7 +434,8 @@ def render_acl(acl, type):
             with g.db.cursor() as c:
                 cond = "aclgroup:" + c.execute("SELECT name FROM aclgroup WHERE id = ?", (n[3],)).fetchone()[0]
         elif n[1] == "user":
-            cond = "user:" + id_to_user_name(n[3])
+            user = id_to_user_name(n[3])
+            cond = "user:" + "<삭제된 사용자>" if user is None else user
         else:
             cond = n[1] + ":" + n[2]
         if trg and n[4]:
