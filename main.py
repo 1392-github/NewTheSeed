@@ -1601,7 +1601,7 @@ def change_email():
             return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
         email = request.form["email"]
         if email == "":
-            if evm == "3" or not tool.has_perm("bypass_email_verify"):
+            if evm == "3" and not tool.has_perm("bypass_email_verify"):
                 return tool.rt("error.html", error = "이메일의 값은 필수입니다."), 400
             else:
                 tool.del_user_config(user, "email")
