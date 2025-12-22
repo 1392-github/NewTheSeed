@@ -1507,7 +1507,7 @@ def mypage():
     if not tool.is_login(): return redirect("/")
     with g.db.cursor() as c:
         user = tool.ipuser()
-        return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user), email = tool.get_user_config(user, "email", "(미설정)"), change_name = tool.get_config("change_name_enable") == "1",
+        return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user), use_email = tool.get_config("email_verification_level") != "0", email = tool.get_user_config(user, "email", "(미설정)"), change_name = tool.get_config("change_name_enable") == "1",
                        perm = ", ".join(x[0] for x in c.execute("SELECT perm FROM perm WHERE user = ?", (user,)).fetchall()))
 @app.route("/member/change_password", methods = ["GET", "POST"])
 def change_password():
@@ -1609,7 +1609,7 @@ def change_email():
         email = tool.sanitize_email(email)
         if email is None:
             return tool.rt("error.html", error = "이메일의 값을 형식에 맞게 입력해주세요."), 400
-        if not tool.check_email_wblist(email):
+        if not tool.has_perm("bypass_email_verify") and not tool.check_email_wblist(email):
             return tool.rt("error.html", error = "이메일 허용 목록에 있는 이메일이 아닙니다." if data.email_wblist_type else "이메일 차단 목록에 있는 이메일입니다."), 400
         if evm == "1" or tool.has_perm("bypass_email_verify"):
             tool.set_user_config(user, "email", email)

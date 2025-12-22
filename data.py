@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = (54, 9)
+version = (54, 10)
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -143,7 +143,8 @@ perm_type = {
     "member_signup_15days_ago": "가입한지 15일 지난 사용자",
     "document_contributor": "해당 문서 기여자",
     "contributor": "위키 기여자",
-    "match_username_and_document_title": "문서 제목과 사용자 이름이 일치"
+    "match_username_and_document_title": "문서 제목과 사용자 이름이 일치",
+    "email_verified_member": "이메일 인증된 사용자"
 }
 perm_type_not = {
     "ip": "로그인된 사용자",
@@ -152,7 +153,8 @@ perm_type_not = {
     "member_signup_15days_ago": "가입한지 15일 지나지 않은 사용자",
     "document_contributor": "해당 문서 미기여자",
     "contributor": "위키 미기여자",
-    "match_username_and_document_title": "문서 제목과 사용자 이름이 불일치"
+    "match_username_and_document_title": "문서 제목과 사용자 이름이 불일치",
+    "email_verified_member": "이메일 미인증된 사용자"
 }
 acl_action = {"allow": "허용", "deny": "거부", "gotons": "이름공간ACL 실행", "gotootherns": "다른 이름공간ACL 실행"}
 acl_action_key = {"allow": 1, "deny": 0, "gotons": 2, "gotootherns": 3}

@@ -297,6 +297,8 @@ def has_perm(perm, user = None, basedoc = None, docname = None):
         if perm == "document_contributor":
             if basedoc is None: return False
             return bool(c.execute("SELECT EXISTS (SELECT 1 FROM history WHERE doc_id = ? AND author = ?)", (basedoc, user)).fetchone()[0])
+        if perm == "email_verified_member":
+            return has_user_config(user, "email")
         if perm == "database" and os.getenv("DISABLE_SQLSHELL") == "1":
             return False
         if perm == "sysman" and os.getenv("DISABLE_SYSMAN") == "1":

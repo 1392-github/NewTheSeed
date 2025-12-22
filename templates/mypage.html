@@ -21,12 +21,14 @@
     {% endif %}
 </div>
 {{ user }}
+{% if use_email %}
 <hr>
 <div class="member-info-name">
     Email
     <a href="{{ url_for('change_email')}}">변경</a>
 </div>
 {{ email }}
+{% endif %}
 <hr>
 <div class="member-info-name">비밀번호</div>
 <a href="{{ url_for('change_password') }}">
