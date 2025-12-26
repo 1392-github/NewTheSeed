@@ -827,3 +827,5 @@ def get_skin_config(key, default = None):
 def force_remove(func, path, exc_info):
     os.chmod(path, stat.S_IWRITE)
     func(path)
+def error(msg, code = 400):
+    return rt("error.html", error = msg), code

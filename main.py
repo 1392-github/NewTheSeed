@@ -359,7 +359,7 @@ else:
 
 @app.errorhandler(403)
 def errorhandler_403(e):
-    return tool.rt("error.html", error="권한이 부족합니다."), 403
+    return tool.error("권한이 부족합니다.", 403)
 @app.errorhandler(404)
 def errorhandler_404(e):
     return tool.rt(f"{tool.get_skin()}/404.html"), 404
@@ -504,7 +504,7 @@ def doc_raw(doc_title):
         else:
             d = c.execute("SELECT content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
         if d is None or d[0] is None:
-            return tool.rt("error.html", error="문서를 찾을 수 없습니다."), 404
+            return tool.error("문서를 찾을 수 없습니다.", 404)
         return tool.rt("document_raw.html", doc_title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d[0]), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
 @app.route("/edit/<path:doc_title>")
 def doc_edit(doc_title):
@@ -542,7 +542,7 @@ def doc_edit_form():
             abort(403)
         if docid == -1:
             if ns in data.file_namespace or ("/" not in name and ns == int(tool.get_config("user_namespace"))):
-                return tool.rt("error.html", error = "invalid_namespace")
+                return tool.error("invalid_namespace")
             docid = tool.get_docid(ns, name, True)
         prev_content = c.execute("SELECT value FROM data WHERE id = ?", (docid,)).fetchone()
         new_document = prev_content is None
@@ -614,7 +614,7 @@ def signup2(token):
             return tool.error("보안 상의 이유로 요청한 아이피 주소와 현재 아이피 주소가 같아야 합니다.")
     if request.method == "POST":
         if request.form['pw'] != request.form['pw2']:
-            return tool.rt("error.html", error="비밀번호가 일치하지 않습니다.")
+            return tool.error("비밀번호가 일치하지 않습니다.")
         check = tool.check_username(request.form["name"])
         if check is not None:
             return tool.rt("error.html", error=check)
@@ -640,7 +640,7 @@ def login_form():
         and password = ?
         and isip = 0''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest())).fetchone()
         if f == None:
-            return tool.rt("error.html", error="아이디나 비밀번호가 일치하지 않습니다.")
+            return tool.error("아이디나 비밀번호가 일치하지 않습니다.")
         if "keep" in request.form:
             session.permanent = True
         id = f[0]
@@ -664,7 +664,7 @@ def history(doc_name):
         ns, name = tool.split_ns(doc_name)
         docid = tool.get_docid(ns, name)
         if docid == -1:
-            return tool.rt("error.html", error = "문서를 찾을 수 없습니다."), 404
+            return tool.error("문서를 찾을 수 없습니다.", 404)
         c.execute("""SELECT rev, type, content, content2, content3, author, edit_comment, datetime, length FROM history WHERE doc_id = ? ORDER BY rev DESC""", (docid,))
         history = [(x[0], x[1], x[2], x[3], x[4], x[5], x[6], tool.utime_to_str(x[7]), x[8]) for x in c.fetchall()]
         return tool.rt("history.html", history=history, title=tool.render_docname(ns, name), subtitle="역사", raw_doc_name=doc_name)
@@ -673,7 +673,7 @@ def sqldump():
     if not tool.has_perm("developer"):
         abort(403)
     if os.getenv("DISABLE_SQLSHELL") == "1":
-        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     with open("dump.sql", "w", encoding='utf-8') as f:
         for l in g.db.iterdump():
             f.write("%s\n" % l)
@@ -683,7 +683,7 @@ def sqlshell():
     if not tool.has_perm("developer"):
         abort(403)
     if os.getenv("DISABLE_SQLSHELL") == "1":
-        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     if request.method == "GET":
         return tool.rt("sql_shell.html", title = "SQL Shell", prev_sql = "", result = "")
     else:
@@ -703,7 +703,7 @@ def delete(doc_name):
         return tool.rt("error.html", error = acl[1]), 403
     if request.method == "POST":
         data = tool.get_doc_data(docid)
-        if data == None: return tool.rt("error.html", error = "문서를 찾을 수 없습니다.")
+        if data == None: return tool.error("문서를 찾을 수 없습니다.")
         tool.record_history(docid, 2, None, None, None, i, request.form["note"], -len(data))
         with g.db.cursor() as c:
             c.execute("UPDATE data SET value = NULL WHERE id = ?", (docid,))
@@ -719,19 +719,19 @@ def move(doc_name):
     if acl[0] == 0:
         return tool.rt("error.html", error = acl[1]), 403
     if docid == -1:
-        return tool.rt("error.html", error = "문서를 찾을 수 없습니다."), 404
+        return tool.error("문서를 찾을 수 없습니다.", 404)
     if request.method == "POST":
         to = request.form["to"]
         tons, toname = tool.split_ns(to)
         if (ns in data.file_namespace) ^ (tons in data.file_namespace):
-            return tool.rt("error.html", error = "이 문서를 해당 이름 공간으로 이동할 수 없습니다."), 409
+            return tool.error("이 문서를 해당 이름 공간으로 이동할 수 없습니다.", 409)
         if ns in data.file_namespace and os.path.splitext(name)[1] != os.path.splitext(toname)[1]:
-            return tool.rt("error.html", error = "확장자가 다릅니다."), 409
+            return tool.error("확장자가 다릅니다.", 409)
         if "swap" in request.form:
             # 문서를 서로 맞바꾸기
             todocid = tool.get_docid(tons, toname)
             if todocid == -1 or todocid == docid:
-                return tool.rt("error.html", error = "문서를 찾을 수 없습니다."), 404
+                return tool.error("문서를 찾을 수 없습니다.", 404)
             with g.db.cursor() as c:
                 c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (tons, toname, docid))
                 c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (ns, name, todocid))
@@ -740,7 +740,7 @@ def move(doc_name):
         else:
             # 일반 문서 이동
             if tool.get_docid(tons, toname) != -1:
-                return tool.rt("error.html", error = "문서가 이미 존재합니다."), 409
+                return tool.error("문서가 이미 존재합니다.", 409)
             acl = tool.check_document_acl(-1, tons, "move", toname)
             if acl[0] == 0:
                 return tool.rt("error.html", error = acl[1]), 403
@@ -992,7 +992,7 @@ def aclgroup_new_group():
     if not tool.has_perm("aclgroup"):
         abort(403)
     with g.db.cursor() as c:
-        if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE name = ? AND deleted = 0)", (request.form["group"],)).fetchone()[0]: return tool.rt("error.html", error = "이미 존재하는 ACLGroup입니다.")
+        if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE name = ? AND deleted = 0)", (request.form["group"],)).fetchone()[0]: return tool.error("이미 존재하는 ACLGroup입니다.")
         c.execute("INSERT INTO aclgroup (name) VALUES(?)",
                 (request.form["group"],))
         id = c.lastrowid
@@ -1292,14 +1292,14 @@ def sysman():
     if not tool.has_perm("developer"):
         abort(403)
     if os.getenv("DISABLE_SYSMAN") == "1":
-        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     return tool.rt("sysman.html", title="시스템 관리", nokey = tool.get_config("pythonanywhere") == "1" and not os.getenv("API_TOKEN"))
 @app.route("/admin/sysman/update", methods = ["GET", "POST"])
 def update():
     if not tool.has_perm("developer"):
         abort(403)
     if os.getenv("DISABLE_SYSMAN") == "1":
-        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     if request.method == "POST":
         p = subprocess.Popen(["git", "pull", "origin", "main"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         r1 = p.communicate()[0]
@@ -1309,7 +1309,7 @@ def update():
             p = subprocess.Popen(["python", "-m", "pip", "install", "-r", "requirements.txt"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         return tool.rt("update_result.html", title = "업데이트 결과", result = r1.decode("utf-8") + "\n" + p.communicate()[0].decode("utf-8"))
     if repo is None:
-        return tool.rt("error.html", error = "엔진이 git 저장소로 다운로드 되지 않았기 때문에 업데이트 기능을 사용할 수 없습니다.")
+        return tool.error("엔진이 git 저장소로 다운로드 되지 않았기 때문에 업데이트 기능을 사용할 수 없습니다.")
     else:
         return tool.rt("update.html", title = "업데이트", branch = (r.name[7:] for r in repo.remotes.origin.refs), current = data.version)
 @app.route("/admin/sysman/restart", methods = ["GET", "POST"])
@@ -1317,21 +1317,21 @@ def restart():
     if not tool.has_perm("developer"):
         abort(403)
     if os.getenv("DISABLE_SYSMAN") == "1":
-        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     if request.method == "POST":
         if tool.get_config("pythonanywhere") == "1":
             requests.post(f"https://{'eu' if tool.get_config('pythonanywhere_eu') == '1' else 'www'}.pythonanywhere.com/api/v0/user/{tool.get_config('pythonanywhere_user')}/webapps/{tool.get_config('pythonanywhere_domain')}/reload/",
                           headers={"Authorization": "Token " + os.getenv("API_TOKEN")})
             return redirect("/")
         else:
-            return tool.rt("error.html", error = "재시작 기능은 pythonanywhere에서만 사용 가능합니다."), 501
+            return tool.error("재시작 기능은 pythonanywhere에서만 사용 가능합니다.", 501)
     return tool.rt("restart.html", title = "재시작", paw = tool.get_config("pythonanywhere") == "1")
 @app.route("/admin/sysman/shutdown", methods = ["GET", "POST"])
 def shutdown():
     if not tool.has_perm("developer"):
         abort(403)
     if os.getenv("DISABLE_SYSMAN") == "1":
-        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     if request.method == "POST":
         if tool.get_config("pythonanywhere") == "1":
             requests.post(f"https://{'eu' if tool.get_config('pythonanywhere_eu') == '1' else 'www'}.pythonanywhere.com/api/v0/user/{tool.get_config('pythonanywhere_user')}/webapps/{tool.get_config('pythonanywhere_domain')}/disable/",
@@ -1345,7 +1345,7 @@ def manage_skin():
     if not tool.has_perm("developer"):
         abort(403)
     if os.getenv("DISABLE_SYSMAN") == "1":
-        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     return tool.rt("manage_skin.html", title = "스킨 관리",
                    skins = ((x, f"{data.skin_info[x]['version_name']} ({data.skin_commit[x]})", x not in data.skin_git) for x in data.skins))
 @app.route("/admin/sysman/skin/update", methods = ["POST"])
@@ -1353,20 +1353,20 @@ def update_skin():
     if not tool.has_perm("developer"):
         abort(403)
     if os.getenv("DISABLE_SYSMAN") == "1":
-        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     skin = request.form["skin"]
     if skin not in data.skin_git:
-        return tool.rt("error.html", error = "존재하지 않거나 git로 다운로드 되지 않은 스킨입니다."), 400
+        return tool.error("존재하지 않거나 git로 다운로드 되지 않은 스킨입니다.")
     return tool.rt("update_result.html", title = "업데이트 결과", result = subprocess.Popen(["git", "-C", os.path.join("skins", skin), "pull"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].decode("utf-8"))
 @app.route("/admin/sysman/skin/delete", methods = ["POST"])
 def delete_skin():
     if not tool.has_perm("developer"):
         abort(403)
     if os.getenv("DISABLE_SYSMAN") == "1":
-        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     skin = request.form["skin"]
     if skin not in data.skins:
-        return tool.rt("error.html", error = "존재하지 않는 스킨입니다."), 400
+        return tool.error("존재하지 않는 스킨입니다.")
     data.skins.remove(skin)
     shutil.rmtree(os.path.join("skins", skin), onerror=tool.force_remove)
     return redirect(url_for("restart"))
@@ -1375,7 +1375,7 @@ def install_skin():
     if not tool.has_perm("developer"):
         abort(403)
     if os.getenv("DISABLE_SYSMAN") == "1":
-        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     return tool.rt("update_result.html", title = "설치 결과", result = subprocess.Popen(["git", "clone", request.form["git"], os.path.join("skins", str(tool.get_utime()))], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].decode("utf-8"))
 @app.route("/RecentChanges")
 def recent_changes():
@@ -1416,7 +1416,7 @@ def login_history():
     with g.db.cursor() as c:
         exp = int(tool.get_config("keep_login_history"))
         if exp == 0:
-            return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다.")
+            return tool.error("이 기능이 비활성화되어 있습니다.")
         if exp != -1:
             c.execute("DELETE FROM login_history WHERE date < ?", (tool.get_utime() - exp,))
         if "user" in request.args:
@@ -1595,15 +1595,15 @@ def change_password():
         user = tool.ipuser()
         with g.db.cursor() as c:
             if not tool.check_password(user, request.form["cpw"]).fetchone()[0] == 0:
-                return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
+                return tool.error("패스워드가 올바르지 않습니다.")
             if request.form["pw"] != request.form["pw2"]:
-                return tool.rt("error.html", error = "패스워드 확인이 올바르지 않습니다.")
+                return tool.error("패스워드 확인이 올바르지 않습니다.")
             c.execute("UPDATE user SET password = ? WHERE id = ?", (hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest(), user))
             return redirect("/")
     return tool.rt("change_password.html", title="비밀번호 변경")
 @app.route("/member/change_name", methods = ["GET", "POST"])
 def change_name():
-    if tool.get_config("change_name_enable") == "0": return tool.rt("error.html", error = "이름 변경이 비활성화되어 있습니다."), 501
+    if tool.get_config("change_name_enable") == "0": return tool.error("이름 변경이 비활성화되어 있습니다.", 501)
     if not tool.is_login(): return redirect("/")
     user = tool.ipuser()
     cooltime = int(tool.get_user_config(user, "change_name", 0)) + int(tool.get_config("change_name_cooltime"))
@@ -1611,19 +1611,19 @@ def change_name():
         cooltime = None
     if request.method == "POST":
         if cooltime is not None:
-            return tool.rt("error.html", error="최근에 계정을 생성했거나 최근에 이름 변경을 이미 했습니다."), 403
+            return tool.error("최근에 계정을 생성했거나 최근에 이름 변경을 이미 했습니다.", 403)
         for i in data.change_name_block:
             st = tool.user_in_aclgroup(i, user)
             if st:
                 return tool.rt("error.html", error=tool.get_aclgroup_deny_message(st, i).format(type="이름 변경", tab=""))
         with g.db.cursor() as c:
             if not tool.check_password(user, request.form["pw"]):
-                return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
+                return tool.error("패스워드가 올바르지 않습니다.")
         name = request.form["name"]
         if tool.has_user(name):
-            return tool.rt("error.html", error="이미 존재하는 사용자 이름입니다.")
+            return tool.error("이미 존재하는 사용자 이름입니다.")
         if tool.is_valid_ip(name) or tool.is_valid_cidr(name):
-            return tool.rt("error.html", error="IP나 CIDR 형식의 사용자 이름은 사용이 불가능합니다.")
+            return tool.error("IP나 CIDR 형식의 사용자 이름은 사용이 불가능합니다.")
         if data.username_format.fullmatch(name) is None:
             return tool.rt("error.html", error=f'계정명은 정규식 {escape(tool.get_config("username_format"))}을 충족해야 합니다.')  
         tool.change_name(user, name)
@@ -1642,7 +1642,7 @@ def change_skin():
     return redirect(url_for("mypage"))
 @app.route("/member/withdraw", methods = ["GET", "POST"])
 def withdraw():
-    if tool.get_config("withdraw_enable") == "0": return tool.rt("error.html", error = "계정 삭제가 비활성화되어 있습니다."), 501
+    if tool.get_config("withdraw_enable") == "0": return tool.error("계정 삭제가 비활성화되어 있습니다.", 501)
     if not tool.is_login(): return redirect("/")
     user = tool.ipuser()
     with g.db.cursor() as c:
@@ -1664,11 +1664,11 @@ def withdraw():
             cooltime = None
         if request.method == "POST":
             if cooltime is not None or withdraw_block is not None:
-                return tool.rt("error.html", error="계정 삭제가 불가능한 상태입니다."), 403
+                return tool.error("계정 삭제가 불가능한 상태입니다.", 403)
             if not tool.check_password(user, request.form["pw"]):
-                return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
+                return tool.error("패스워드가 올바르지 않습니다.")
             if request.form["pledgeinput"] != tool.get_string_config("withdraw_pledgeinput"):
-                return tool.rt("error.html", error = "동일하게 입력해주세요.")
+                return tool.error("동일하게 입력해주세요.")
             tool.delete_user(user)
             session.clear()
             return redirect("/")
@@ -1684,11 +1684,11 @@ def smtp_test():
 def change_email():
     if not tool.is_login(): return redirect("/")
     evm = tool.get_config("email_verification_level")
-    if evm == "0": return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+    if evm == "0": return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     user = tool.ipuser()
     if request.method == "POST":
         if not tool.check_password(user, request.form["pw"]):
-            return tool.rt("error.html", error = "패스워드가 올바르지 않습니다.")
+            return tool.error("패스워드가 올바르지 않습니다.")
         email = request.form["email"]
         if email == "":
             if evm == "3" and not tool.has_perm("bypass_email_verify"):
