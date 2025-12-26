@@ -10,6 +10,8 @@ import subprocess
 import ipaddress
 import cssutils
 import json
+import traceback
+import werkzeug.exceptions
 
 from flask import Flask, request, redirect, session, send_file, send_from_directory, abort, Response, url_for, g
 from jinja2 import ChoiceLoader, FileSystemLoader
@@ -361,6 +363,12 @@ def errorhandler_403(e):
 @app.errorhandler(404)
 def errorhandler_404(e):
     return tool.rt(f"{tool.get_skin()}/404.html"), 404
+@app.errorhandler(500)
+def errorhandler_500(e):
+    if os.getenv("DISABLE_FULL_ERROR", "0") == "0" and tool.has_perm("developer"):
+        return traceback.format_exc(), 500, {"Content-Type": "text/plain"}
+    else:
+        return werkzeug.exceptions.InternalServerError.get_response()
 @app.before_request
 def before_request():
     g.db = tool.getdb()
