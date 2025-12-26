@@ -25,11 +25,16 @@ from render import render_set
 if sys.version_info < (3, 9):
     if input("경고! NewTheSeed는 Python 3.9 미만의 Python 버전은 지원하지 않으며, 이로 인해 발생하는 버그(보안취약점 포함)는 수정되지 않습니다. 계속하려면 y를 입력해주세요. -> ") != "y":
         sys.exit()
+
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 for i in os.scandir("skins"):
     if i.is_dir():
-        with open(os.path.join(i.path, "info.json"), "r", encoding="utf-8") as f:
-            j = json.load(f)
+        try:
+            with open(os.path.join(i.path, "info.json"), "r", encoding="utf-8") as f:
+                j = json.load(f)
+        except FileNotFoundError:
+            print(f'"{i.name}" skin does not have info.json')
+            continue
         id = j["id"]
         if id in data.skin_info:
             print(f"The following skin ID is duplicated: {id}")
@@ -53,7 +58,6 @@ for i in data.skins:
         data.skin_commit[i] = srepo.commit().hexsha[:7]
     except InvalidGitRepositoryError:
         data.skin_commit[i] = "0000000"
-del srepo
 if not os.path.exists(".env"):
     shutil.copy(".env.example", ".env")
 dotenv.load_dotenv()
@@ -569,11 +573,11 @@ def signup():
                 token = secrets.token_hex(64)
                 email = tool.sanitize_email(request.form["email"])
                 if email is None:
-                    return tool.rt("error.html", error = "이메일의 값을 형식에 맞게 입력해주세요."), 400
+                    return tool.error("이메일의 값을 형식에 맞게 입력해주세요.")
                 if not tool.check_email_wblist(email):
-                    return tool.rt("error.html", error = "이메일 허용 목록에 있는 이메일이 아닙니다." if data.email_wblist_type else "이메일 차단 목록에 있는 이메일입니다."), 400
+                    return tool.error("이메일 허용 목록에 있는 이메일이 아닙니다." if data.email_wblist_type else "이메일 차단 목록에 있는 이메일입니다.")
                 if "agree" not in request.form:
-                    return tool.rt("error.html", error = "동의의 값은 필수입니다."), 400
+                    return tool.error("동의의 값은 필수입니다.")
                 wiki_name = tool.get_config("wiki_name")
                 ip = tool.getip()
                 title = tool.get_string_config("email_verification_signup_title").format(wiki_name = wiki_name)
@@ -596,10 +600,10 @@ def signup2(token):
         with g.db.cursor() as c:
             f = c.execute("SELECT email, ip FROM signup_link WHERE token = ?", (token,)).fetchone()
         if f is None:
-            return tool.rt("error.html", error = "인증 요청이 만료되었거나 올바르지 않습니다."), 400
+            return tool.error("인증 요청이 만료되었거나 올바르지 않습니다.")
         email, ip = f
         if ip != tool.getip():
-            return tool.rt("error.html", error = "보안 상의 이유로 요청한 아이피 주소와 현재 아이피 주소가 같아야 합니다."), 400
+            return tool.error("보안 상의 이유로 요청한 아이피 주소와 현재 아이피 주소가 같아야 합니다.")
     if request.method == "POST":
         if request.form['pw'] != request.form['pw2']:
             return tool.rt("error.html", error="비밀번호가 일치하지 않습니다.")
@@ -1328,6 +1332,43 @@ def shutdown():
         else:
             os._exit(0)
     return tool.rt("shutdown.html", title = "종료")
+@app.route("/admin/sysman/skin")
+def manage_skin():
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+    return tool.rt("manage_skin.html", title = "스킨 관리",
+                   skins = ((x, f"{data.skin_info[x]['version_name']} ({data.skin_commit[x]})", x not in data.skin_git) for x in data.skins))
+@app.route("/admin/sysman/skin/update", methods = ["POST"])
+def update_skin():
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+    skin = request.form["skin"]
+    if skin not in data.skin_git:
+        return tool.rt("error.html", error = "존재하지 않거나 git로 다운로드 되지 않은 스킨입니다."), 400
+    return tool.rt("update_result.html", title = "업데이트 결과", result = subprocess.Popen(["git", "-C", os.path.join("skins", skin), "pull"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].decode("utf-8"))
+@app.route("/admin/sysman/skin/delete", methods = ["POST"])
+def delete_skin():
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+    skin = request.form["skin"]
+    if skin not in data.skins:
+        return tool.rt("error.html", error = "존재하지 않는 스킨입니다."), 400
+    data.skins.remove(skin)
+    shutil.rmtree(os.path.join("skins", skin), onerror=tool.force_remove)
+    return redirect(url_for("restart"))
+@app.route("/admin/sysman/skin/install", methods = ["POST"])
+def install_skin():
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.rt("error.html", error = "이 기능이 비활성화되어 있습니다."), 501
+    return tool.rt("update_result.html", title = "설치 결과", result = subprocess.Popen(["git", "clone", request.form["git"], os.path.join("skins", str(tool.get_utime()))], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].decode("utf-8"))
 @app.route("/RecentChanges")
 def recent_changes():
     type = request.args.get("type", -1, type=int)
@@ -1393,9 +1434,9 @@ def upload():
                 file.seek(0)
             ns, name = tool.split_ns(request.form["name"])
             if ns not in data.file_namespace:
-                return tool.rt("error.html", error = "invalid_namespace"), 400
+                return tool.error("invalid_namespace")
             if tool.get_docid(ns, name) != -1:
-                return tool.rt("error.html", error = "이미 해당 이름의 문서가 존재합니다."), 400
+                return tool.error("이미 해당 이름의 문서가 존재합니다.")
             acl = tool.check_document_acl(-1, ns, "edit", name)
             if acl[0] == 0:
                 return tool.rt("error.html", error = acl[1]), 403
@@ -1516,18 +1557,18 @@ def batch_blind():
 @app.route("/aclgroup/self_remove")
 def self_remove():
     id = request.args.get("id", None)
-    if id is None: return tool.rt("error.html", error = "aclgroup_not_found"), 400
+    if id is None: return tool.error("aclgroup_not_found")
     with g.db.cursor() as c:
         f = c.execute("SELECT gid, ip, user FROM aclgroup_log WHERE id = ?", (id,)).fetchone()
-        if f is None: return tool.rt("error.html", error = "aclgroup_not_found"), 400
+        if f is None: return tool.error("aclgroup_not_found")
         gid, ip, user = f
         if ip is None:
-            if not tool.is_login(): return tool.rt("error.html", error = "aclgroup_not_found"), 400
+            if not tool.is_login(): return tool.error("aclgroup_not_found")
             user2 = tool.ipuser(False)
-            if user != user2: return tool.rt("error.html", error = "aclgroup_not_found"), 400
+            if user != user2: return tool.error("aclgroup_not_found")
         else:
-            if not tool.ip_in_cidr(tool.getip(), ip): return tool.rt("error.html", error = "aclgroup_not_found"), 400
-        if tool.get_aclgroup_config(gid, "self_removable") == "0": return tool.rt("error.html", error = "not_self_removable"), 400
+            if not tool.ip_in_cidr(tool.getip(), ip): return tool.error("aclgroup_not_found")
+        if tool.get_aclgroup_config(gid, "self_removable") == "0": return tool.error("not_self_removable")
         tool.aclgroup_delete(id, tool.get_aclgroup_config(gid, "self_remove_note"))
         return redirect("/")
 @app.route("/member/mypage")
@@ -1588,7 +1629,7 @@ def change_skin():
         tool.del_user_config(tool.ipuser(), "skin")
         return redirect(url_for("mypage"))
     if skin not in data.skins:
-        return tool.rt("error.html", error = "invalid_skin"), 400
+        return tool.error("invalid_skin")
     tool.set_user_config(tool.ipuser(), "skin", skin)
     return redirect(url_for("mypage"))
 @app.route("/member/withdraw", methods = ["GET", "POST"])
@@ -1643,15 +1684,15 @@ def change_email():
         email = request.form["email"]
         if email == "":
             if evm == "3" and not tool.has_perm("bypass_email_verify"):
-                return tool.rt("error.html", error = "이메일의 값은 필수입니다."), 400
+                return tool.error("이메일의 값은 필수입니다.")
             else:
                 tool.del_user_config(user, "email")
                 return redirect(url_for("mypage"))
         email = tool.sanitize_email(email)
         if email is None:
-            return tool.rt("error.html", error = "이메일의 값을 형식에 맞게 입력해주세요."), 400
+            return tool.error("이메일의 값을 형식에 맞게 입력해주세요.")
         if not tool.has_perm("bypass_email_verify") and not tool.check_email_wblist(email):
-            return tool.rt("error.html", error = "이메일 허용 목록에 있는 이메일이 아닙니다." if data.email_wblist_type else "이메일 차단 목록에 있는 이메일입니다."), 400
+            return tool.error("이메일 허용 목록에 있는 이메일이 아닙니다." if data.email_wblist_type else "이메일 차단 목록에 있는 이메일입니다.")
         if evm == "1" or tool.has_perm("bypass_email_verify"):
             tool.set_user_config(user, "email", email)
         else:
@@ -1675,10 +1716,10 @@ def change_email2(user, token):
         user1 = tool.user_name_to_id(user)
         f = c.execute("SELECT email, ip FROM change_email_link WHERE token = ? AND user = ?", (token, user1)).fetchone()
         if f is None:
-            return tool.rt("error.html", error = "인증 요청이 만료되었거나 올바르지 않습니다."), 400
+            return tool.error("인증 요청이 만료되었거나 올바르지 않습니다.")
         email, ip = f
         if ip != tool.getip():
-            return tool.rt("error.html", error = "보안 상의 이유로 요청한 아이피 주소와 현재 아이피 주소가 같아야 합니다."), 400
+            return tool.error("보안 상의 이유로 요청한 아이피 주소와 현재 아이피 주소가 같아야 합니다.")
         tool.set_user_config(user1, "email", email)
         c.execute("DELETE FROM change_email_link WHERE email = ?", (email,))
         return tool.rt("change_email_completed.html", title = "인증 완료", user = user)

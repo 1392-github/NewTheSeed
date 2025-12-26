@@ -352,14 +352,6 @@
             }
         })
     </script>
-    {% if req_captcha and captcha_time %}
-    <script>
-        setTimeout(function () {
-            document.getElementById("on-captcha").style.display = "none";
-            document.getElementsByClassName("g-recaptcha")[0].style.display = "block";
-        }, 10);
-    </script>
-    {% endif %}
     {% block js %}{% endblock %}
 </body>
 </html>

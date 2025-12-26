@@ -1,0 +1,58 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<table>
+    <thead>
+        <tr>
+            <th>이름</th>
+            <th>버전</th>
+            <th>업데이트</th>
+            <th>삭제</th>
+        </tr>
+    </thead>
+    <tbody>
+        <colgroup>
+            <col style="width: 10rem;">
+            <col style="width: 10rem;">
+            <col>
+            <col>
+        </colgroup>
+        {% for i in skins %}
+        <tr>
+            <td>{{ i[0] }}</td>
+            <td>{{ i[1] }}</td>
+            <td>
+                <form action="{{ url_for('update_skin') }}" method="post">
+                    <input type="hidden" name="skin" value="{{ i[0] }}">
+                    <input type="submit" value="업데이트" class="ok"{% if i[2] %} disabled{% endif %}>
+                </form>
+            </td>
+            <td>
+                <form action="{{ url_for('delete_skin') }}" method="post" class="confirm">
+                    <input type="hidden" name="skin" value="{{ i[0] }}">
+                    <input type="submit" value="삭제" class="danger">
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<fieldset>
+    <legend>새 스킨 설치</legend>
+    <form action="{{ url_for('install_skin') }}" method="post">
+        <label>
+            git 저장소 주소
+            <input name="git" class="fullwidth" placeholder="https://github.com/username/storage.git">
+        </label><br><br>
+        <input type="submit" value="설치" class="ok">
+    </form>
+</fieldset>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

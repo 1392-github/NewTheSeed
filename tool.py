@@ -5,6 +5,7 @@ import datetime
 import time
 import ipaddress
 import os
+import stat
 import hashlib
 from email.mime.text import MIMEText
 
@@ -823,3 +824,6 @@ def get_skin(user = None):
     return s
 def get_skin_config(key, default = None):
     return get_config(f"skin.{get_skin()}.{key}", default)
+def force_remove(func, path, exc_info):
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
