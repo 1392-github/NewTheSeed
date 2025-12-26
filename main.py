@@ -544,7 +544,7 @@ def doc_edit_form():
 @app.route("/license")
 def license():
     update = int(os.path.getmtime("data.py"))
-    return tool.rt("license.html", title = "라이선스", engine_commit = commit_id, update = update, before = tool.time_to_str(tool.get_utime() - update))
+    return tool.rt("license.html", title = "라이선스", engine_commit = commit_id, skin_commit = data.skin_commit[tool.get_skin()], update = update, before = tool.time_to_str(tool.get_utime() - update))
 @app.route("/user")
 def user():
     with g.db.cursor() as c:
