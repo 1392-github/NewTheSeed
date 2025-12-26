@@ -8,21 +8,8 @@ class SpecialFunction:
     url: str
     perm: str = "any"
     urlfor: bool = True
-def gen_random_str(len):
-    s = ""
-    for _ in range(len):
-        s += rng_string[random.randint(0, 62)]
-    return s
 
-version = (55, 1)
-keyl = {'문서 읽기' : 'read_doc',
-        '문서 편집':'write_doc',
-        '랜덤 문서':'randompage',
-        '사용자 차단':'ban',
-        '문서 역사 보기':'history',
-}
-rng_string = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
-sql_max_detector = re.compile(r'\?(\d+)')
+version = (55, 2)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),

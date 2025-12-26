@@ -48,19 +48,11 @@ class Cursor2(sqlite3.Cursor):
 
 def getdb():
     return sqlite3.connect("data.db", check_same_thread = False, factory = Connection2)
-def run_sqlscript(filename, args = ()):
+def run_sqlscript(filename):
     con = g.db if has_app_context() else getdb()
     with con.cursor() as c:
         with open(f"sql_script/{filename}", 'r', encoding = 'utf-8') as f:
-            q = f.read().split(';')
-            for i in q:
-                if i == "":
-                    continue
-                i = i.strip()
-                if '?' in i:
-                    c.execute(i, args[:max(int(x) for x in data.sql_max_detector.findall(i))])
-                else:
-                    c.execute(i)
+            c.executescript(f.read())
         r = c.fetchall()
     if not has_app_context():
         con.close()

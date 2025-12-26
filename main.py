@@ -53,6 +53,7 @@ for i in data.skins:
         data.skin_commit[i] = srepo.commit().hexsha[:7]
     except InvalidGitRepositoryError:
         data.skin_commit[i] = "0000000"
+del srepo
 if not os.path.exists(".env"):
     shutil.copy(".env.example", ".env")
 dotenv.load_dotenv()
