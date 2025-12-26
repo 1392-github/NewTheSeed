@@ -14,12 +14,9 @@
     <script src="{{ url_for('static', filename='render.js') }}"></script>
     <div>
     </div>
-    <!--<link rel="stylesheet" href="master.css">-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='main_required.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
     <style>
-        *
-        {
-            box-sizing: border-box;
-        }
         body
         {
             margin: 0;
@@ -34,7 +31,6 @@
             padding: 0 100px;
             width: 100%;
             height: 42px;
-            box-sizing: border-box;
             display: flex;
             justify-content: space-between;
             background-color: {{ brand_color }};
@@ -92,110 +88,10 @@
         {
             margin: 5px 50px;
         }
-        table.border, table.border th, table.border td
-        {
-            border: 1px solid black;
-            border-collapse: collapse;
-        }
-        .danger, .ok, .normal
-        {
-            border: 0;
-            height: 30px;
-            padding: 1px 13px;
-        }
-        .danger, .ok
-        {
-            color: white;
-            border: 0;
-            height: 30px;
-            padding: 1px 13px;
-        }
-        .danger
-        {
-            background-color: #d9534f;
-        }
-        .ok
-        {
-            background-color: #0275d8;
-        }
-        .alert, .error
-        {
-            width: 100%;
-            border-width: 1px;
-            border-radius: .25rem;
-            border-style: solid;
-            padding: 12px;
-        }
-        .alert
-        {
-            background-color: #aacdec;
-            border-color: #c9c9c9;
-        }
-        .error
-        {
-            background-color: #f2938c;
-            border-color: #d83933;
-        }
-        .block
-        {
-            display: block;
-        }
-        .inline
-        {
-            display: inline;
-        }
-        a
-        {
-            text-decoration: none;
-            color: #0275d8;
-        }
-        a:active
-        {
-            color: red;
-        }
-        #modal_background
-        {
-            background-color: #000000;
-            width: 100%;
-            height: 100%;
-            opacity: 0.5;
-            position: fixed; 
-        }
-        .modal
-        {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            width: 40%;
-            transform: translate(-50%, -50%);
-            box-sizing: border-box;
-            background-color: #ffffff;
-            z-index: 1;
-            padding: 1%;
-            display: none;
-        }
         .title
         {
             display: inline;
             color: #303030;
-            margin: 0;
-        }
-        .button_like_link
-        {
-            border: none;
-            padding: 0;
-            font-size: 1em;
-            background: none;
-            display: inline;
-            color: #0275d8;
-        }
-        .danger[disabled], .ok[disabled]
-        {
-            cursor: not-allowed;
-            opacity: 0.65;
-        }
-        .nomargin
-        {
             margin: 0;
         }
         .namespace
@@ -260,78 +156,6 @@
         {
             margin: 16px 0;
         }
-        th, td
-        {
-            text-align: left;
-        }
-        .flex
-        {
-            display: flex;
-        }
-        .fullwidth
-        {
-            width: 100%;
-        }
-        .comment-wrap
-        {
-            padding-bottom: 20px;
-        }
-        .comment
-        {
-            border: 1px solid gray;
-            border-radius: 4px;
-            display: inline-block;
-            width: auto;
-            min-width: 400px;
-            max-width: 100%;
-        }
-        .comment-no
-        {
-            color: #0275d8;
-        }
-        .comment-header
-        {
-            display: flex;
-            justify-content: space-between;
-            padding: 7px;
-            padding-left: 10px;
-            background-color: #d5d5d5;
-        }
-        .comment-presenter > .comment-header
-        {
-            background-color: #b0d3ad;
-        }
-        .comment-text
-        {
-            max-height: 500px;
-            overflow-y: auto;
-            padding: 13px;
-        }
-        .comment-special > .comment-text
-        {
-            background-color: #fc6;
-        }
-        .comment-blind > .comment-text
-        {
-            background-color: #6b6b6b;
-            color: #fff;
-        }
-        .comment-weakblind > .comment-text
-        {
-            background-color: #a0a0a0;
-        }
-        .history-plus
-        {
-            color: green;
-        }
-        .history-minus
-        {
-            color: red;
-        }
-        .history-zero
-        {
-            color: gray;
-        }
         #tool-dropdown
         {
             position: relative;
@@ -364,42 +188,6 @@
             color: white;
             transition: .1s;
             background-color: {{ brand_color }};
-        }
-        .special-perminssion
-        {
-            border: 1px solid gray;
-            border-top: 5px solid orange;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-        .special-perminssion:hover
-        {
-            border-top: 5px solid red;
-        }
-        .aclgroup-userdoc
-        {
-            border: 1px solid gray;
-            border-top: 5px solid red;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-        .aclgroup-userdoc:hover
-        {
-            border-top: 5px solid blue;
-        }
-        .recentdiscuss_docname
-        {
-            color: black;
-            font-size: 0.9em;
-        }
-        .deleted-user
-        {
-            color: gray;
-            font-style: italic;
-        }
-        #pledge1
-        {
-            color: red;
         }
         </style>
     {% block css %}{% endblock %}

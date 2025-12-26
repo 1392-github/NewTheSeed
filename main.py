@@ -9,10 +9,11 @@ import shutil
 import subprocess
 import ipaddress
 import cssutils
+import json
 
-from flask import Flask, request, redirect, session, send_file, abort, Response, url_for, g
+from flask import Flask, request, redirect, session, send_file, send_from_directory, abort, Response, url_for, g
 from jinja2 import ChoiceLoader, FileSystemLoader
-from git import Repo
+from git import Repo, InvalidGitRepositoryError
 from markupsafe import escape, Markup
 import dotenv
 import requests
@@ -24,16 +25,34 @@ from render import render_set
 if sys.version_info < (3, 9):
     if input("경고! NewTheSeed는 Python 3.9 미만의 Python 버전은 지원하지 않으며, 이로 인해 발생하는 버그(보안취약점 포함)는 수정되지 않습니다. 계속하려면 y를 입력해주세요. -> ") != "y":
         sys.exit()
-
-# 초기 설정
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+for i in os.scandir("skins"):
+    if i.is_dir():
+        with open(os.path.join(i.path, "info.json"), "r", encoding="utf-8") as f:
+            j = json.load(f)
+        id = j["id"]
+        if id in data.skin_info:
+            print(f"The following skin ID is duplicated: {id}")
+            sys.exit()
+        if id != i.name:
+            shutil.move(i.path, os.path.join("skins", id))
+        data.skin_info[id] = j
+        data.skins.append(id)
 try:
     repo = Repo(".", search_parent_directories=False)
-except:
+except InvalidGitRepositoryError:
     repo = None
 if repo is None:
     commit_id = "0000000"
 else:
     commit_id = repo.commit().hexsha[:7]
+for i in data.skins:
+    try:
+        srepo = Repo(os.path.join("skins", i), search_parent_directories=False)
+        data.skin_git.add(i)
+        data.skin_commit[i] = srepo.commit().hexsha[:7]
+    except InvalidGitRepositoryError:
+        data.skin_commit[i] = "0000000"
 if not os.path.exists(".env"):
     shutil.copy(".env.example", ".env")
 dotenv.load_dotenv()
@@ -315,6 +334,13 @@ with app.app_context():
         c.execute("""update config
         set value = ?
         where name = 'version2'""", (str(data.version[1]),)) # 변환 후 버전 재설정
+        for skin in data.skin_info:
+            info = data.skin_info[skin]
+            for cf in info["skin_config"]:
+                key = cf["key"]
+                k = f"skin.{skin}.{key}"
+                if not tool.has_config(k):
+                    c.execute("INSERT INTO config (name, value) VALUES(?,?)", (k, cf["default"]))
     tool.reload_config(app)
     g.db.close()
 if not os.getenv("SECRET_KEY"):
@@ -329,7 +355,7 @@ def errorhandler_403(e):
     return tool.rt("error.html", error="권한이 부족합니다."), 403
 @app.errorhandler(404)
 def errorhandler_404(e):
-    return tool.rt("404.html"), 404
+    return tool.rt(f"{tool.get_skin()}/404.html"), 404
 @app.before_request
 def before_request():
     g.db = tool.getdb()
@@ -394,6 +420,7 @@ app.jinja_loader = ChoiceLoader([
 app.jinja_env.globals["has_perm"] = tool.has_perm
 app.jinja_env.globals["history_msg"] = history_msg
 app.jinja_env.globals["range"] = range
+app.jinja_env.globals["get_skin_config"] = tool.get_skin_config
 app.jinja_env.filters["user"] = render_username
 app.jinja_env.filters["time"] = tool.utime_to_str
 app.jinja_env.policies['json.dumps_kwargs']['ensure_ascii'] = False
@@ -1507,7 +1534,9 @@ def mypage():
     if not tool.is_login(): return redirect("/")
     with g.db.cursor() as c:
         user = tool.ipuser()
-        return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user), use_email = tool.get_config("email_verification_level") != "0", email = tool.get_user_config(user, "email", "(미설정)"), change_name = tool.get_config("change_name_enable") == "1",
+        return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user), use_email = tool.get_config("email_verification_level") != "0",
+                       email = tool.get_user_config(user, "email", "(미설정)"), change_name = tool.get_config("change_name_enable") == "1",
+                       skins = data.skins, current_skin = tool.get_user_config(user, "skin"),
                        perm = ", ".join(x[0] for x in c.execute("SELECT perm FROM perm WHERE user = ?", (user,)).fetchall()))
 @app.route("/member/change_password", methods = ["GET", "POST"])
 def change_password():
@@ -1550,6 +1579,17 @@ def change_name():
         tool.change_name(user, name)
         return redirect("/")
     return tool.rt("change_name.html", title = "이름 변경", user = tool.id_to_user_name(user), cooltime = cooltime, cool = tool.time_to_str(int(tool.get_config("change_name_cooltime"))))
+@app.route("/member/change_skin", methods = ["POST"])
+def change_skin():
+    if not tool.is_login(): return redirect("/")
+    skin = request.form["skin"]
+    if skin == "":
+        tool.del_user_config(tool.ipuser(), "skin")
+        return redirect(url_for("mypage"))
+    if skin not in data.skins:
+        return tool.rt("error.html", error = "invalid_skin"), 400
+    tool.set_user_config(tool.ipuser(), "skin", skin)
+    return redirect(url_for("mypage"))
 @app.route("/member/withdraw", methods = ["GET", "POST"])
 def withdraw():
     if tool.get_config("withdraw_enable") == "0": return tool.rt("error.html", error = "계정 삭제가 비활성화되어 있습니다."), 501
@@ -1641,6 +1681,12 @@ def change_email2(user, token):
         tool.set_user_config(user1, "email", email)
         c.execute("DELETE FROM change_email_link WHERE email = ?", (email,))
         return tool.rt("change_email_completed.html", title = "인증 완료", user = user)
+@app.route("/skins/<skin>/<path:path>")
+def skin_static(skin, path):
+    if data.allow_skin_id.fullmatch(skin):
+        return send_from_directory(f"skins/{skin}/static", path)
+    else:
+        abort(404)
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:

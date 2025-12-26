@@ -125,8 +125,8 @@ and name = ?''', (key, name)).fetchone()[0]
 from api_keys
 where key = ?''', (key,)).fetchone()[0]
 """
-def rt(t, **kwargs):
-    k = kwargs
+def rt(t, **k):
+    skin = get_skin()
     k["wiki_name"] = get_config("wiki_name")
     k["version"] = version_str(data.version)
     k["raw_version"] = data.version
@@ -136,7 +136,11 @@ def rt(t, **kwargs):
     k["brand_color"] = get_config("brand_color")
     k["top_text_color"] = get_config("top_text_color")
     k["document_license"] = get_string_config("document_license")
-    k["skin"] = "ntsds/master.html"
+    k["href"] = request.path
+    k["endpoint"] = request.endpoint
+    k["args"] = request.args
+    k["skin"] = f"{skin}/main.html"
+    k["skin_id"] = skin
     if t == "error.html" and "title" not in k: k["title"] = "오류"
     func = []
     for i in data.special_function:
@@ -812,3 +816,18 @@ def check_email_wblist(email):
 def check_password(user, password):
     with g.db.cursor() as c:
         return bool(c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(password.encode("utf-8")).hexdigest())).fetchone()[0])
+def get_skin(user = None):
+    if not is_login():
+        return get_config("default_skin")
+    if user is None:
+        user = ipuser(False)
+    if isip(user):
+        return get_config("default_skin")
+    s = get_user_config(user, "skin")
+    if s is None:
+        return get_config("default_skin")
+    if s not in data.skins:
+        return get_config("default_skin")
+    return s
+def get_skin_config(key, default = None):
+    return get_config(f"skin.{get_skin()}.{key}", default)

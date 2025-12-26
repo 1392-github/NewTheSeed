@@ -1,0 +1,24 @@
+*
+{
+    box-sizing: border-box;
+}
+.block
+{
+    display: block;
+}
+.inline
+{
+    display: inline;
+}
+.nomargin
+{
+    margin: 0;
+}
+.flex
+{
+    display: flex;
+}
+.fullwidth
+{
+    width: 100%;
+}

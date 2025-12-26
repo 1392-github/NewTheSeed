@@ -14,34 +14,46 @@
 {% endblock %}
 
 {% block content %}
-<div class="member-info-name">
-    사용자 이름
-    {% if change_name %}
-    <a href="{{ url_for('change_name')}}">변경</a>
+<form action="{{ url_for('change_skin') }}" method="post">
+    <div class="member-info-name">
+        사용자 이름
+        {% if change_name %}
+        <a href="{{ url_for('change_name')}}">변경</a>
+        {% endif %}
+    </div>
+    {{ user }}
+    {% if use_email %}
+    <hr>
+    <div class="member-info-name">
+        Email
+        <a href="{{ url_for('change_email')}}">변경</a>
+    </div>
+    {{ email }}
     {% endif %}
-</div>
-{{ user }}
-{% if use_email %}
-<hr>
-<div class="member-info-name">
-    Email
-    <a href="{{ url_for('change_email')}}">변경</a>
-</div>
-{{ email }}
-{% endif %}
-<hr>
-<div class="member-info-name">비밀번호</div>
-<a href="{{ url_for('change_password') }}">
-    <button>변경</button>
-</a>
-<hr>
-<div class="member-info-name">권한</div>
-{{ perm }}
-<hr>
-<div class="member-info-name">계정</div>
-<a href="{{ url_for('withdraw') }}">
-    <button class="danger">계정 삭제</button>
-</a>
+    <hr>
+    <div class="member-info-name">비밀번호</div>
+    <a href="{{ url_for('change_password') }}">
+        <button>변경</button>
+    </a>
+    <hr>
+    <div class="member-info-name">스킨</div>
+    <select name="skin">
+        <option value="">기본 스킨</option>
+        {% for i in skins %}
+        <option{% if i == current_skin %} selected{% endif %}>{{ i }}</option>
+        {% endfor %}
+    </select>
+    <hr>
+    <div class="member-info-name">권한</div>
+    {{ perm }}
+    <hr>
+    <div class="member-info-name">계정</div>
+    <a href="{{ url_for('withdraw') }}">
+        <button class="danger">계정 삭제</button>
+    </a>
+    <hr>
+    <input type="submit" class="ok" value="저장">
+</form>
 {% endblock %}
 
 {% block js %}

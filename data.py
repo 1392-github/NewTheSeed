@@ -14,7 +14,7 @@ def gen_random_str(len):
         s += rng_string[random.randint(0, 62)]
     return s
 
-version = (55, 0)
+version = (55, 1)
 keyl = {'문서 읽기' : 'read_doc',
         '문서 편집':'write_doc',
         '랜덤 문서':'randompage',
@@ -83,7 +83,8 @@ default_config = {
     "email_wblist_public": "1",
     "email_limit": "1",
     "email_limit2": "",
-    "base_url": "127.0.0.1"
+    "base_url": "127.0.0.1",
+    "default_skin": "ntsds"
 }
 default_string_config = {
     "document_license": '이 저작물은 <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>에 따라 이용할 수 있습니다. (단, 라이선스가 명시된 일부 문서 및 삽화 제외)<br>기여하신 문서의 저작권은 각 기여자에게 있으며, 각 기여자는 기여하신 부분의 저작권을 갖습니다.',
@@ -200,3 +201,8 @@ member_signup_ago_regex = re.compile("member_signup_(\d+)_ago")
 change_name_block = []
 email_wblist_type = None
 email_wblist = []
+skins = []
+skin_info = {}
+skin_git = set()
+skin_commit = {}
+allow_skin_id = re.compile("[a-zA-Z0-9_]+")
