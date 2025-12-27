@@ -11,7 +11,7 @@ import ipaddress
 import cssutils
 import json
 import traceback
-import werkzeug.exceptions
+import stat
 
 from flask import Flask, request, redirect, session, send_file, send_from_directory, abort, Response, url_for, g
 from jinja2 import ChoiceLoader, FileSystemLoader
@@ -19,6 +19,7 @@ from git import Repo, InvalidGitRepositoryError
 from markupsafe import escape, Markup
 import dotenv
 import requests
+import werkzeug.exceptions
 
 import data
 import tool
@@ -53,11 +54,13 @@ if repo is None:
     commit_id = "0000000"
 else:
     commit_id = repo.commit().hexsha[:7]
+    repo.close()
 for i in data.skins:
     try:
         srepo = Repo(os.path.join("skins", i), search_parent_directories=False)
         data.skin_git.add(i)
         data.skin_commit[i] = srepo.commit().hexsha[:7]
+        srepo.close()
     except InvalidGitRepositoryError:
         data.skin_commit[i] = "0000000"
 if not os.path.exists(".env"):
@@ -1368,7 +1371,13 @@ def delete_skin():
     if skin not in data.skins:
         return tool.error("존재하지 않는 스킨입니다.")
     data.skins.remove(skin)
-    shutil.rmtree(os.path.join("skins", skin), onerror=tool.force_remove)
+    path = os.path.join("skins", skin)
+    for root, dirs, files in os.walk(path):
+        for i in dirs:
+            os.chmod(os.path.join(root, i), stat.S_IWRITE)
+        for i in files:
+            os.chmod(os.path.join(root, i), stat.S_IWRITE)
+    shutil.rmtree(path)
     return redirect(url_for("restart"))
 @app.route("/admin/sysman/skin/install", methods = ["POST"])
 def install_skin():
