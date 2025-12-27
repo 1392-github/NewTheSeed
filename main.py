@@ -477,7 +477,7 @@ def doc_read(doc_title):
         else:
             d = c.execute("SELECT content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
         if d is None or d[0] is None:
-            return tool.rt("no_document.html", title=tool.render_docname(ns, name), raw_doc_title=doc_title, menu=menu), 404
+            return tool.rt("no_document.html", title=tool.render_docname(ns, name), raw_title=doc_title, menu=menu), 404
         d = d[0]
         if "noredirect" not in request.args:
             re = data.redirect_regex.fullmatch(d)
@@ -493,7 +493,7 @@ def doc_read(doc_title):
         else:
             admin_userdoc = False
             aclgroup = []
-        return tool.rt("document_read.html", admin_userdoc = admin_userdoc, title=tool.render_docname(ns, name), raw_doc_title=doc_title, aclgroup=aclgroup,
+        return tool.rt("document_read.html", admin_userdoc = admin_userdoc, title=tool.render_docname(ns, name), raw_title=doc_title, aclgroup=aclgroup,
                        doc_data=d, menu=menu, fr=request.args.get("from", None), image = ns in data.file_namespace, docid = docid
                        ), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
 @app.route("/raw/<path:doc_title>")
@@ -511,7 +511,7 @@ def doc_raw(doc_title):
             d = c.execute("SELECT content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
         if d is None or d[0] is None:
             return tool.error("문서를 찾을 수 없습니다.", 404)
-        return tool.rt("document_raw.html", doc_title=tool.render_docname(ns, name), raw_doc_title=doc_title, doc_data=d[0]), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
+        return tool.rt("document_raw.html", doc_title=tool.render_docname(ns, name), raw_title=doc_title, doc_data=d[0]), 200, {} if rev is None else {"X-Robots-Tag": "noindex"}
 @app.route("/edit/<path:doc_title>")
 def doc_edit(doc_title):
     with g.db.cursor() as c:
@@ -530,7 +530,7 @@ def doc_edit(doc_title):
         if d is None: d = ""
         r = c.execute("select history_seq - 1 from doc_name where id = ?", (docid,)).fetchone()
         r = 0 if r is None else r[0]
-        return tool.rt("document_edit.html", title=tool.render_docname(ns, name), subtitle="새 문서 생성" if r == 0 else f"r{r} 편집", raw_doc_title=doc_title, doc_data=d, doc_rev=r, req_captcha = tool.is_required_captcha("edit"), aclmsg = acl[1], menu = [
+        return tool.rt("document_edit.html", title=tool.render_docname(ns, name), subtitle="새 문서 생성" if r == 0 else f"r{r} 편집", raw_title=doc_title, doc_data=d, doc_rev=r, req_captcha = tool.is_required_captcha("edit"), aclmsg = acl[1], menu = [
             tool.Menu("역링크", f"/backlink/{doc_title}"),
             tool.Menu("삭제", f"/delete/{doc_title}"),
             tool.Menu("이동", f"/move/{doc_title}")

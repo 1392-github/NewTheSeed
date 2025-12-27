@@ -61,7 +61,7 @@
 </div>
 {% endif %}
 <form action="/edit_form" method="post" name="edit">
-    <input type="hidden" name="doc_name" value="{{ raw_doc_title }}">
+    <input type="hidden" name="doc_name" value="{{ raw_title }}">
     <textarea name="value"{% if aclmsg is not none %} disabled{% endif %}>{{ doc_data }}</textarea><br>
     <div id="preview"></div>
     {% if aclmsg is none %}
@@ -79,7 +79,7 @@
 <script>
     preview = document.getElementById("preview")
     document.getElementById("preview_button").addEventListener("click", function () {
-        callapi("/api/preview", {"name": "{{ raw_doc_title }}", "data": edit.value.value}, function (r) {
+        callapi("/api/preview", {"name": "{{ raw_title }}", "data": edit.value.value}, function (r) {
             preview.innerHTML = r.html
             eval(r.js)
         })

@@ -134,6 +134,9 @@ def rt(t, **k):
     k["args"] = request.args
     k["skin"] = f"{skin}/main.html"
     k["skin_id"] = skin
+    print(k)
+    #if "raw_title" not in k:
+    #    k["raw_title"] = k["title"]
     login = is_login()
     k["login"] = login
     if login:
