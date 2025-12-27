@@ -134,7 +134,22 @@ def rt(t, **k):
     k["args"] = request.args
     k["skin"] = f"{skin}/main.html"
     k["skin_id"] = skin
-    if t == "error.html" and "title" not in k: k["title"] = "오류"
+    login = is_login()
+    k["login"] = login
+    if login:
+        user = ipuser()
+        k["user"] = id_to_user_name(user)
+        email = get_user_config(user, "email")
+        if email is None:
+            gravatar_hash = user
+        else:
+            gravatar_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest()
+    else:
+        gravatar_hash = "0"
+        k["user"] = getip()
+    k["gravatar"] = f"https://secure.gravatar.com/avatar/{gravatar_hash}?d={get_config('gravatar_default')}&r={get_config('gravatar_rating')}"
+    if t == "error.html" and "title" not in k:
+        k["title"] = "오류"
     func = []
     for i in data.special_function:
         if not has_perm(i.perm):
