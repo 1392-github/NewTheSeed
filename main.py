@@ -1353,7 +1353,7 @@ def manage_skin():
     if os.getenv("DISABLE_SYSMAN") == "1":
         return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     return tool.rt("manage_skin.html", title = "스킨 관리",
-                   skins = ((x, f"{data.skin_info[x]['version_name']} ({data.skin_commit[x]})", x not in data.skin_git) for x in data.skins))
+                   skins = ((x, f"{data.skin_info[x]['version']} ({data.skin_commit[x]})", x not in data.skin_git) for x in data.skins))
 @app.route("/admin/sysman/skin/update", methods = ["POST"])
 def update_skin():
     if not tool.has_perm("developer"):
