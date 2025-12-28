@@ -135,8 +135,8 @@ def rt(t, **k):
     k["skin"] = f"{skin}/main.html"
     k["skin_id"] = skin
     print(k)
-    #if "raw_title" not in k:
-    #    k["raw_title"] = k["title"]
+    if "raw_title" not in k and "title" in k:
+        k["raw_title"] = k["title"]
     login = is_login()
     k["login"] = login
     if login:

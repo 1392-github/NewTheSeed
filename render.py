@@ -1097,7 +1097,6 @@ class class_do_render_namumark:
                 docid = tool.get_docid(ns, name)
 
                 # file link
-                # 추가예정
                 if ns in data_module.file_namespace:
                     file_width = ''
                     file_height = ''
@@ -1139,9 +1138,10 @@ class class_do_render_namumark:
                     link_sub = link_main
                     file_out = 0
 
-                    link_in_regex = re.compile('^(파일|file):', re.I)
                     # NTS에는 외부 파일 기능이 없다
-                    """if re.search(link_out_regex, link_main):
+                    """
+                    link_in_regex = re.compile('^(파일|file):', re.I)
+                    if re.search(link_out_regex, link_main):
                         link_main = re.sub(link_out_regex, '', link_main)
 
                         link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
@@ -1245,134 +1245,134 @@ class class_do_render_namumark:
                                 data_name = self.get_tool_data_storage('<a title="' + link_sub + '" href="' + file_link + '">' + file_end, '</a>', link_data_full)
                         else:
                             data_name = self.get_tool_data_storage('', '', link_data_full)
-                        
                         self.render_data = re.sub(link_regex, '<' + data_name + '></' + data_name + '>' + link_data[2], self.render_data, 1)
-                # category
-                # 추가 예정
-                """elif re.search(r'^(분류|category):', link_main, flags = re.I):
-                    link_main = re.sub(r'^(분류|category):', '', link_main, flags = re.I)
+                    # 아래의 주석 부분 추후 사용 시 들여쓰기 해제할 것
+                    # category
+                    # 추가 예정
+                    """elif re.search(r'^(분류|category):', link_main, flags = re.I):
+                        link_main = re.sub(r'^(분류|category):', '', link_main, flags = re.I)
 
-                    category_blur = ''
-                    if re.search(r'#blur$', link_main, flags = re.I):
-                        link_main = re.sub(r'#blur$', '', link_main, flags = re.I)
-                        category_blur = 'opennamu_category_blur'
-                    
-                    link_sub = link_main
-                    link_view = ''
-                    if len(link_data) > 1 and link_data[1]:
-                        link_view = link_data[1]
-
-                    link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
-                    link_main = html.unescape(link_main)
-
-                    if not link_main in self.data_category_list:
-                        self.data_category_list += [link_main]
+                        category_blur = ''
+                        if re.search(r'#blur$', link_main, flags = re.I):
+                            link_main = re.sub(r'#blur$', '', link_main, flags = re.I)
+                            category_blur = 'opennamu_category_blur'
                         
-                        if not ('category:' + link_main) in self.data_backlink:
-                            self.data_backlink['category:' + link_main] = {}
+                        link_sub = link_main
+                        link_view = ''
+                        if len(link_data) > 1 and link_data[1]:
+                            link_view = link_data[1]
 
-                        self.curs.execute("select title from data where title = ?", ['category:' + link_main])
-                        db_data = self.curs.fetchall()
-                        if db_data:
-                            link_exist = ''
+                        link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
+                        link_main = html.unescape(link_main)
+
+                        if not link_main in self.data_category_list:
+                            self.data_category_list += [link_main]
+                            
+                            if not ('category:' + link_main) in self.data_backlink:
+                                self.data_backlink['category:' + link_main] = {}
+
+                            self.curs.execute("select title from data where title = ?", ['category:' + link_main])
+                            db_data = self.curs.fetchall()
+                            if db_data:
+                                link_exist = ''
+                            else:
+                                link_exist = 'opennamu_not_exist_link'
+                                self.data_backlink['category:' + link_main]['no'] = ''
+
+                            self.data_backlink['category:' + link_main]['cat'] = ''
+                            
+                            if link_view != '':
+                                self.data_backlink['category:' + link_main]['cat_view'] = link_view
+                            
+                            if category_blur != '':
+                                self.data_backlink['category:' + link_main]['cat_blur'] = ''
+
+                            link_main = url_pas(link_main)
+
+                            if self.data_category == '':
+                                self.data_category = '' + \
+                                    '<div class="opennamu_category" id="cate">' + \
+                                        '<a class="opennamu_category_button" href="javascript:opennamu_do_category_spread();"> (+)</a>' + \
+                                        self.get_tool_lang('category') + ' : ' + \
+                                    '' + \
+                                ''
+                            else:
+                                self.data_category += ' | '
+
+                            self.data_category += '<a class="' + category_blur + ' ' + link_exist + '" title="' + link_sub + '" href="/w/category:' + link_main + '">' + link_sub + '</a>'
+
+                        self.render_data = re.sub(link_regex, '', self.render_data, 1)"""
+                    # inter link
+                    # 아마 안 쓸 듯
+                    """elif re.search(r'^(?:inter|인터):([^:]+):', link_main, flags = re.I):
+                        link_inter_regex = re.compile('^(?:inter|인터):([^:]+):', flags = re.I)
+
+                        link_inter_name = re.search(link_inter_regex, link_main)
+                        if link_inter_name:
+                            link_inter_name = link_inter_name.group(1)
                         else:
-                            link_exist = 'opennamu_not_exist_link'
-                            self.data_backlink['category:' + link_main]['no'] = ''
+                            link_inter_name = ''
 
-                        self.data_backlink['category:' + link_main]['cat'] = ''
-                        
-                        if link_view != '':
-                            self.data_backlink['category:' + link_main]['cat_view'] = link_view
-                        
-                        if category_blur != '':
-                            self.data_backlink['category:' + link_main]['cat_blur'] = ''
+                        link_main = re.sub(link_inter_regex, '', link_main)
+                        link_title = link_inter_name + ':' + link_main
 
+                        # sharp
+                        link_main = link_main.replace('&#x27;', '<link_single>')
+                        link_data_sharp_regex = r'#([^#]+)$'
+                        link_data_sharp = re.search(link_data_sharp_regex, link_main)
+                        if link_data_sharp:
+                            link_data_sharp = link_data_sharp.group(1)
+                            link_data_sharp = html.unescape(link_data_sharp)
+                            link_data_sharp = '#' + url_pas(link_data_sharp)
+
+                            link_main = re.sub(link_data_sharp_regex, '', link_main)
+                        else:
+                            link_data_sharp = ''
+                        
+                        link_main = link_main.replace('<link_single>', '&#x27;')
+
+                        # main link fix
+                        link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
+                        link_main = html.unescape(link_main)
+                        
                         link_main = url_pas(link_main)
 
-                        if self.data_category == '':
-                            self.data_category = '' + \
-                                '<div class="opennamu_category" id="cate">' + \
-                                    '<a class="opennamu_category_button" href="javascript:opennamu_do_category_spread();"> (+)</a>' + \
-                                    self.get_tool_lang('category') + ' : ' + \
-                                '' + \
-                            ''
-                        else:
-                            self.data_category += ' | '
-
-                        self.data_category += '<a class="' + category_blur + ' ' + link_exist + '" title="' + link_sub + '" href="/w/category:' + link_main + '">' + link_sub + '</a>'
-
-                    self.render_data = re.sub(link_regex, '', self.render_data, 1)"""
-                # inter link
-                # 아마 안 쓸 듯
-                """elif re.search(r'^(?:inter|인터):([^:]+):', link_main, flags = re.I):
-                    link_inter_regex = re.compile('^(?:inter|인터):([^:]+):', flags = re.I)
-
-                    link_inter_name = re.search(link_inter_regex, link_main)
-                    if link_inter_name:
-                        link_inter_name = link_inter_name.group(1)
-                    else:
-                        link_inter_name = ''
-
-                    link_main = re.sub(link_inter_regex, '', link_main)
-                    link_title = link_inter_name + ':' + link_main
-
-                    # sharp
-                    link_main = link_main.replace('&#x27;', '<link_single>')
-                    link_data_sharp_regex = r'#([^#]+)$'
-                    link_data_sharp = re.search(link_data_sharp_regex, link_main)
-                    if link_data_sharp:
-                        link_data_sharp = link_data_sharp.group(1)
-                        link_data_sharp = html.unescape(link_data_sharp)
-                        link_data_sharp = '#' + url_pas(link_data_sharp)
-
-                        link_main = re.sub(link_data_sharp_regex, '', link_main)
-                    else:
-                        link_data_sharp = ''
-                    
-                    link_main = link_main.replace('<link_single>', '&#x27;')
-
-                    # main link fix
-                    link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
-                    link_main = html.unescape(link_main)
-                    
-                    link_main = url_pas(link_main)
-
-                    self.curs.execute("select plus, plus_t from html_filter where kind = 'inter_wiki' and html = ?", [link_inter_name])
-                    db_data = self.curs.fetchall()
-                    if db_data:
-                        link_main = db_data[0][0] + link_main
-
-                        # sub not exist -> sub = main
-                        if link_data[1]:
-                            link_sub = link_data[1]
-                            link_sub_storage = ''
-                        else:
-                            link_sub = ''
-                            link_sub_storage = link_main_org
-                            link_sub_storage = re.sub(link_inter_regex, '', link_sub_storage)
-
-                        link_inter_icon = link_inter_name + ':'
-                        if db_data[0][1] != '':
-                            link_inter_icon = db_data[0][1]
-
-                        link_sub_storage = link_inter_icon + link_sub_storage
-
-                        self.curs.execute("select plus_t from html_filter where kind = 'inter_wiki_sub' and html = ?", [link_inter_name])
+                        self.curs.execute("select plus, plus_t from html_filter where kind = 'inter_wiki' and html = ?", [link_inter_name])
                         db_data = self.curs.fetchall()
-                        if db_data and db_data[0][0] == 'under_bar':
-                            link_main = link_main.replace('%20', '_')
+                        if db_data:
+                            link_main = db_data[0][0] + link_main
 
-                        data_name = self.get_tool_data_storage('<a class="opennamu_link_inter" title="' + link_title + '" href="' + link_main + link_data_sharp + '">' + link_sub_storage, '</a>', link_data_full)
-                    
-                        add_str = ''
-                        if link_data[2]:
-                            add_str = link_data[2]
+                            # sub not exist -> sub = main
+                            if link_data[1]:
+                                link_sub = link_data[1]
+                                link_sub_storage = ''
+                            else:
+                                link_sub = ''
+                                link_sub_storage = link_main_org
+                                link_sub_storage = re.sub(link_inter_regex, '', link_sub_storage)
 
-                        self.render_data = re.sub(link_regex, lambda x : ('<' + data_name + '>' + link_sub + '</' + data_name + '>' + add_str), self.render_data, 1)
-                    else:
-                    self.render_data = re.sub(link_regex, link_data[2], self.render_data, 1)"""
+                            link_inter_icon = link_inter_name + ':'
+                            if db_data[0][1] != '':
+                                link_inter_icon = db_data[0][1]
+
+                            link_sub_storage = link_inter_icon + link_sub_storage
+
+                            self.curs.execute("select plus_t from html_filter where kind = 'inter_wiki_sub' and html = ?", [link_inter_name])
+                            db_data = self.curs.fetchall()
+                            if db_data and db_data[0][0] == 'under_bar':
+                                link_main = link_main.replace('%20', '_')
+
+                            data_name = self.get_tool_data_storage('<a class="opennamu_link_inter" title="' + link_title + '" href="' + link_main + link_data_sharp + '">' + link_sub_storage, '</a>', link_data_full)
+                        
+                            add_str = ''
+                            if link_data[2]:
+                                add_str = link_data[2]
+
+                            self.render_data = re.sub(link_regex, lambda x : ('<' + data_name + '>' + link_sub + '</' + data_name + '>' + add_str), self.render_data, 1)
+                        else:
+                        self.render_data = re.sub(link_regex, link_data[2], self.render_data, 1)"""
                 # out link
-                if re.search(r'^https?:\/\/', link_main, flags = re.I):
+                elif re.search(r'^https?:\/\/', link_main, flags = re.I):
                     link_main = self.get_tool_data_restore(link_main, do_type = 'slash')
                     link_title = link_main
                     link_main = html.unescape(link_main)
