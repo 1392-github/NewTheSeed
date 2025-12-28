@@ -338,6 +338,9 @@ with app.app_context():
             c.execute("DROP TABLE api_policy")
             c.execute("DROP TABLE api_key_perm")
             c.execute("DROP TABLE api_keys")
+        if db_version < (59, 0):
+            # 차단내역 버그 수정
+            c.execute("DELETE FROM block_log WHERE type = 4 AND target = -1")
         c.execute("""update config
         set value = ?
         where name = 'version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
@@ -1431,6 +1434,8 @@ def login_history():
         if "user" in request.args:
             user = request.args["user"]
             id = tool.user_name_to_id(user)
+            if id == -1:
+                return tool.error("invalid_username")
             c.execute("INSERT INTO block_log (type, operator, target, date, note) VALUES(4,?,?,?,?)", (tool.ipuser(), id, tool.get_utime(), request.args["note"] if tool.get_config("ext_note") == "1" else ""))
             return tool.rt("login_history_1.html", title = f"{user} 로그인 내역", email = tool.get_user_config(id, "email", "(미설정)"), lh = c.execute("SELECT date, ip, ua, uach FROM login_history WHERE user = ? ORDER BY date DESC", (id,)).fetchall())
         else:
