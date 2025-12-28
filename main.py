@@ -660,7 +660,7 @@ def login_form():
                 uach.append(i + "=" + v)
             c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,?,?,?)", (id, tool.get_utime(), tool.getip(), request.user_agent.string, ",".join(uach)))
         return redirect('/')
-@app.route("/logout")
+@app.route("/member/logout")
 def logout():
     session.clear()
     return redirect('/')

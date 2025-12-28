@@ -40,7 +40,7 @@
     </table>
     {% if login %}
     <ul>
-    <li><a href="/logout">로그아웃</a></li>
+    <li><a href="{{ url_for('logout') }}">로그아웃</a></li>
     <li><a href="{{ url_for('mypage') }}">내 정보</a></li>
     {% else %}
     <ul>
