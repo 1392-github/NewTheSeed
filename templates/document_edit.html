@@ -3,54 +3,11 @@
 {% block css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='opennamu_main.css') }}">
 <style>
-    h1, h2
-    {
-        color: #303030;
-        margin: 0;
-        display: inline;
-    }
     form textarea
     {
         width: 100%;
         height: 60vh;
     }
-    form input[name="edit_comment"]
-    {
-        width: 100%;
-    }
-    form *
-    {
-        margin-top: 5px;
-    }
-    a
-    {
-        text-decoration: none;
-    }
-    /*#ctn_header
-    {
-        display: flex;
-        justify-content: space-between;
-    }
-    #ctn_header div:last-child
-    {
-        display: flex;
-        height: 35px;
-    }
-    #ctn_header div:last-child a
-    {
-        border: 1px solid #808080;
-        padding: 5px 13px;
-        color: unset;
-        text-decoration: none;
-        line-height: 23px;
-    }
-    #ctn_header div:last-child a[href^="/delete/"]
-    {
-        border: 1px solid #d9534f;
-        background-color: #d9534f;
-        color: white;
-    }*/
-    
 </style>
 {% endblock %}
 
@@ -65,7 +22,7 @@
     <textarea name="value"{% if aclmsg is not none %} disabled{% endif %}>{{ doc_data }}</textarea><br>
     <div id="preview"></div>
     {% if aclmsg is none %}
-    <input type="text" name="edit_comment" placeholder="편집 요약">
+    <input type="text" class="fullwidth" name="edit_comment" placeholder="편집 요약">
     {% if req_captcha %}
     <div class="g-recaptcha" data-sitekey="{{ sitekey }}" data-callback="onCaptchaCompleted"></div>
     {% endif %}
