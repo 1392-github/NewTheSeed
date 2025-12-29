@@ -139,8 +139,8 @@ def rt(t, **k):
         k["raw_title"] = k["title"]
     login = is_login()
     k["login"] = login
+    user = ipuser(False)
     if login:
-        user = ipuser()
         k["user"] = id_to_user_name(user)
         email = get_user_config(user, "email")
         if email is None:
@@ -150,6 +150,8 @@ def rt(t, **k):
     else:
         gravatar_hash = "0"
         k["user"] = getip()
+        k["uid"] = None
+    k["uid"] = user
     k["gravatar"] = f"https://secure.gravatar.com/avatar/{gravatar_hash}?d={get_config('gravatar_default')}&r={get_config('gravatar_rating')}"
     if t == "error.html" and "title" not in k:
         k["title"] = "오류"
@@ -362,6 +364,19 @@ def reload_config(app):
         exp = int(get_config("keep_login_history"))
         if exp != -1:
             c.execute("DELETE FROM login_history WHERE date < ?", (get_utime() - exp,))
+    for skin in data.skins:
+        info = data.skin_info[skin]
+        lc = []
+        lj = []
+        for cfg in info["skin_config"]:
+            if cfg.get("css", False):
+                key = cfg['key']
+                lc.append(f"    --{key.replace('_', '-')}: {get_config(f'skin.{skin}.{key}')};\n")
+            if cfg.get("js", False):
+                key = cfg['key']
+                lj.append(key + " = \"" + get_config(f'skin.{skin}.{key}').replace('\\','\\\\').replace('"', '\\"') + "\";")
+        data.skin_config_css[skin] = ":root {\n" + "".join(lc) + "}"
+        data.skin_config_js[skin] = "\n".join(lj)
 def is_required_captcha(action):
     if get_config("captcha_mode") == "0": return False
     if action == "test": return True

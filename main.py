@@ -44,6 +44,9 @@ for i in os.scandir("skins"):
             sys.exit()
         if id != i.name:
             shutil.move(i.path, os.path.join("skins", id))
+        if "version" not in j and "version_name" in j:
+            print(f"[WARNING] skin {id}: The version_name in the skin info.json has been replaced with version, and version_name will be discontinued on March 1, 2026.")
+            j["version"] = j["version_name"]
         data.skin_info[id] = j
         data.skins.append(id)
 try:
@@ -1751,6 +1754,16 @@ def skin_static(skin, path):
         return send_from_directory(f"skins/{skin}/static", path)
     else:
         abort(404)
+@app.route("/skin_config_css/<skin>")
+def skin_config_css(skin):
+    if skin not in data.skin_config_css:
+        abort(404)
+    return data.skin_config_css[skin], 200, {"Content-Type": "text/css"}
+@app.route("/skin_config_js/<skin>")
+def skin_config_js(skin):
+    if skin not in data.skin_config_js:
+        abort(404)
+    return data.skin_config_js[skin], 200, {"Content-Type": "application/javascript"}
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:
