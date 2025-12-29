@@ -425,7 +425,7 @@ def render_docname(namespace, name, link=True):
         ns = escape(c.execute("SELECT name FROM namespace WHERE id = ?", (namespace,)).fetchone()[0])
         name = escape(name)
         if show_ns:
-            r = f'<span class="namespace">{ns}:</span>{name}'
+            r = f'<span class="namespace">{ns}</span>:{name}'
             fn = ns + ":" + name
         else:
             r = f"{escape(name)}"
