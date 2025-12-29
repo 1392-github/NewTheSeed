@@ -1611,7 +1611,7 @@ def change_password():
     if request.method == "POST":
         user = tool.ipuser()
         with g.db.cursor() as c:
-            if not tool.check_password(user, request.form["cpw"]).fetchone()[0] == 0:
+            if not tool.check_password(user, request.form["cpw"]):
                 return tool.error("패스워드가 올바르지 않습니다.")
             if request.form["pw"] != request.form["pw2"]:
                 return tool.error("패스워드 확인이 올바르지 않습니다.")
