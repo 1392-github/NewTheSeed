@@ -10,8 +10,6 @@ import distro
 import tool
 import data
 
-print("아직 안 만들었습니다")
-os.exit()
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 print("Installing PIP Package")
 #os.system("pip install -r requirements.txt")
