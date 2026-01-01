@@ -22,6 +22,7 @@ import requests
 import werkzeug.exceptions
 
 import data
+import exceptions
 import tool
 from render import render_set
 
@@ -378,6 +379,9 @@ def errorhandler_500(e):
         return traceback.format_exc(), 500, {"Content-Type": "text/plain"}
     else:
         return werkzeug.exceptions.InternalServerError.get_response()
+@app.errorhandler(exceptions.ACLDeniedError)
+def errorhandler_acl(e):
+    return tool.error(str(e), 403)
 @app.before_request
 def before_request():
     g.db = tool.getdb()
@@ -520,10 +524,6 @@ def doc_edit(doc_title):
     with g.db.cursor() as c:
         ns, name = tool.split_ns(doc_title)
         docid = tool.get_docid(ns, name)
-        if tool.is_login():
-            i = session['id']
-        else:
-            i = tool.ipuser()
         acl = tool.check_document_acl(docid, ns, "read", name)
         if acl[0] == 0:
             return tool.rt("error.html", error = acl[1]), 403
@@ -546,7 +546,7 @@ def doc_edit_form():
         doc_name = request.form["doc_name"]
         value = request.form["value"]
         ns, name = tool.split_ns(doc_name)
-        docid = tool.get_docid(ns, name)
+        """docid = tool.get_docid(ns, name)
         if tool.check_document_acl(docid, ns, "edit", name, showmsg=False) == 0:
             abort(403)
         if docid == -1:
@@ -560,7 +560,8 @@ def doc_edit_form():
             new_document = True
             prev_content = ""
         tool.record_history(docid, int(new_document), value, None, None, tool.ipuser(), request.form["edit_comment"], len(value) - len(prev_content))
-        c.execute("UPDATE data SET value = ? WHERE id = ?", (value, docid))
+        c.execute("UPDATE data SET value = ? WHERE id = ?", (value, docid))"""
+        tool.edit_or_new(ns, name, value, request.form["edit_comment"])
         return redirect(f"/w/{doc_name}")
 @app.route("/license")
 def license():

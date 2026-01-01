@@ -16,6 +16,7 @@ from requests import post
 import smtplib
 
 import data
+import exceptions
 
 init = not os.path.exists("data.db")
 
@@ -858,3 +859,26 @@ def get_skin_config(key, default = None):
     return get_config(f"skin.{get_skin()}.{key}", default)
 def error(msg, code = 400):
     return rt("error.html", error = msg), code
+def edit(docid, content, edit_comment = "", user = None, check_acl = True, history = True):
+    if user is None:
+        user = ipuser()
+    if check_acl:
+        doc_name = get_doc_name(docid)
+        acl = check_document_acl(docid, doc_name[0], "edit", doc_name[1])
+        if acl[0] == 0:
+            raise exceptions.ACLDeniedError(acl[1])
+    if history: old = get_doc_data(docid)
+    with g.db.cursor() as c:
+        c.execute("UPDATE data SET value = ? WHERE id = ?", (content, docid))
+    if history:
+        record_history(docid, 0, content, None, None, user, edit_comment, len(content) - len(old))
+def edit_or_new(ns, name, content, edit_comment = "", user = None, check_acl = True, history = True):
+    if user is None:
+        user = ipuser()
+    with g.db.cursor() as c:
+        if c.execute("SELECT EXISTS (SELECT 1 FROM doc_name WHERE namespace = ? AND name = ?)", (ns, name)).fetchone()[0]:
+            edit(get_docid(ns, name), content, edit_comment, user, check_acl, history)
+        else:
+            docid = get_docid(ns, name, True)
+            edit(docid, content, edit_comment, user, check_acl, False)
+            record_history(docid, 1, content, None, None, user, edit_comment, len(content))

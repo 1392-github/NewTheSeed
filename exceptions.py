@@ -1,0 +1,1 @@
+class ACLDeniedError(Exception): pass
