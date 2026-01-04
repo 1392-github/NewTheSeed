@@ -872,6 +872,9 @@ def edit(docid, content, edit_comment = "", user = None, check_acl = True, histo
         c.execute("UPDATE data SET value = ? WHERE id = ?", (content, docid))
     if history:
         record_history(docid, 0, content, None, None, user, edit_comment, len(content) - len(old))
+def has_document(docid):
+    with g.db.cursor() as c:
+        return bool(c.execute("SELECT EXISTS (SELECT 1 FROM doc_name WHERE id = ?)", (docid,)).fetchone()[0])
 def edit_or_new(ns, name, content, edit_comment = "", user = None, check_acl = True, history = True):
     if user is None:
         user = ipuser()
@@ -882,3 +885,25 @@ def edit_or_new(ns, name, content, edit_comment = "", user = None, check_acl = T
             docid = get_docid(ns, name, True)
             edit(docid, content, edit_comment, user, check_acl, False)
             record_history(docid, 1, content, None, None, user, edit_comment, len(content))
+def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history = True):
+    if user is None:
+        user = ipuser()
+    if check_acl:
+        doc_name = get_doc_name(docid)
+        acl = check_document_acl(docid, doc_name[0], "edit", doc_name[1])
+        if acl[0] == 0:
+            raise exceptions.ACLDeniedError(acl[1])
+    with g.db.cursor() as c:
+        if not has_document(docid):
+            raise exceptions.DocumentNotExistError(docid)
+        f = c.execute("SELECT type, content, content2 FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
+        if f is None:
+            raise exceptions.RevisionNotExistError(docid)
+        type, content, content2 = f
+        if type not in data.revert_available:
+            raise exceptions.CannotRevertRevisionError(rev)
+        if history:
+            old = len(get_doc_data(docid))
+        edit(docid, content, edit_comment, user, False, False)
+        if history:
+            record_history(docid, 5, content, content2 if type == 5 else str(rev), None, user, edit_comment, len(content) - old)

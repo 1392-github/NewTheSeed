@@ -9,7 +9,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (67, 1)
+version = (67, 2)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -197,3 +197,4 @@ skin_commit = {}
 allow_skin_id = re.compile("[a-zA-Z0-9_]+")
 skin_config_css = {}
 skin_config_js = {}
+revert_available = {0, 1, 5}

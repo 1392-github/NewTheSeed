@@ -439,6 +439,9 @@ def history_msg(type, text2, text3):
         return f"({text2}에서 {text3}으로 문서 이동)"
     elif type == 4:
         return f"({text2}으로 ACL 변경)"
+    elif type == 5:
+        return f"(r{text2}으로 되돌림)"
+    return f"(type {type}, {text2}, {text3})"
 app.jinja_loader = ChoiceLoader([
     FileSystemLoader("skins"),
     FileSystemLoader("templates")
@@ -1765,6 +1768,30 @@ def skin_config_js(skin):
     if skin not in data.skin_config_js:
         abort(404)
     return data.skin_config_js[skin], 200, {"Content-Type": "application/javascript"}
+@app.route("/revert/<path:doc>", methods = ["GET", "POST"])
+def revert(doc):
+    ns, name = tool.split_ns(doc)
+    docid = tool.get_docid(ns, name)
+    if request.method == "POST":
+        try:
+            tool.revert(docid, int(request.args["rev"]), request.form["note"])
+        except (exceptions.DocumentNotExistError, exceptions.RevisionNotExistError):
+            return tool.error("해당 리버전이 존재하지 않습니다.")
+        except exceptions.CannotRevertRevisionError:
+            return tool.error("이 리버전으로 되돌릴 수 없습니다.")
+        return redirect(url_for("doc_read", doc_title = doc))
+    acl = tool.check_document_acl(docid, ns, "edit", name)
+    if acl[0] == 0:
+        return tool.error(acl[1], 403)
+    rev = int(request.args["rev"])
+    with g.db.cursor() as c:
+        f = c.execute("SELECT type, content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
+        if f is None:
+            return tool.error("해당 리버전이 존재하지 않습니다.")
+        type, content = f
+        if type not in data.revert_available:
+            return tool.error("이 리버전으로 되돌릴 수 없습니다.")
+        return tool.rt("revert.html", title = tool.render_docname(ns, name), subtitle = f"r{rev}로 되돌리기", content = content)
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:
