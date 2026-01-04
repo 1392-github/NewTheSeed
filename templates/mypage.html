@@ -47,6 +47,11 @@
     <div class="member-info-name">권한</div>
     {{ perm }}
     <hr>
+    <div class="member-info-name">API Token</div>
+    <a href="{{ url_for('api_token') }}">
+        <button type="button">발급</button>
+    </a>
+    <hr>
     <div class="member-info-name">계정</div>
     <a href="{{ url_for('withdraw') }}">
         <button type="button" class="danger">계정 삭제</button>

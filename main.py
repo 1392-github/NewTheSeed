@@ -12,6 +12,7 @@ import cssutils
 import json
 import traceback
 import stat
+import base64
 
 from flask import Flask, request, redirect, session, send_file, send_from_directory, abort, Response, url_for, g
 from jinja2 import ChoiceLoader, FileSystemLoader
@@ -1793,6 +1794,17 @@ def revert(doc):
         if type not in data.revert_available:
             return tool.error("이 리버전으로 되돌릴 수 없습니다.")
         return tool.rt("revert.html", title = tool.render_docname(ns, name), subtitle = f"r{rev}로 되돌리기", content = content)
+@app.route("/member/api_token", methods = ["GET", "POST"])
+def api_token():
+    if not tool.is_login(): return redirect("/")
+    if request.method == "POST":
+        user = tool.ipuser()
+        if not tool.check_password(user, request.form["pw"]):
+            return tool.error("패스워드가 올바르지 않습니다.")
+        token = base64.b64encode(secrets.token_bytes(128))
+        tool.set_user_config(user, "api_token", hashlib.sha3_512(token).hexdigest())
+        return tool.rt("api_token_2.html", title = "API Token 발급", token = token.decode("ascii"))
+    return tool.rt("api_token.html", title = "API Token 발급")
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:

@@ -1,0 +1,22 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<textarea style="width: 50%; height: 64px;" readonly>{{ token }}</textarea>
+<ul>
+    <li>발급된 토큰은 이 창을 닫으면 다시 확인할 수 없습니다.</li>
+    <li>토큰은 비밀번호와 같이 취급해주세요.</li>
+</ul>
+<button id="copy">토큰 복사</button>
+{% endblock %}
+
+{% block js %}
+<script>
+    document.getElementById("copy").addEventListener("click", function () {
+        navigator.clipboard.writeText("{{ token }}")
+    })
+</script>
+{% endblock %}
