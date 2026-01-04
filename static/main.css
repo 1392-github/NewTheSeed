@@ -68,6 +68,13 @@ a
     padding: 1%;
     display: none;
 }
+@media (max-width: 767px)
+{
+    .modal
+    {
+        width: 100%;
+    }
+}
 .button_like_link
 {
     border: none;
