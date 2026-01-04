@@ -31,6 +31,7 @@ if sys.version_info < (3, 9):
         sys.exit()
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+os.environ["GIT_TERMINAL_PROMPT"]="0"
 for i in os.scandir("skins"):
     if i.is_dir():
         try:
