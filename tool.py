@@ -864,7 +864,7 @@ def edit(docid, content, edit_comment = "", user = None, check_acl = True, histo
         user = ipuser()
     if check_acl:
         doc_name = get_doc_name(docid)
-        acl = check_document_acl(docid, doc_name[0], "edit", doc_name[1])
+        acl = check_document_acl(docid, doc_name[0], "edit", doc_name[1], user)
         if acl[0] == 0:
             raise exceptions.ACLDeniedError(acl[1])
     if history: old = get_doc_data(docid)
@@ -880,7 +880,7 @@ def edit_or_new(ns, name, content, edit_comment = "", user = None, check_acl = T
         user = ipuser()
     with g.db.cursor() as c:
         if c.execute("SELECT EXISTS (SELECT 1 FROM doc_name WHERE namespace = ? AND name = ?)", (ns, name)).fetchone()[0]:
-            edit(get_docid(ns, name), content, edit_comment, user, check_acl, history)
+            edit(get_docid(ns, name), content, edit_comment, user, check_acl, history, user)
         else:
             docid = get_docid(ns, name, True)
             edit(docid, content, edit_comment, user, check_acl, False)
@@ -890,7 +890,7 @@ def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history
         user = ipuser()
     if check_acl:
         doc_name = get_doc_name(docid)
-        acl = check_document_acl(docid, doc_name[0], "edit", doc_name[1])
+        acl = check_document_acl(docid, doc_name[0], "edit", doc_name[1], user)
         if acl[0] == 0:
             raise exceptions.ACLDeniedError(acl[1])
     with g.db.cursor() as c:
@@ -907,3 +907,14 @@ def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history
         edit(docid, content, edit_comment, user, False, False)
         if history:
             record_history(docid, 5, content, content2 if type == 5 else str(rev), None, user, edit_comment, len(content) - old)
+def check_api_token():
+    if request.authorization is None: return None
+    if request.authorization.type != "bearer": return None
+    with g.db.cursor() as c:
+        f = c.execute("SELECT user FROM user_config WHERE name = 'api_token' AND value = ?", (hashlib.sha3_512(request.authorization.token.encode("utf-8")).hexdigest(),)).fetchone()
+        if f is None: return None
+        user = f[0]
+        if has_perm("api_access", user):
+            return user
+        else:
+            return None

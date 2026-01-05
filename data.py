@@ -9,7 +9,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (68, 1)
+version = (68, 2)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -198,3 +198,4 @@ allow_skin_id = re.compile("[a-zA-Z0-9_]+")
 skin_config_css = {}
 skin_config_js = {}
 revert_available = {0, 1, 5}
+json_403 = {"status": '권한이 부족합니다.'}, 403

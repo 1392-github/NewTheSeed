@@ -457,12 +457,12 @@ app.jinja_env.filters["time"] = tool.utime_to_str
 app.jinja_env.policies['json.dumps_kwargs']['ensure_ascii'] = False
 @app.route("/api/preview", methods=["POST"])
 def api_preview():
-    json = request.json
+    json = request.get_json()
     r = render_set(g.db, json["name"], json["data"], "api_view")
     return {"html": r[0], "js": r[1]}
 @app.route("/api/preview/thread", methods=["POST"])
 def api_thread():
-    json = request.json
+    json = request.get_json()
     r = render_set(g.db, json["data"], "api_thread")
     return {"html": r[0], "js": r[1]}
 @app.route("/")
@@ -788,7 +788,7 @@ def acl(doc_name):
             if type2 == "acl" and limit_acl % 2 == 1:
                 limit = True
             if limit and not tool.has_perm("nsacl"): abort(403)
-            json = request.json
+            json = request.get_json()
             opcode = json["opcode"]
             if type2 == "read" and not nsacl and tool.get_config("document_read_acl") == "0":
                 return tool.error_400("invalid_acl_condition")
@@ -1805,6 +1805,34 @@ def api_token():
         tool.set_user_config(user, "api_token", hashlib.sha3_512(token).hexdigest())
         return tool.rt("api_token_2.html", title = "API Token 발급", token = token.decode("ascii"))
     return tool.rt("api_token.html", title = "API Token 발급")
+@app.route("/api/edit/<document>", methods = ["GET", "POST"])
+def api_edit(document):
+    user = tool.check_api_token()
+    if user is None:
+        return data.json_403
+    ns, name = tool.split_ns(document)
+    docid = tool.get_docid(ns, name)
+    if request.method == "POST":
+        json = request.get_json()
+        acl = tool.check_document_acl(docid, ns, "edit", name, user)
+        if acl[0] == 0:
+            return {"status": acl[1]}, 403
+        try:
+            if docid == -1:
+                tool.edit_or_new(ns, name, json["text"], json.get("log", ""), user)
+            else:
+                tool.edit(docid, json["text"], json.get("log", ""), user)
+        except exceptions.ACLDeniedError as e:
+            return {"status": str(e)}, 403
+        return {"status": "success"}
+    acl = tool.check_document_acl(docid, ns, "read", name, user)
+    if acl[0] == 0:
+        return {"status": acl[1]}, 403
+    doc_data = tool.get_doc_data(docid)
+    return {
+        "text": doc_data,
+        "exists": doc_data is not None
+    }
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:
