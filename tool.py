@@ -675,13 +675,15 @@ def check_aclgroup_flag(gid, name, user = None):
 def aclgroup_insert(gid, mode, user, note = "", duration = 0, operator = None, log = True, note_required_check = True, max_duration_check = True, max_cidr_check = True, flags_check = True):
     if operator is None:
         operator = ipuser()
-    if flags_check and not check_aclgroup_flag(gid, "add_flags", operator):
-        raise exceptions.ACLGroupPermissionDeniedError()
-    t = get_utime()
-    if note_required_check:
-        if get_config("aclgroup_note_required") == "1" and note == "":
-            raise exceptions.ACLGroupNoteRequiredError()
     with g.db.cursor() as c:
+        if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE id = ? AND deleted = 0)", (gid,)).fetchone()[0] == 0:
+            raise exceptions.ACLGroupNotExistsError()
+        if flags_check and not check_aclgroup_flag(gid, "add_flags", operator):
+            raise exceptions.ACLGroupPermissionDeniedError()
+        t = get_utime()
+        if note_required_check:
+            if get_config("aclgroup_note_required") == "1" and note == "":
+                raise exceptions.ACLGroupNoteRequiredError()
         if mode == "ip":
             try:
                 ipn = ipaddress.ip_network(user)

@@ -368,6 +368,7 @@ if not os.getenv("SECRET_KEY"):
     app.secret_key = key
 else:
     app.secret_key = os.getenv("SECRET_KEY")
+app.json.ensure_ascii = False
 
 @app.errorhandler(403)
 def errorhandler_403(e):
@@ -1821,7 +1822,7 @@ def api_token():
         tool.set_user_config(user, "api_token", hashlib.sha3_512(token).hexdigest())
         return tool.rt("api_token_2.html", title = "API Token 발급", token = token.decode("ascii"))
     return tool.rt("api_token.html", title = "API Token 발급")
-@app.route("/api/edit/<document>", methods = ["GET", "POST"])
+@app.route("/api/edit/<document>", methods = ["GET", "POST", "KOREA"])
 def api_edit(document):
     user = tool.check_api_token()
     if user is None:
@@ -1849,6 +1850,22 @@ def api_edit(document):
         "text": doc_data,
         "exists": doc_data is not None
     }
+@app.route("/api/aclgroup", methods = ["GET", "POST", "DELETE"])
+def api_aclgroup():
+    user = tool.check_api_token()
+    if user is None:
+        return data.json_403
+    with g.db.cursor() as c:
+        if request.method == "GET":
+            gid = int(request.args["group"])
+            if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE id = ? AND deleted = 0)", (gid,)).fetchone()[0] == 0:
+                return {"status": "aclgroup_group_not_found"}
+            if not tool.check_aclgroup_flag(gid, "access_flags", user):
+                return data.json_403
+            r = []
+            for i in c.execute("SELECT id, ip, user, note, start, end FROM aclgroup_log WHERE gid = ?", (gid,)).fetchall():
+                r.append([i[0], "user" if i[1] is None else "ip", i[2] if i[1] is None else i[1], i[3], i[4], i[5]])
+            return r
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:
