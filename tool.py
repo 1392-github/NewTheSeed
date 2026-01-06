@@ -672,9 +672,61 @@ def check_aclgroup_flag(gid, name, user = None):
     for i in get_aclgroup_config(gid, name).split(","):
         if has_perm(i, user): return True
     return False
-def aclgroup_delete(id, note = "", operator = None):
+def aclgroup_insert(gid, mode, user, note = "", duration = 0, operator = None, log = True, note_required_check = True, max_duration_check = True, max_cidr_check = True, flags_check = True):
+    if operator is None:
+        operator = ipuser()
+    if flags_check and not check_aclgroup_flag(gid, "add_flags", operator):
+        raise exceptions.ACLGroupPermissionDeniedError()
+    t = get_utime()
+    if note_required_check:
+        if get_config("aclgroup_note_required") == "1" and note == "":
+            raise exceptions.ACLGroupNoteRequiredError()
     with g.db.cursor() as c:
-        c.execute("INSERT INTO block_log (type, operator, target_ip, target, id, gid, date, note) SELECT 2, ?1, ip, user, ?2, gid, ?3, ?4 FROM aclgroup_log WHERE id = ?2",
+        if mode == "ip":
+            try:
+                ipn = ipaddress.ip_network(user)
+                ip = str(ipn)
+            except (ValueError, ipaddress.AddressValueError, ipaddress.NetmaskValueError) as e:
+                raise exceptions.InvalidCIDRError() from e
+            if max_cidr_check:
+                max_cidr = "max_ipv4_cidr" if ipn.version == 4 else "max_ipv6_cidr"
+                max_cidr_value = int(get_aclgroup_config(gid, max_cidr))
+                if ipn.prefixlen < max_cidr_value: raise exceptions.ACLGroupConfigError(max_cidr, max_cidr_value)
+            if max_duration_check:
+                max_duration = int(get_aclgroup_config(gid, "max_duration_ip"))
+                if max_duration != 0 and duration > max_duration: raise exceptions.ACLGroupConfigError("max_duration_ip", max_duration)
+            if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE ip = ? AND gid = ?)", (ip, gid)).fetchone()[0]:
+                raise exceptions.ACLGroupAlreadyExistsError()
+            c.execute("INSERT INTO aclgroup_log (gid, ip, note, start, end) VALUES(?, ?, ?, ?, ?)",
+                    (gid, ip, note, t, None if duration == 0 else t + duration))
+            if log:
+                c.execute("INSERT INTO block_log (type, operator, target_ip, id, gid, date, duration, note) VALUES(1, ?, ?, ?, ?, ?, ?, ?)",
+                        (operator, ip, c.lastrowid, gid, t, duration, note))
+        elif mode == "user":
+            if max_duration_check:
+                max_duration = int(get_aclgroup_config(gid, "max_duration_account"))
+                if max_duration != 0 and duration > max_duration: raise exceptions.ACLGroupConfigError("max_duration_account", max_duration)
+            if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE user = ? AND gid = ?)", (user, gid)).fetchone()[0]:
+                raise exceptions.ACLGroupAlreadyExistsError()
+            c.execute("INSERT INTO aclgroup_log (gid, user, note, start, end) VALUES(?, ?, ?, ?, ?)",
+                    (gid, user, note, t, None if duration == 0 else t + duration))
+            if log:
+                c.execute("INSERT INTO block_log (type, operator, target, id, gid, date, duration, note) VALUES(1, ?, ?, ?, ?, ?, ?, ?)",
+                        (operator, user, c.lastrowid, gid, t, duration, note))
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
+def aclgroup_delete(id, note = "", operator = None, log = True, note_required_check = True, flags_check = True):
+    with g.db.cursor() as c:
+        f = c.execute("SELECT gid FROM aclgroup_log WHERE id = ?", (id,)).fetchone()
+        if f is None:
+            raise exceptions.ACLGroupElementNotExistsError(id)
+        gid = f[0]
+        if flags_check and not check_aclgroup_flag(gid, "remove_flags"):
+            raise exceptions.ACLGroupPermissionDeniedError()
+        if note_required_check and get_config("aclgroup_note_required") == "1" and note == "":
+            return error_400("note의 값은 필수입니다.")
+        if log:
+            c.execute("INSERT INTO block_log (type, operator, target_ip, target, id, gid, date, note) SELECT 2, ?1, ip, user, ?2, gid, ?3, ?4 FROM aclgroup_log WHERE id = ?2",
                 (ipuser() if operator is None else operator, id, get_utime(), note))
         c.execute("DELETE FROM aclgroup_log WHERE id = ?", (id,))
 def is_login():

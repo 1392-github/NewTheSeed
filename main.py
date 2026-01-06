@@ -949,12 +949,12 @@ def aclgroup():
         current = grp if grp in groups else groups[0]
         gid = c.execute("SELECT id FROM aclgroup WHERE name = ? AND deleted = 0", (current,)).fetchone()[0]
         if request.method == "POST":
-            if not tool.check_aclgroup_flag(gid, "add_flags"):
+            dur = 0 if request.form["dur"] == "" else int(request.form["dur"])
+            """if not tool.check_aclgroup_flag(gid, "add_flags"):
                 abort(403)
             t = tool.get_utime()
             if tool.get_config("aclgroup_note_required") == "1" and request.form["note"] == "":
                 return tool.error_400("note의 값은 필수입니다.")
-            dur = 0 if request.form["dur"] == "" else int(request.form["dur"])
             if request.form["mode"] == "ip":
                 ip = request.form["value"]
                 try:
@@ -983,7 +983,26 @@ def aclgroup():
                 c.execute("INSERT INTO aclgroup_log (gid, user, note, start, end) VALUES(?, (SELECT id FROM user WHERE name = ?), ?, ?, ?)",
                         (gid, request.form["value"], request.form["note"], t, None if dur == 0 else t + dur))
                 c.execute("INSERT INTO block_log (type, operator, target, id, gid, date, duration, note) VALUES(1, ?, (SELECT id FROM user WHERE name = ?), ?, ?, ?, ?, ?)",
-                        (tool.ipuser(), request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))
+                        (tool.ipuser(), request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))"""
+            mode = request.form["mode"]
+            if mode == "user":
+                user = tool.user_name_to_id(request.form["value"])
+                if user == -1:
+                    return tool.error_400("사용자 이름이 올바르지 않습니다.")
+            else:
+                user = request.form["value"]
+            try:
+                tool.aclgroup_insert(gid, mode, user, request.form["note"], dur)
+            except exceptions.ACLGroupPermissionDeniedError:
+                return '', 403
+            except exceptions.ACLGroupConfigError as e:
+                return tool.error_400(f"{e.name}은 {e.value}입니다.")
+            except exceptions.ACLGroupNoteRequiredError:
+                return tool.error_400("note의 값은 필수입니다.")
+            except exceptions.ACLGroupAlreadyExistsError:
+                return tool.error_400("aclgroup_already_exists")
+            except exceptions.InvalidCIDRError:
+                return tool.error_400("invalid_cidr")
         return tool.rt("aclgroup.html", title = "ACLGroup", groups = groups, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.check_aclgroup_flag(gid, "add_flags"), delete_perm = tool.check_aclgroup_flag(gid, "remove_flags"), record = (
             (x[0], x[1], x[2], tool.utime_to_str(x[3]), "영구" if x[4] is None else tool.utime_to_str(x[4]))
             for x in c.execute("SELECT id, (CASE WHEN ip IS NULL THEN (SELECT name FROM user WHERE id = user) ELSE ip END), note, start, end FROM aclgroup_log WHERE gid = (SELECT id FROM aclgroup WHERE name = ? AND deleted = 0)", (current,)).fetchall()
@@ -992,15 +1011,12 @@ def aclgroup():
 def aclgroup_delete():
     with g.db.cursor() as c:
         id = int(request.form["id"])
-        gid = c.execute("SELECT gid FROM aclgroup_log WHERE id = ?", (id,)).fetchone()
-        if gid is None:
+        try:
+            tool.aclgroup_delete(id, request.form["note"])
+        except exceptions.ACLGroupElementNotExistsError:
             return tool.error_400("aclgroup_not_found")
-        gid = gid[0]
-        if not tool.check_aclgroup_flag(gid, "remove_flags"):
-            abort(403)
-        if tool.get_config("aclgroup_note_required") == "1" and request.form["note"] == "":
-            return tool.error_400("note의 값은 필수입니다.")
-        tool.aclgroup_delete(id, request.form["note"])
+        except exceptions.ACLGroupPermissionDeniedError:
+            return '', 403
         return '', 204
 @app.route("/aclgroup/new_group", methods = ["POST"])
 def aclgroup_new_group():
@@ -1600,7 +1616,7 @@ def self_remove():
         else:
             if not tool.ip_in_cidr(tool.getip(), ip): return tool.error("aclgroup_not_found")
         if tool.get_aclgroup_config(gid, "self_removable") == "0": return tool.error("not_self_removable")
-        tool.aclgroup_delete(id, tool.get_aclgroup_config(gid, "self_remove_note"))
+        tool.aclgroup_delete(id, tool.get_aclgroup_config(gid, "self_remove_note"), flags_check = False)
         return redirect("/")
 @app.route("/member/mypage")
 def mypage():
