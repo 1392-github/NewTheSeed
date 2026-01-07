@@ -675,6 +675,7 @@ def check_aclgroup_flag(gid, name, user = None):
 def aclgroup_insert(gid, mode, user, note = "", duration = 0, operator = None, log = True, note_required_check = True, max_duration_check = True, max_cidr_check = True, flags_check = True):
     if operator is None:
         operator = ipuser()
+    delete_expired_aclgroup()
     with g.db.cursor() as c:
         if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE id = ? AND deleted = 0)", (gid,)).fetchone()[0] == 0:
             raise exceptions.ACLGroupNotExistsError()
@@ -701,10 +702,13 @@ def aclgroup_insert(gid, mode, user, note = "", duration = 0, operator = None, l
                 raise exceptions.ACLGroupAlreadyExistsError()
             c.execute("INSERT INTO aclgroup_log (gid, ip, note, start, end) VALUES(?, ?, ?, ?, ?)",
                     (gid, ip, note, t, None if duration == 0 else t + duration))
+            lr = c.lastrowid
             if log:
                 c.execute("INSERT INTO block_log (type, operator, target_ip, id, gid, date, duration, note) VALUES(1, ?, ?, ?, ?, ?, ?, ?)",
-                        (operator, ip, c.lastrowid, gid, t, duration, note))
+                        (operator, ip, lr, gid, t, duration, note))
         elif mode == "user":
+            if isip(user):
+                return aclgroup_insert(gid, "ip", id_to_user_name(user), note, duration, operator, log, note_required_check, max_duration_check, max_cidr_check, flags_check)
             if max_duration_check:
                 max_duration = int(get_aclgroup_config(gid, "max_duration_account"))
                 if max_duration != 0 and duration > max_duration: raise exceptions.ACLGroupConfigError("max_duration_account", max_duration)
@@ -712,12 +716,15 @@ def aclgroup_insert(gid, mode, user, note = "", duration = 0, operator = None, l
                 raise exceptions.ACLGroupAlreadyExistsError()
             c.execute("INSERT INTO aclgroup_log (gid, user, note, start, end) VALUES(?, ?, ?, ?, ?)",
                     (gid, user, note, t, None if duration == 0 else t + duration))
+            lr = c.lastrowid
             if log:
                 c.execute("INSERT INTO block_log (type, operator, target, id, gid, date, duration, note) VALUES(1, ?, ?, ?, ?, ?, ?, ?)",
-                        (operator, user, c.lastrowid, gid, t, duration, note))
+                        (operator, user, lr, gid, t, duration, note))
         else:
             raise ValueError(f"Invalid mode: {mode}")
+        return lr
 def aclgroup_delete(id, note = "", operator = None, log = True, note_required_check = True, flags_check = True):
+    delete_expired_aclgroup()
     with g.db.cursor() as c:
         f = c.execute("SELECT gid FROM aclgroup_log WHERE id = ?", (id,)).fetchone()
         if f is None:
@@ -972,3 +979,16 @@ def check_api_token():
             return user
         else:
             return None
+def check_json(json, types):
+    for i in types:
+        if i not in json:
+            if types[i][1]:
+                return False
+            else:
+                continue
+        if not isinstance(json[i], types[i][0]):
+            return False
+    return True
+def has_aclgroup(gid):
+    with g.db.cursor() as c:
+        return bool(c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE id = ? AND deleted = 0)", (gid,)).fetchone()[0])

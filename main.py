@@ -1858,14 +1858,39 @@ def api_aclgroup():
     with g.db.cursor() as c:
         if request.method == "GET":
             gid = int(request.args["group"])
-            if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE id = ? AND deleted = 0)", (gid,)).fetchone()[0] == 0:
-                return {"status": "aclgroup_group_not_found"}
+            if not tool.has_aclgroup(gid):
+                return {"status": "aclgroup_group_not_found"}, 400
             if not tool.check_aclgroup_flag(gid, "access_flags", user):
                 return data.json_403
             r = []
             for i in c.execute("SELECT id, ip, user, note, start, end FROM aclgroup_log WHERE gid = ?", (gid,)).fetchall():
                 r.append([i[0], "user" if i[1] is None else "ip", i[2] if i[1] is None else i[1], i[3], i[4], i[5]])
-            return r
+            return {"status": "success", "result": r}
+        elif request.method == "POST":
+            json = request.get_json()
+            #(gid: Any, mode: Any, user: Any, note: str = "", duration: int = 0, operator: Any | None = None, log: bool = True, note_required_check: bool = True, max_duration_check: bool = True, max_cidr_check: bool = True, flags_check: bool = True) -> None
+            if not tool.check_json(json, {"group": (int, True), "mode": (str, True), "note": (str, False), "duration": (int, False)}):
+                return {}, 400
+            if "user" not in json:
+                return {}, 400
+            if json["mode"] == "ip":
+                if not isinstance(json["user"], str): return {}, 400
+            elif json["mode"] == "user":
+                if not isinstance(json["user"], int): return {}, 400
+            else:
+                return {}, 400
+            try:
+                return {"status": "success", "id": tool.aclgroup_insert(json["group"], json["mode"], json["user"], json.get("note", ""), json.get("duration", 0), user)}, 201
+            except exceptions.ACLGroupPermissionDeniedError:
+                return data.json_403
+            except exceptions.ACLGroupConfigError as e:
+                return {"status": f"{e.name}은 {e.value}입니다."}, 400
+            except exceptions.ACLGroupNoteRequiredError:
+                return {"status": "note의 값은 필수입니다."}, 400
+            except exceptions.ACLGroupAlreadyExistsError:
+                return {"status": "aclgroup_already_exists"}, 400
+            except exceptions.InvalidCIDRError:
+                return {"status": "invalid_cidr"}, 400
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:
