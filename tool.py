@@ -730,7 +730,7 @@ def aclgroup_delete(id, note = "", operator = None, log = True, note_required_ch
         if f is None:
             raise exceptions.ACLGroupElementNotExistsError(id)
         gid = f[0]
-        if flags_check and not check_aclgroup_flag(gid, "remove_flags"):
+        if flags_check and not check_aclgroup_flag(gid, "remove_flags", operator):
             raise exceptions.ACLGroupPermissionDeniedError()
         if note_required_check and get_config("aclgroup_note_required") == "1" and note == "":
             return error_400("note의 값은 필수입니다.")

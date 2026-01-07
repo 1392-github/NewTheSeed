@@ -1891,6 +1891,18 @@ def api_aclgroup():
                 return {"status": "aclgroup_already_exists"}, 400
             except exceptions.InvalidCIDRError:
                 return {"status": "invalid_cidr"}, 400
+        elif request.method == "DELETE":
+            json = request.get_json()
+            print(user)
+            if not tool.check_json(json, {"id": (int, True), "note": (str, False)}):
+                return {}, 400
+            try:
+                tool.aclgroup_delete(json["id"], json.get("note", ""), user)
+            except exceptions.ACLGroupPermissionDeniedError:
+                return data.json_403
+            except exceptions.ACLGroupElementNotExistsError:
+                return {"status": "aclgroup_not_found"}, 400
+            return {"status": "success"}
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:
