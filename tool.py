@@ -676,6 +676,8 @@ def aclgroup_insert(gid, mode, user, note = "", duration = 0, operator = None, l
     if operator is None:
         operator = ipuser()
     delete_expired_aclgroup()
+    if duration < 0:
+        raise ValueError("negative duration is not allowed")
     with g.db.cursor() as c:
         if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE id = ? AND deleted = 0)", (gid,)).fetchone()[0] == 0:
             raise exceptions.ACLGroupNotExistsError()
@@ -700,8 +702,11 @@ def aclgroup_insert(gid, mode, user, note = "", duration = 0, operator = None, l
                 if max_duration != 0 and duration > max_duration: raise exceptions.ACLGroupConfigError("max_duration_ip", max_duration)
             if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE ip = ? AND gid = ?)", (ip, gid)).fetchone()[0]:
                 raise exceptions.ACLGroupAlreadyExistsError()
+            end = None if duration == 0 else t + duration
+            if end is not None and end > data.max_utime:
+                raise exceptions.MaximumTimeExceedError()
             c.execute("INSERT INTO aclgroup_log (gid, ip, note, start, end) VALUES(?, ?, ?, ?, ?)",
-                    (gid, ip, note, t, None if duration == 0 else t + duration))
+                    (gid, ip, note, t, end))
             lr = c.lastrowid
             if log:
                 c.execute("INSERT INTO block_log (type, operator, target_ip, id, gid, date, duration, note) VALUES(1, ?, ?, ?, ?, ?, ?, ?)",
@@ -714,8 +719,11 @@ def aclgroup_insert(gid, mode, user, note = "", duration = 0, operator = None, l
                 if max_duration != 0 and duration > max_duration: raise exceptions.ACLGroupConfigError("max_duration_account", max_duration)
             if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE user = ? AND gid = ?)", (user, gid)).fetchone()[0]:
                 raise exceptions.ACLGroupAlreadyExistsError()
+            end = None if duration == 0 else t + duration
+            if end is not None and end > data.max_utime:
+                raise exceptions.MaximumTimeExceedError()
             c.execute("INSERT INTO aclgroup_log (gid, user, note, start, end) VALUES(?, ?, ?, ?, ?)",
-                    (gid, user, note, t, None if duration == 0 else t + duration))
+                    (gid, user, note, t, end))
             lr = c.lastrowid
             if log:
                 c.execute("INSERT INTO block_log (type, operator, target, id, gid, date, duration, note) VALUES(1, ?, ?, ?, ?, ?, ?, ?)",

@@ -9,7 +9,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (68, 6)
+version = (68, 7)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -199,3 +199,4 @@ skin_config_css = {}
 skin_config_js = {}
 revert_available = {0, 1, 5}
 json_403 = {"status": '권한이 부족합니다.'}, 403
+max_utime = 32503647600 # 3000-01-01 00:00:00 UTC

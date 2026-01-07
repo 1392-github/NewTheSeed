@@ -347,6 +347,9 @@ with app.app_context():
         if db_version < (59, 0):
             # 차단내역 버그 수정
             c.execute("DELETE FROM block_log WHERE type = 4 AND target = -1")
+        if db_version < (68, 7):
+            c.execute("UPDATE acl SET expire = 32503647600 WHERE expire > 32503647600")
+            c.execute("UPDATE aclgroup_log SET end = 32503647600 WHERE end > 32503647600")
         c.execute("""update config
         set value = ?
         where name = 'version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
@@ -806,6 +809,9 @@ def acl(doc_name):
                 not isinstance(no, bool) or \
                 not isinstance(duration, int):
                     return tool.error_400("invalid_acl_condition")
+                end = None if duration == 0 else tool.get_utime() + duration
+                if end is not None and end > data.max_utime:
+                    return tool.error_400("maximum_time_exceed")
                 if condtype == "perm":
                     if no and cond == "member":
                         no = False
@@ -852,7 +858,7 @@ def acl(doc_name):
                     if ons is None: return tool.error_400(f"{json['ns']} 이름공간은 존재하지 않습니다!")
                 c.execute(f"""INSERT INTO {acl_t} ({id_col}, acltype, idx, condtype, value{"2" if ty2 else ""}, no, action, expire, otherns)
                                 SELECT ?1,?2,(SELECT COALESCE(MAX(idx), 0) + 1 FROM {acl_t} WHERE {id_col} = ?1 AND acltype = ?2),?3,?4,?5,?6,?7,?8""",
-                            (id, type2, condtype, cond, no, action, None if duration == 0 else tool.get_utime() + duration, ons[0] if action == "gotootherns" else None))
+                            (id, type2, condtype, cond, no, action, end, ons[0] if action == "gotootherns" else None))
                 if not nsacl: tool.record_history(docid, 4, tool.get_doc_data(docid), f'insert,{type2},{action},{"not:" if no else ""}{condtype}:{cond2 if condtype == "aclgroup" or condtype == "user" else cond}', None, tool.ipuser(), "", 0)
             elif opcode == "delete":
                 idx = json["index"]
@@ -1004,6 +1010,10 @@ def aclgroup():
                 return tool.error_400("aclgroup_already_exists")
             except exceptions.InvalidCIDRError:
                 return tool.error_400("invalid_cidr")
+            except exceptions.MaximumTimeExceedError:
+                return tool.error_400("maximum_time_exceed")
+            except ValueError:
+                return "", 400
         return tool.rt("aclgroup.html", title = "ACLGroup", groups = groups, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.check_aclgroup_flag(gid, "add_flags"), delete_perm = tool.check_aclgroup_flag(gid, "remove_flags"), record = (
             (x[0], x[1], x[2], tool.utime_to_str(x[3]), "영구" if x[4] is None else tool.utime_to_str(x[4]))
             for x in c.execute("SELECT id, (CASE WHEN ip IS NULL THEN (SELECT name FROM user WHERE id = user) ELSE ip END), note, start, end FROM aclgroup_log WHERE gid = (SELECT id FROM aclgroup WHERE name = ? AND deleted = 0)", (current,)).fetchall()
@@ -1891,6 +1901,10 @@ def api_aclgroup():
                 return {"status": "aclgroup_already_exists"}, 400
             except exceptions.InvalidCIDRError:
                 return {"status": "invalid_cidr"}, 400
+            except exceptions.MaximumTimeExceedError:
+                return {"status": "maximum_time_exceed"}, 400
+            except ValueError:
+                return {}, 400
         elif request.method == "DELETE":
             json = request.get_json()
             print(user)
