@@ -199,7 +199,11 @@ def user_name_to_id(name):
             return f[0]
 def id_to_user_name(id):
     with g.db.cursor() as c:
-        return c.execute("SELECT name FROM user WHERE id = ?", (id,)).fetchone()[0]
+        f = c.execute("SELECT name FROM user WHERE id = ?", (id,)).fetchone()
+        if f is None:
+            return None
+        else:
+            return f[0]
 def time_to_str(time, zero = "0초"):
     if time == 0:
         return zero

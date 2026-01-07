@@ -1917,6 +1917,44 @@ def api_aclgroup():
             except exceptions.ACLGroupElementNotExistsError:
                 return {"status": "aclgroup_not_found"}, 400
             return {"status": "success"}
+@app.route("/api/user_id_to_name")
+def api_user_id_to_name():
+    if "id" not in request.args:
+        return "", 400, {"Content-Type": "text/plain"}
+    try:
+        r = tool.id_to_user_name(int(request.args["id"]))
+    except ValueError:
+        return "", 400, {"Content-Type": "text/plain"}
+    if r is None:
+        return "", 404, {"Content-Type": "text/plain"}
+    return r, 200, {"Content-Type": "text/plain"}
+@app.route("/api/user_name_to_id")
+def api_user_name_to_id():
+    if "name" not in request.args:
+        return "", 400, {"Content-Type": "text/plain"}
+    r = tool.user_name_to_id(request.args["name"])
+    if r == -1:
+        return "-1", 404, {"Content-Type": "text/plain"}
+    return str(r), 200, {"Content-Type": "text/plain"}
+@app.route("/api/doc_name_to_id")
+def api_doc_name_to_id():
+    if "name" not in request.args:
+        return "", 400, {"Content-Type": "text/plain"}
+    r = tool.get_docid(*tool.split_ns(request.args["name"]))
+    if r == -1:
+        return "-1", 404, {"Content-Type": "text/plain"}
+    return str(r), 200, {"Content-Type": "text/plain"}
+@app.route("/api/doc_id_to_name")
+def api_doc_id_to_name():
+    if "id" not in request.args:
+        return "", 400, {"Content-Type": "text/plain"}
+    try:
+        r = tool.get_doc_full_name(int(request.args["id"]))
+    except ValueError:
+        return "", 400, {"Content-Type": "text/plain"}
+    if r is None:
+        return "", 404, {"Content-Type": "text/plain"}
+    return str(r), 200, {"Content-Type": "text/plain"}
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:
