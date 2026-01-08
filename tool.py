@@ -451,10 +451,12 @@ def get_docid(ns, name, create = False):
         else: return r[0]
 def record_history(docid, type, content, content2, content3, author, edit_comment, length, time = None):
     with g.db.cursor() as c:
+        rev = c.execute("SELECT history_seq FROM doc_name WHERE id = ?", (docid,)).fetchone()[0]
         c.execute("""INSERT INTO history (doc_id, rev, type, content, content2, content3, author, edit_comment, datetime, length, hide, hidecomm, troll)
-                SELECT ?1, (SELECT history_seq FROM doc_name WHERE id = ?1), ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, -1, -1""",
-                (docid, type, content, content2, content3, author, edit_comment, get_utime() if time is None else time, length))
+                SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, -1, -1""",
+                (docid, rev, type, content, content2, content3, author, edit_comment, get_utime() if time is None else time, length))
         c.execute("UPDATE doc_name SET history_seq = history_seq + 1 WHERE id = ?", (docid,))
+        return rev
 def render_acl(acl, type):
     # index, condtype, value, value2, not, action, expire, otherns 순으로 입력
     r = []
@@ -947,7 +949,7 @@ def edit(docid, content, edit_comment = "", user = None, check_acl = True, histo
     with g.db.cursor() as c:
         c.execute("UPDATE data SET value = ? WHERE id = ?", (content, docid))
     if history:
-        record_history(docid, 0, content, None, None, user, edit_comment, len(content) - len(old))
+        return record_history(docid, 0, content, None, None, user, edit_comment, len(content) - len(old))
 def has_document(docid):
     with g.db.cursor() as c:
         return bool(c.execute("SELECT EXISTS (SELECT 1 FROM doc_name WHERE id = ?)", (docid,)).fetchone()[0])
@@ -956,11 +958,11 @@ def edit_or_new(ns, name, content, edit_comment = "", user = None, check_acl = T
         user = ipuser()
     with g.db.cursor() as c:
         if c.execute("SELECT EXISTS (SELECT 1 FROM doc_name WHERE namespace = ? AND name = ?)", (ns, name)).fetchone()[0]:
-            edit(get_docid(ns, name), content, edit_comment, user, check_acl, history, user)
+            return edit(get_docid(ns, name), content, edit_comment, user, check_acl, history, user)
         else:
             docid = get_docid(ns, name, True)
             edit(docid, content, edit_comment, user, check_acl, False)
-            record_history(docid, 1, content, None, None, user, edit_comment, len(content))
+            return record_history(docid, 1, content, None, None, user, edit_comment, len(content))
 def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history = True):
     if user is None:
         user = ipuser()
@@ -982,7 +984,7 @@ def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history
             old = len(get_doc_data(docid))
         edit(docid, content, edit_comment, user, False, False)
         if history:
-            record_history(docid, 5, content, content2 if type == 5 else str(rev), None, user, edit_comment, len(content) - old)
+            return record_history(docid, 5, content, content2 if type == 5 else str(rev), None, user, edit_comment, len(content) - old)
 def check_api_token():
     if request.authorization is None: return None
     if request.authorization.type != "bearer": return None

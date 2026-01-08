@@ -1846,12 +1846,12 @@ def api_edit(document):
             return {"status": acl[1]}, 403
         try:
             if docid == -1:
-                tool.edit_or_new(ns, name, json["text"], json.get("log", ""), user)
+                rev = tool.edit_or_new(ns, name, json["text"], json.get("log", ""), user)
             else:
-                tool.edit(docid, json["text"], json.get("log", ""), user)
+                rev = tool.edit(docid, json["text"], json.get("log", ""), user)
         except exceptions.ACLDeniedError as e:
             return {"status": str(e)}, 403
-        return {"status": "success"}
+        return {"status": "success", "rev": rev}
     acl = tool.check_document_acl(docid, ns, "read", name, user)
     if acl[0] == 0:
         return {"status": acl[1]}, 403
