@@ -1253,8 +1253,8 @@ def render_thread(slug):
             return "", 403
         html, js = tool.render_thread(slug)
         return {"html": html, "js": js}"""
-@app.route("/api/thread_comment/<int:slug>/<int:no>/<int:type1>")
-def api_thread_comment(slug, no, type1):
+@app.route("/api/thread_comment_internal/<int:slug>/<int:no>/<int:type1>")
+def api_thread_comment_internal(slug, no, type1):
     with g.db.cursor() as c:
         ns, name, docid = c.execute("SELECT namespace, name, doc_id FROM discuss JOIN doc_name ON (doc_id = id) WHERE slug = ?", (slug,)).fetchone()
         acl = tool.check_document_acl(docid, ns, "read", name)
@@ -1973,6 +1973,28 @@ def api_recent_discuss():
     if logtype == "closed_thread": status = "close"
     with g.db.cursor() as c:
         return [{"slug": x[0], "doc": x[1], "topic": x[2], "author": x[3], "last": x[4]} for x in c.execute("SELECT D.slug, D.doc_id, D.topic, C.author, D.last FROM discuss D JOIN thread_comment C ON (D.slug = C.slug AND D.seq - 1 = C.no) WHERE D.status = ? ORDER BY D.last {0}, C.no {0} LIMIT ?".format("ASC" if old else "DESC"), (status, limit)).fetchall()]
+@app.route("/api/thread_comment")
+def api_thread_comment():
+    user = tool.check_api_token()
+    if user is None:
+        return data.json_403
+    slug = request.args.get("slug", type=int)
+    if slug is None:
+        return {}, 400
+    no = request.args.get("no", 1, type=int)
+    with g.db.cursor() as c:
+        f = c.execute("SELECT namespace, name, doc_id FROM discuss JOIN doc_name ON (doc_id = id) WHERE slug = ?", (slug,)).fetchone()
+        if f is None:
+            return {"status": "thread_not_found"}, 404
+        ns, name, docid = f
+        acl = tool.check_document_acl(docid, ns, "read", name, user)
+        if acl[0] == 0:
+            return {"status": acl[1]}, 403
+        f = c.execute("SELECT type, text, text2, author, time, blind, blind_operator, admin FROM thread_comment WHERE slug = ? AND no = ?", (slug, no)).fetchone()
+        if f is None:
+            return {"status": "thread_comment_not_found"}, 404
+        blind = f[5] == 2 and not tool.has_perm("hide_thread_comment", user)
+        return {"status": "blind" if blind else "success", "type": -1 if blind else f[0], "text": None if blind else f[1], "text2": None if blind else f[2], "author": f[3], "time": f[4], "blind": f[5], "blind_operator": f[6], "admin": f[7]}
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:

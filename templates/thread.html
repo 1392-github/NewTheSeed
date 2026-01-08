@@ -249,7 +249,7 @@
     var show_timeout = {};
     function load(t, ty = 0) {
         var id = Number(t.dataset.no);
-        fetch(`/api/thread_comment/{{slug}}/${id}/${ty}`).then(r => {
+        fetch(`/api/thread_comment_internal/{{slug}}/${id}/${ty}`).then(r => {
             if (r.ok) return r.json()
             else if (r.status == 400) return r.text().then(t => {throw new Error(t)}) 
             else throw new Error(`Request failed with status code ${r.status}`)
