@@ -1874,7 +1874,7 @@ def api_aclgroup():
                 return data.json_403
             r = []
             for i in c.execute("SELECT id, ip, user, note, start, end FROM aclgroup_log WHERE gid = ?", (gid,)).fetchall():
-                r.append([i[0], "user" if i[1] is None else "ip", i[2] if i[1] is None else i[1], i[3], i[4], i[5]])
+                r.append({"id": i[0], "mode": "user" if i[1] is None else "ip", "user": i[2] if i[1] is None else i[1], "note": i[3], "start": i[4], "end": i[5]})
             return {"status": "success", "result": r}
         elif request.method == "POST":
             json = request.get_json()
