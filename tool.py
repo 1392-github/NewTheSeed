@@ -330,7 +330,7 @@ def has_perm(perm, user = None, basedoc = None, docname = None):
 def captcha(action):
     mode = get_config("captcha_mode")
     if mode == "0": return True
-    if has_perm("skip_captcha") or has_perm("no_force_captcha"): return True
+    if session.get("api", False) or has_perm("skip_captcha") or has_perm("no_force_captcha"): return True
     data.captcha_bypass_cnt.setdefault(getip(), 0)
     if action != "test" and data.captcha_bypass_cnt[getip()] > 0:
         data.captcha_bypass_cnt[getip()] -= 1
@@ -384,7 +384,7 @@ def reload_config(app):
 def is_required_captcha(action):
     if get_config("captcha_mode") == "0": return False
     if action == "test": return True
-    if has_perm("skip_captcha") or has_perm("no_force_captcha"): return False
+    if session.get("api", False) or has_perm("skip_captcha") or has_perm("no_force_captcha"): return False
     req = False
     if get_config("captcha_required_type") == "black": req = action not in data.captcha_required
     else: req = action in data.captcha_required

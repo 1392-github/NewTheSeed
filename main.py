@@ -1995,6 +1995,14 @@ def api_thread_comment():
             return {"status": "thread_comment_not_found"}, 404
         blind = f[5] == 2 and not tool.has_perm("hide_thread_comment", user)
         return {"status": "blind" if blind else "success", "type": -1 if blind else f[0], "text": None if blind else f[1], "text2": None if blind else f[2], "author": f[3], "time": f[4], "blind": f[5], "blind_operator": f[6], "admin": f[7]}
+@app.route("/api/login")
+def api_login():
+    user = tool.check_api_token()
+    if user is None:
+        return data.json_403
+    session["id"] = user
+    session["api"] = True
+    return {"status": "success"}
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:
