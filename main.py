@@ -1014,7 +1014,7 @@ def aclgroup():
                 return tool.error_400("maximum_time_exceed")
             except ValueError:
                 return "", 400
-        return tool.rt("aclgroup.html", title = "ACLGroup", groups = groups, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.check_aclgroup_flag(gid, "add_flags"), delete_perm = tool.check_aclgroup_flag(gid, "remove_flags"), record = (
+        return tool.rt("aclgroup.html", title = "ACLGroup", groups = groups, gid = gid, current = current, newgroup_perm = tool.has_perm("aclgroup"), add_perm = tool.check_aclgroup_flag(gid, "add_flags"), delete_perm = tool.check_aclgroup_flag(gid, "remove_flags"), record = (
             (x[0], x[1], x[2], tool.utime_to_str(x[3]), "영구" if x[4] is None else tool.utime_to_str(x[4]))
             for x in c.execute("SELECT id, (CASE WHEN ip IS NULL THEN (SELECT name FROM user WHERE id = user) ELSE ip END), note, start, end FROM aclgroup_log WHERE gid = (SELECT id FROM aclgroup WHERE name = ? AND deleted = 0)", (current,)).fetchall()
         ))
@@ -1099,7 +1099,7 @@ def aclgroup_manage():
             c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'show_user_document'", ("1" if "show_user_document" in request.form else "0", gid))
             c.execute("UPDATE aclgroup_config SET value = ? WHERE gid = ? AND name = 'self_removable'", ("1" if "self_removable" in request.form else "0", gid))
             return redirect(url_for("aclgroup", group = request.args["group"]))
-        return tool.rt("aclgroup_manage.html", title="ACLGroup 설정", group = request.args["group"], gid = gid,
+        return tool.rt("aclgroup_manage.html", title="ACLGroup 설정", group = request.args["group"],
                        config = dict(c.execute("SELECT name, value FROM aclgroup_config WHERE gid = ?", (gid,)).fetchall()))
 @app.route("/api/hasuser/<name>")
 def api_hasuser(name):

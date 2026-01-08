@@ -7,9 +7,6 @@
 {% block content %}
 <h2>{{ group }}</h2>
 <form method="post">
-    {% if has_perm("config") %}
-    Index: {{gid}}<br>
-    {% endif %}
     <label>withdraw_period(미구현)<br><input type="number" min="-1" name="withdraw_period" value="{{config['withdraw_period']}}"></label><br>
     <label>
         signup_policy(미구현)<br>
