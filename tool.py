@@ -600,9 +600,12 @@ def check_document_acl(docid, ns, type, name, user = None, showmsg = True):
         return (1, None) if showmsg else 1
 def nvl(a, b):
     return b if a is None else a
-def get_doc_data(docid):
+def get_doc_data(docid, rev = None):
     with g.db.cursor() as c:
-        r = c.execute("SELECT value FROM data WHERE id = ?", (docid,)).fetchone()
+        if rev is None:
+            r = c.execute("SELECT value FROM data WHERE id = ?", (docid,)).fetchone()
+        else:
+            r = c.execute("SELECT content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
     if r is None:
         return None
     return r[0]

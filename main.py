@@ -1855,7 +1855,7 @@ def api_edit(document):
     acl = tool.check_document_acl(docid, ns, "read", name, user)
     if acl[0] == 0:
         return {"status": acl[1]}, 403
-    doc_data = tool.get_doc_data(docid)
+    doc_data = tool.get_doc_data(docid, request.args.get("rev", None, int))
     return {
         "text": doc_data,
         "exists": doc_data is not None
