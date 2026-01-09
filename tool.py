@@ -949,7 +949,7 @@ def edit(docid, content, edit_comment = "", user = None, check_acl = True, histo
     with g.db.cursor() as c:
         c.execute("UPDATE data SET value = ? WHERE id = ?", (content, docid))
     if history:
-        return record_history(docid, 0, content, None, None, user, edit_comment, len(content) - len(old))
+        return record_history(docid, 0, content, None, None, user, edit_comment, len(content) if old is None else (len(content) - len(old)))
 def has_document(docid):
     with g.db.cursor() as c:
         return bool(c.execute("SELECT EXISTS (SELECT 1 FROM doc_name WHERE id = ?)", (docid,)).fetchone()[0])
@@ -958,7 +958,7 @@ def edit_or_new(ns, name, content, edit_comment = "", user = None, check_acl = T
         user = ipuser()
     with g.db.cursor() as c:
         if c.execute("SELECT EXISTS (SELECT 1 FROM doc_name WHERE namespace = ? AND name = ?)", (ns, name)).fetchone()[0]:
-            return edit(get_docid(ns, name), content, edit_comment, user, check_acl, history, user)
+            return edit(get_docid(ns, name), content, edit_comment, user, check_acl, history)
         else:
             docid = get_docid(ns, name, True)
             edit(docid, content, edit_comment, user, check_acl, False)
@@ -981,10 +981,10 @@ def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history
         if type not in data.revert_available:
             raise exceptions.CannotRevertRevisionError(rev)
         if history:
-            old = len(get_doc_data(docid))
+            old = get_doc_data(docid)
         edit(docid, content, edit_comment, user, False, False)
         if history:
-            return record_history(docid, 5, content, content2 if type == 5 else str(rev), None, user, edit_comment, len(content) - old)
+            return record_history(docid, 5, content, content2 if type == 5 else str(rev), None, user, edit_comment, len(content) if old is None else (len(content) - len(old)))
 def check_api_token():
     if request.authorization is None: return None
     if request.authorization.type != "bearer": return None
