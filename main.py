@@ -1026,6 +1026,8 @@ def aclgroup_delete():
             tool.aclgroup_delete(id, request.form["note"])
         except exceptions.ACLGroupElementNotExistsError:
             return tool.error_400("aclgroup_not_found")
+        except exceptions.NoteRequiredError:
+            return tool.error_400("note의 값은 필수입니다.")
         except exceptions.ACLGroupPermissionDeniedError:
             return '', 403
         return '', 204
@@ -1920,6 +1922,8 @@ def api_aclgroup():
                 return data.json_403
             except exceptions.ACLGroupElementNotExistsError:
                 return {"status": "aclgroup_not_found"}, 400
+            except exceptions.NoteRequiredError:
+                return {"status": "note의 값은 필수입니다."}, 400
             return {"status": "success"}
 @app.route("/api/user_id_to_name")
 def api_user_id_to_name():

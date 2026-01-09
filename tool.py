@@ -755,7 +755,7 @@ def aclgroup_delete(id, note = "", operator = None, log = True, note_required_ch
         if flags_check and not check_aclgroup_flag(gid, "remove_flags", operator):
             raise exceptions.ACLGroupPermissionDeniedError()
         if note_required_check and get_config("aclgroup_note_required") == "1" and note == "":
-            return error_400("note의 값은 필수입니다.")
+            raise exceptions.NoteRequiredError()
         if log:
             c.execute("INSERT INTO block_log (type, operator, target_ip, target, id, gid, date, note) SELECT 2, ?1, ip, user, ?2, gid, ?3, ?4 FROM aclgroup_log WHERE id = ?2",
                 (ipuser() if operator is None else operator, id, get_utime(), note))
