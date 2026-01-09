@@ -1903,6 +1903,8 @@ def api_aclgroup():
                 return {"status": "invalid_cidr"}, 400
             except exceptions.MaximumTimeExceedError:
                 return {"status": "maximum_time_exceed"}, 400
+            except exceptions.InvalidUserError:
+                return {"status": "invalid_user"}, 400
             except ValueError:
                 return {}, 400
         elif request.method == "DELETE":

@@ -42,3 +42,4 @@ class ACLGroupElementNotExistsError(Exception):
     def __str__(self):
         return f"ACLGroup Element #{self.id} does not exist"
 class MaximumTimeExceedError(Exception): pass
+class InvalidUserError(Exception): pass

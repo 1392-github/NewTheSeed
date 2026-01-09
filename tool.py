@@ -238,6 +238,9 @@ def has_user(name, ip_allow = False):
             return c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE name = ?)", (name,)).fetchone()[0] == 1
         else:
             return c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE name = ? AND isip = 0)", (name,)).fetchone()[0] == 1
+def has_user_id(id):
+    with g.db.cursor() as c:
+        return bool(c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE name = ?)", (id,)).fetchone()[0])
 def ip_in_cidr(ip_str, cidr_str):
     return ipaddress.ip_address(ip_str) in ipaddress.ip_network(cidr_str, strict=False)
 def is_valid_cidr(cidr_str):
@@ -721,6 +724,8 @@ def aclgroup_insert(gid, mode, user, note = "", duration = 0, operator = None, l
                 c.execute("INSERT INTO block_log (type, operator, target_ip, id, gid, date, duration, note) VALUES(1, ?, ?, ?, ?, ?, ?, ?)",
                         (operator, ip, lr, gid, t, duration, note))
         elif mode == "user":
+            if not has_user_id(user):
+                raise exceptions.InvalidUserError()
             if isip(user):
                 return aclgroup_insert(gid, "ip", id_to_user_name(user), note, duration, operator, log, note_required_check, max_duration_check, max_cidr_check, flags_check)
             if max_duration_check:
