@@ -96,7 +96,7 @@ def welcome():
         elif id == "sles":
             if major >= 15: os_good = True
     python = sys.version_info
-    python_good = python >= (3, 9)
+    python_good = python >= (3, 10)
     return render_template("welcome.html", version = data.version, os = os_name, os_good = os_good, python = f"Python {python.major}.{python.minor}.{python.micro}",
                            python_good = python_good, cnt = os_good + python_good)
 @app.route("/1", methods = ["GET", "POST"])

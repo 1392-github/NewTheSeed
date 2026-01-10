@@ -27,8 +27,8 @@ import exceptions
 import tool
 from render import render_set
 
-if sys.version_info < (3, 9):
-    if input("경고! NewTheSeed는 Python 3.9 미만의 Python 버전은 지원하지 않으며, 이로 인해 발생하는 버그(보안취약점 포함)는 수정되지 않습니다. 계속하려면 y를 입력해주세요. -> ") != "y":
+if sys.version_info < (3, 10):
+    if input("경고! NewTheSeed는 Python 3.10 미만의 Python 버전은 지원하지 않으며, 이로 인해 발생하는 버그(보안취약점 포함)는 수정되지 않습니다. 계속하려면 y를 입력해주세요. -> ") != "y":
         sys.exit()
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
