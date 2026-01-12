@@ -1,19 +1,20 @@
-from random import randint
+import secrets
 import os
 import sys
 import platform
 import hashlib
 
 from flask import Flask, request, redirect, abort, Response, url_for, render_template, g
-import distro
+#import distro
 
 import tool
 import data
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+os.environ["GIT_TERMINAL_PROMPT"]="0"
 print("Installing PIP Package")
 #os.system("pip install -r requirements.txt")
-install_pin = str(randint(0, 999999999)).zfill(9)
+#install_pin = str(secrets.randbelow(1000000000)).zfill(9)
 install_pin = "000000000"
 app = Flask(__name__, template_folder="install_templates")
 print(f"Install PIN : {install_pin}")
@@ -26,33 +27,33 @@ namespace_name = [
     ("filetrash", "파일휴지통"),
     ("wikisec", "위키운영"),
 ]
-#@app.before_request
-def check_pin():
-    if request.endpoint == "input_pin": return
-    if request.cookies.get("pin", "") != install_pin:
-        return render_template("password.html"), 403
-@app.before_request
-def connect():
-    g.db = tool.getdb()
-#@app.before_request
-def install_crash_error():
-    if request.endpoint == "restart": return
-    if install_status == 1: return render_template("install_crash_error.html")
-    if install_status == 2: return render_template("reinstall.html")
 if os.path.exists("INSTALL_STATUS"):
     with open("INSTALL_STATUS", "r", encoding="utf-8") as f:
         install_status = int(f.read()[-1])
 else:
     install_status = 0
-    with open("INSTALL_STATUS", "w", encoding="utf-8") as f:
-        f.write(data.install_status.format("1"))
+@app.before_request
+def before_request():
+    global install_status
+    if request.endpoint != "input_pin":
+        if request.cookies.get("pin", "") != install_pin:
+            return render_template("password.html"), 403
+        if request.endpoint != "restart":
+            if install_status == 1: return render_template("install_crash_error.html")
+            if install_status == 2: return render_template("reinstall.html")
+            else:
+                with open("INSTALL_STATUS", "w", encoding="utf-8") as f:
+                    f.write(data.install_status + "1")
+    g.db = tool.getdb()
 tool.run_sqlscript("db_stu.sql")
 @app.teardown_request
 def closedb(e):
-    g.db.close()
+    if hasattr(g, "db"):
+        g.db.close()
 @app.route("/input_pin", methods = ["POST"])
 def input_pin():
     resp = redirect(url_for("welcome"))
+    request.cookies["admin"] == "true"
     resp.set_cookie("pin", request.form["pin"], httponly=True)
     return resp
 @app.route("/", methods = ["GET", "POST"])
@@ -65,12 +66,13 @@ def restart():
     with g.db.cursor() as c:
         for i in c.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall():
             c.execute(f"DELETE FROM {i[0]}")
-        c.execute("INSERT INTO config (name, value) VALUES('during_install', 1)")
     install_status = 0
+    with open("INSTALL_STATUS", "w", encoding="utf-8") as f:
+        f.write(data.install_status + "1")
     return redirect(url_for("welcome"))
 @app.route("/0")
 def welcome():
-    system = platform.system()
+    """system = platform.system()
     release = platform.release()
     os_name = f"{system} {release}"
     os_good = False
@@ -94,18 +96,17 @@ def welcome():
         elif id == "centos":
             if major >= 9: os_good = True
         elif id == "sles":
-            if major >= 15: os_good = True
+            if major >= 15: os_good = True"""
     python = sys.version_info
     python_good = python >= (3, 10)
-    return render_template("welcome.html", version = data.version, os = os_name, os_good = os_good, python = f"Python {python.major}.{python.minor}.{python.micro}",
-                           python_good = python_good, cnt = os_good + python_good)
+    return render_template("welcome.html", version = data.version, python = f"Python {python.major}.{python.minor}.{python.micro}",
+                           python_good = python_good)
 @app.route("/1", methods = ["GET", "POST"])
 def wiki_name_set():
     if request.method == "POST":
         global wiki_name
         wiki_name = request.form["name"]
         data.default_config["wiki_name"] = wiki_name
-        data.default_config["brand_color"] = request.form["color"]
         if request.form["license_type"] == "ccl":
             license_name = "CC BY"
             license_link = "https://creativecommons.org/licenses/by"
@@ -157,8 +158,8 @@ def create_owner():
         if request.form["pw"] != request.form["pw2"]:
             return render_template("create_owner.html", error = True)
         with g.db.cursor() as c:
-            c.execute("INSERT INTO user (name, password, isip) VALUES(?,?,0)", (request.form["id"], hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest()))
-            c.execute("INSERT INTO perm (user, perm) VALUES(?, 'developer')", (c.lastrowid,))
+            id = tool.signup(request.form["id"], request.form["pw"])
+            c.execute("INSERT INTO perm (user, perm) VALUES(?, 'developer')", (id,))
         return redirect(url_for("create_namespace"))
     return render_template("create_owner.html")
 @app.route("/3", methods = ["GET", "POST"])
@@ -182,7 +183,41 @@ def create_namespace():
     return render_template("create_namespace.html", wikiname = wiki_name)
 @app.route("/4", methods = ["GET", "POST"])
 def aclgroup_nsacl():
-    return render_template("aclgroup_nsacl.html")
+    if request.method == "POST":
+        global aclgroup
+        aclgroup = [0,0,0,0,0] # 차단된 사용자, 로그인 허용 차단, 편집요청 차단, 경고, 인증된 사용자
+        with g.db.cursor() as c:
+            # ACLGroup 생성
+            for i,k,v in (
+                (0, "blocked_user", "차단된 사용자"),
+                (1, "login_allow_block", "로그인 허용 차단"),
+                (2, "edit_request_block", "편집요청 차단"),
+                (3, "warning", "경고"),
+                (4, "verified", "인증된 사용자"),
+            ):
+                if k not in request.form: continue
+                c.execute("INSERT INTO aclgroup (name) VALUES(?)", (v,))
+                id = c.lastrowid
+                c.executemany("INSERT INTO aclgroup_config (gid, name, value) VALUES(?,?,?)",
+                            ((id, x[0], x[1]) for x in data.default_aclgroup_config))
+                aclgroup[i] = id
+            # condtype, value, value2, action
+            # 읽기 acl
+            read_nsacl = [("aclgroup", None, aclgroup[4], "allow") if "block_unverified_read" in request.form else ("perm", "any", None, "allow")]
+            """
+                <label><input type="checkbox" name="allow_editreq_normal_block" checked> 일반 차단 시에도 편집 요청 허용</label><br>
+                <label><input type="checkbox" name="allow_editreq_loginallow_block" checked> 로그인 허용 차단 시에도 편집 요청 허용</label><br>
+                <label><input type="checkbox" name="allow_userdoc_acl"> 사용자 문서의 ACL을 본인이 조정할 수 있도록 허용</label><br>
+                <label><input type="checkbox" name="only_allow_login"> 모든 IP에서 로그인 상태에서만 활동 가능</label><br>
+                <label><input type="checkbox" name="block_deleteuser_read"{% if disable_block_deleteuser_read %} disabled{% endif %}> 삭제된사용자 이름공간을 관리자만 읽기 가능</label><br>
+                <label><input type="checkbox" name="block_blocked_read"> 일반 차단 시 읽기 차단</label><br>
+                <label><input type="checkbox" name="block_login_allow_blocked_read"> 로그인 허용 차단 시 비로그인 읽기 차단</label><br>
+                <label><input type="checkbox" name="allow_editreq_unauth" disabled> 미인증 시에도 편집 요청 허용</label><br>
+                <label><input type="checkbox" name="block_unverified_read" disabled> 미인증 시 읽기 차단</label><br><br>
+            """
+            if "block_blocked_read" in request.form:
+                read_nsacl.insert(0, ("aclgroup", None))
+    return render_template("aclgroup_nsacl.html", disable_block_deleteuser_read = namespace[0] == 0)
 if __name__ == "__main__":
     @app.before_request
     def clear_template_cache():

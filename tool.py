@@ -240,7 +240,7 @@ def has_user(name, ip_allow = False):
             return c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE name = ? AND isip = 0)", (name,)).fetchone()[0] == 1
 def has_user_id(id):
     with g.db.cursor() as c:
-        return bool(c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE name = ?)", (id,)).fetchone()[0])
+        return bool(c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ?)", (id,)).fetchone()[0])
 def ip_in_cidr(ip_str, cidr_str):
     return ipaddress.ip_address(ip_str) in ipaddress.ip_network(cidr_str, strict=False)
 def is_valid_cidr(cidr_str):
@@ -877,7 +877,7 @@ def email(to, subject, text):
         smtp.send_message(msg)
 def signup(name, password = None, userdoc = True):
     with g.db.cursor() as c:
-        c.execute('''INSERT INTO user (name, password, isip) VALUES (?,?,0)''', (name, hashlib.sha3_512(password.encode("utf-8")).hexdigest()))
+        c.execute("INSERT INTO user (name, password, isip) VALUES (?,?,0)", (name, hashlib.sha3_512(password.encode("utf-8")).hexdigest()))
         u = c.lastrowid
         time = get_utime()
         if userdoc:

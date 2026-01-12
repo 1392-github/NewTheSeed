@@ -9,7 +9,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (74, 1)
+version = (75, 0)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -166,7 +166,7 @@ allow_file_extension = {"jpg", "png", "gif", "webp", "bmp", "svg", "webp", "ico"
 file_namespace = [3]
 install_status = """This file indicates the progress/completion of the installation in the NewTheSeed installer.
 If the last character is "1", the installation is in progress, and if it's "2", the installation is complete.
-{0}"""
+"""
 batch_blind_regex = re.compile(r"(\d+)[~-](\d+)")
 default_aclgroup_config = [
     ("withdraw_period", "0"),

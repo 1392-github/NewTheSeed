@@ -6,19 +6,66 @@
 
 {% block content %}
 <h1>ACLGroup 및 이름공간 ACL 생성</h1>
-<form method="post">
+<form method="post" name="form">
     <h2>ACLGroup</h2>
     다음의 ACLGroup을 생성할 수 있습니다.<br>
-    <label><input type="checkbox" name="blocked_user" checked> 차단된 사용자</label><br>
-    <label><input type="checkbox" name="login_allow_block" checked> 로그인 허용 차단</label><br>
-    <label><input type="checkbox" name="edit_request_block" checked> 편집요청 차단</label><br>
-    <label><input type="checkbox" name="warning" checked> 경고</label><br>
+    <label title="IP 또는 사용자를 차단할 때 사용합니다."><input type="checkbox" name="blocked_user" checked> 차단된 사용자</label><br>
+    <label title="특정한 IP 또는 IP 대역을 로그인 상태에서만 활동 가능하게 할 때 사용합니다."><input type="checkbox" name="login_allow_block" checked> 로그인 허용 차단</label><br>
+    <label title="후술한 차단 시 편집 요청 허용을 활성화한 경우 편집 요청을 명시적으로 차단할 때 사용합니다."><input type="checkbox" name="edit_request_block" checked> 편집요청 차단</label><br>
+    <label title="경고, 안내 등으로 사용되며 차단과 다르게 직접 해제가 가능합니다."><input type="checkbox" name="warning" checked> 경고</label><br>
+    <label title="인증제(승인제) 위키에 사용되며 사용 시 관리자에 의해 인증된 경우에만 편집이 가능합니다."><input type="checkbox" name="verified"> 인증된 사용자</label><br>
     <h2>이름공간 ACL</h2>
-    <label><input type="checkbox" name="allow_editreq_normal_block" checked> 일반 차단 시 편집 요청 허용</label><br>
-    <label><input type="checkbox" name="allow_editreq_loginallow_block" checked> 로그인 허용 차단 시 편집 요청 허용</label><br>
+    <label><input type="checkbox" name="allow_editreq_normal_block" checked> 일반 차단 시에도 편집 요청 허용</label><br>
+    <label><input type="checkbox" name="allow_editreq_loginallow_block" checked> 로그인 허용 차단 시에도 편집 요청 허용</label><br>
+    <label><input type="checkbox" name="allow_userdoc_acl"> 사용자 문서의 ACL을 본인이 조정할 수 있도록 허용</label><br>
+    <label><input type="checkbox" name="only_allow_login"> 모든 IP에서 로그인 상태에서만 활동(편집 요청과 읽기 제외) 가능</label><br>
+    <label><input type="checkbox" name="only_allow_editreq_login"> 모든 IP에서 로그인 상태에서만 편집 요청 가능</label><br>
+    <label><input type="checkbox" name="block_deleteuser_read"{% if disable_block_deleteuser_read %} disabled{% endif %}> 삭제된사용자 이름공간을 관리자만 읽기 가능</label><br>
+    <label><input type="checkbox" name="block_blocked_read"> 일반 차단 시 읽기 차단</label><br>
+    <label><input type="checkbox" name="block_login_allow_blocked_read"> 로그인 허용 차단 시 비로그인 읽기 차단</label><br>
+    <label><input type="checkbox" name="allow_editreq_unauth" disabled> 미인증 시에도 편집 요청 허용</label><br>
+    <label><input type="checkbox" name="block_unverified_read" disabled> 미인증 시 읽기 차단</label><br><br>
+    <input type="submit" value="다음" class="ok">
 </form>
 {% endblock %}
 
 {% block js %}
-
+<script>
+    form.blocked_user.addEventListener("change", function () {
+        if (this.checked) {
+            form.allow_editreq_normal_block.disabled = false;
+            form.block_blocked_read.disabled = false;
+        }
+        else {
+            form.allow_editreq_normal_block.disabled = true;
+            form.allow_editreq_normal_block.checked = false;
+            form.block_blocked_read.disabled = true;
+            form.block_blocked_read.checked = false;
+        }
+    })
+    form.login_allow_block.addEventListener("change", function () {
+        if (this.checked) {
+            form.allow_editreq_loginallow_block.disabled = false;
+            form.block_login_allow_blocked_read.disabled = false;
+        }
+        else {
+            form.allow_editreq_loginallow_block.disabled = true;
+            form.allow_editreq_loginallow_block.checked = false;
+            form.block_login_allow_blocked_read.disabled = true;
+            form.block_login_allow_blocked_read.checked = false;
+        }
+    })
+    form.verified.addEventListener("change", function () {
+        if (this.checked) {
+            form.allow_editreq_unauth.disabled = false;
+            form.block_unverified_read.disabled = false;
+        }
+        else {
+            form.allow_editreq_unauth.disabled = true;
+            form.allow_editreq_unauth.checked = false;
+            form.block_unverified_read.disabled = true;
+            form.block_unverified_read.checked = false;
+        }
+    })
+</script>
 {% endblock %}
