@@ -1145,12 +1145,12 @@ def grant():
         else:
             user = request.args.get("username", "")
             if user == "":
-                return tool.rt("grant.html", title="권한 부여", user = "")
+                return tool.rt("grant.html", title="권한 부여", user2 = "")
             else:
                 if not tool.has_user(user):
-                    return tool.rt("grant.html", title="권한 부여", user = user, error = 1)
+                    return tool.rt("grant.html", title="권한 부여", user2 = user, error = 1)
                 else:
-                    return tool.rt("grant.html", title="권한 부여", user = user, grantable = data.grantable, validuser = True, ext_note = tool.get_config("ext_note") == "1",
+                    return tool.rt("grant.html", title="권한 부여", user2 = user, grantable = data.grantable, validuser = True, ext_note = tool.get_config("ext_note") == "1",
                             perm = set(x[0] for x in c.execute(f"SELECT perm FROM perm WHERE user = ? AND perm IN ({','.join('?' * len(data.grantable))})", [tool.user_name_to_id(user)] + data.grantable).fetchall()))
 @app.route("/admin/captcha_test", methods = ["GET", "POST"])
 def captcha_test():
