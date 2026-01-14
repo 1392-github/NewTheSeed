@@ -9,7 +9,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (75, 2)
+version = (75, 3)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -200,3 +200,10 @@ skin_config_js = {}
 revert_available = {0, 1, 5}
 json_403 = {"status": '권한이 부족합니다.'}, 403
 max_utime = 32503647600 # 3000-01-01 00:00:00 UTC
+permissions = ["developer", "nsacl", "admin", "config", "delete_thread", "aclgroup", "hideip", "aclgroup_hidelog", "no_force_captcha",
+               "skip_captcha", "update_thread_document", "update_thread_status", "update_thread_topic", "weak_hide_thread_comment",
+               "hide_thread_comment", "pin_thread_comment", "bypass_thread_status", "grant", "login_history", "api_access", "hide_document_history_log",
+               "hide_revision", "mark_troll_revision", "batch_revert", "manage_account", "bypass_resizing", "bypass_image_size_limit"]
+permissions_order = {}
+for i,v in enumerate(permissions):
+    permissions_order[v] = i

@@ -1636,10 +1636,12 @@ def mypage():
     if not tool.is_login(): return redirect("/")
     with g.db.cursor() as c:
         user = tool.ipuser()
+        l = len(data.permissions)
         return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user), use_email = tool.get_config("email_verification_level") != "0",
                        email = tool.get_user_config(user, "email", "(미설정)"), change_name = tool.get_config("change_name_enable") == "1",
                        skins = data.skins, current_skin = tool.get_user_config(user, "skin"),
-                       perm = ", ".join(x[0] for x in c.execute("SELECT perm FROM perm WHERE user = ?", (user,)).fetchall()))
+                       perm = ", ".join(sorted((x[0] for x in c.execute("SELECT perm FROM perm WHERE user = ?", (user,)).fetchall()),
+                                               key = lambda x: data.permissions_order.get(x, l))))
 @app.route("/member/change_password", methods = ["GET", "POST"])
 def change_password():
     if not tool.is_login(): return redirect("/")
