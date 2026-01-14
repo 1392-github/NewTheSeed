@@ -216,7 +216,8 @@ def aclgroup_nsacl():
                 <label><input type="checkbox" name="block_unverified_read" disabled> 미인증 시 읽기 차단</label><br><br>
             """
             if "block_blocked_read" in request.form:
-                read_nsacl.insert(0, ("aclgroup", None))
+                read_nsacl.insert(0, ("aclgroup", None, aclgroup[0], "deny"))
+            
     return render_template("aclgroup_nsacl.html", disable_block_deleteuser_read = namespace[0] == 0)
 if __name__ == "__main__":
     @app.before_request

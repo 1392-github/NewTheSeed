@@ -1967,12 +1967,18 @@ def api_doc_id_to_name():
 def api_recent_changes():
     type = request.args.get("type", -1, type=int)
     limit = request.args.get("limit", 10, type=int)
+    time = request.args.get("time", None, type=int)
     with g.db.cursor() as c:
-        return [{"doc": x[0], "rev": x[1], "type": x[2], "content2": x[3], "content3": x[4], "author": x[5], "log": x[6], "time": x[7], "length": x[8]} for x in c.execute(f"SELECT doc_id, rev, type, content2, content3, author, edit_comment, datetime, length FROM history{'' if type == -1 else ' WHERE type = ?'} ORDER BY datetime DESC LIMIT ?", (limit,) if type == -1 else (type, limit)).fetchall()]
+        if time is None:
+            c.execute(f"SELECT doc_id, rev, type, content2, content3, author, edit_comment, datetime, length FROM history{'' if type == -1 else ' WHERE type = ?'} ORDER BY datetime DESC LIMIT ?", (limit,) if type == -1 else (type, limit))
+        else:
+            c.execute(f"SELECT doc_id, rev, type, content2, content3, author, edit_comment, datetime, length FROM history WHERE datetime > ?{'' if type == -1 else ' AND type = ?'} ORDER BY datetime DESC", (time,) if type == -1 else (time, type))
+        return [{"doc": x[0], "rev": x[1], "type": x[2], "content2": x[3], "content3": x[4], "author": x[5], "log": x[6], "time": x[7], "length": x[8]} for x in c.fetchall()]
 @app.route("/api/recent_discuss")
 def api_recent_discuss():
     logtype = request.args.get("logtype", "normal_thread")
     limit = request.args.get("limit", 10, type=int)
+    time = request.args.get("time", None, type=int)
     if logtype not in data.allow_recentthread_type:
         return [], 400
     old = logtype == "old_thread"
@@ -1980,7 +1986,11 @@ def api_recent_discuss():
     if logtype == "pause_thread": status = "pause"
     if logtype == "closed_thread": status = "close"
     with g.db.cursor() as c:
-        return [{"slug": x[0], "doc": x[1], "topic": x[2], "author": x[3], "last": x[4]} for x in c.execute("SELECT D.slug, D.doc_id, D.topic, C.author, D.last FROM discuss D JOIN thread_comment C ON (D.slug = C.slug AND D.seq - 1 = C.no) WHERE D.status = ? ORDER BY D.last {0}, C.no {0} LIMIT ?".format("ASC" if old else "DESC"), (status, limit)).fetchall()]
+        if time is None:
+            c.execute("SELECT D.slug, D.doc_id, D.topic, C.author, D.last FROM discuss D JOIN thread_comment C ON (D.slug = C.slug AND D.seq - 1 = C.no) WHERE D.status = ? ORDER BY D.last {0}, C.no {0} LIMIT ?".format("ASC" if old else "DESC"), (status, limit))
+        else:
+            c.execute("SELECT D.slug, D.doc_id, D.topic, C.author, D.last FROM discuss D JOIN thread_comment C ON (D.slug = C.slug AND D.seq - 1 = C.no) WHERE D.last {0} ? AND D.status = ? ORDER BY D.last {1}, C.no {1}".format("<" if old else ">", "ASC" if old else "DESC"), (time, status))
+        return [{"slug": x[0], "doc": x[1], "topic": x[2], "author": x[3], "last": x[4]} for x in c.fetchall()]
 @app.route("/api/thread_comment")
 def api_thread_comment():
     user = tool.check_api_token()
