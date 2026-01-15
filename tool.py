@@ -357,7 +357,7 @@ def captcha(action):
         print("경고! captcha_mode 는 0, 2, 3, 32 중 하나여야 합니다")
         return True
 def reload_config(app):
-    data.grantable = get_config("grantable_permission").split(",")
+    data.ignore_grant_has_check = get_config("ignore_grant_has_check").split(",")
     if has_config("captcha_required"): data.captcha_required = set(get_config("captcha_required").split(","))
     if has_config("captcha_always"): data.captcha_always = set(get_config("captcha_always").split(","))
     data.username_format = re.compile(get_config("username_format"))
@@ -1014,3 +1014,7 @@ def check_json(json, types):
 def has_aclgroup(gid):
     with g.db.cursor() as c:
         return bool(c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup WHERE id = ? AND deleted = 0)", (gid,)).fetchone()[0])
+def can_grant(perm):
+    if perm in data.ignore_grant_has_check: return True
+    if has_perm("developer"): return True
+    return has_perm(perm)

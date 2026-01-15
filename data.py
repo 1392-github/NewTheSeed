@@ -9,7 +9,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (75, 3)
+version = (75, 4)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -20,7 +20,7 @@ default_config = {
     "wiki_name": "00위키",
     "keep_login_time": "2678400",
     "aclgroup_note_required": "0",
-    "grantable_permission": "grant,delete_thread,admin,aclgroup,update_thread_document,update_thread_status,update_thread_topic,nsacl,weak_hide_thread_comment,hide_thread_comment,pin_thread_comment,bypass_thread_status,no_force_captcha,login_history,api_access,hide_document_history_log,hide_revision,batch_revert,mark_troll_revision,disable_two_factor_login,member_info,bypass_resizing,bypass_image_size_limit",
+    "ignore_grant_has_check": "disable_two_factor_login",
     "ext_note": "0",
     "ignore_developer_perm": "disable_two_factor_login,hideip",
     "captcha_mode": "0",
@@ -103,7 +103,6 @@ default_string_config = {
 이 이메일로 이메일 변경을 시도했지만 이미 이 이메일로 계정 생성을 할 수 있는 최대 횟수({max}번)를 초과해서 더 이상 계정을 생성할 수 없습니다.<br><br>
 요청 아이피 : {ip}'''
 }
-grantable = None
 captcha_bypass_cnt = {}
 captcha_required = None
 captcha_always = None
@@ -203,7 +202,8 @@ max_utime = 32503647600 # 3000-01-01 00:00:00 UTC
 permissions = ["developer", "nsacl", "admin", "config", "delete_thread", "aclgroup", "hideip", "aclgroup_hidelog", "no_force_captcha",
                "skip_captcha", "update_thread_document", "update_thread_status", "update_thread_topic", "weak_hide_thread_comment",
                "hide_thread_comment", "pin_thread_comment", "bypass_thread_status", "grant", "login_history", "api_access", "hide_document_history_log",
-               "hide_revision", "mark_troll_revision", "batch_revert", "manage_account", "bypass_resizing", "bypass_image_size_limit"]
+               "hide_revision", "mark_troll_revision", "batch_revert", "manage_account", "bypass_resizing", "bypass_image_size_limit", "disable_two_factor_login"]
 permissions_order = {}
 for i,v in enumerate(permissions):
     permissions_order[v] = i
+ignore_grant_has_check = ["disable_two_factor_login"]

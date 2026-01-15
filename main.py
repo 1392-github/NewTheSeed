@@ -1126,19 +1126,17 @@ def grant():
             if not tool.has_user(request.args.get("username", "")):
                 return tool.error_400("사용자 이름이 올바르지 않습니다.")
             user = tool.user_name_to_id(request.args.get("username", ""))
-            placeholder = ','.join('?' * len(data.grantable))
-            oldperm = set(x[0] for x in c.execute(f"SELECT perm FROM perm WHERE user = ? AND perm IN ({placeholder})", [user] + data.grantable).fetchall())
-            c.execute(f"DELETE FROM perm WHERE user = ? AND perm IN ({placeholder})", [user] + data.grantable)
-            newperm = set()
-            for p in data.grantable:
-                if p in request.form:
-                    newperm.add(p)
-            c.executemany("INSERT INTO perm VALUES(?,?)", ((user, x) for x in newperm))
             logstr = []
-            for p in newperm - oldperm:
-                logstr.append("+" + p) 
-            for p in oldperm - newperm:
-                logstr.append("-" + p)
+            for p in data.permissions:
+                if tool.can_grant(p):
+                    if p in request.form:
+                        if c.execute("SELECT NOT EXISTS (SELECT 1 FROM perm WHERE user = ? AND perm = ?)", (user, p)).fetchone()[0]:
+                            c.execute("INSERT INTO perm VALUES(?,?)", (user, p))
+                            logstr.append("+" + p)
+                    else:
+                        if c.execute("SELECT EXISTS (SELECT 1 FROM perm WHERE user = ? AND perm = ?)", (user, p)).fetchone()[0]:
+                            c.execute("DELETE FROM perm WHERE user =  ? AND perm = ?", (user, p))
+                            logstr.append("-" + p)
             if len(logstr) != 0: c.execute("INSERT INTO block_log (type, operator, target, date, grant_perm, note) VALUES(3,?,?,?,?,?)",
                     (tool.ipuser(), user, tool.get_utime(), " ".join(logstr), request.form["note"] if tool.get_config("ext_note") == "1" else ""))
             return '', 204
@@ -1150,8 +1148,8 @@ def grant():
                 if not tool.has_user(user):
                     return tool.rt("grant.html", title="권한 부여", user2 = user, error = 1)
                 else:
-                    return tool.rt("grant.html", title="권한 부여", user2 = user, grantable = data.grantable, validuser = True, ext_note = tool.get_config("ext_note") == "1",
-                            perm = set(x[0] for x in c.execute(f"SELECT perm FROM perm WHERE user = ? AND perm IN ({','.join('?' * len(data.grantable))})", [tool.user_name_to_id(user)] + data.grantable).fetchall()))
+                    return tool.rt("grant.html", title="권한 부여", user2 = user, grantable = ((x, tool.can_grant(x)) for x in data.permissions), validuser = True, ext_note = tool.get_config("ext_note") == "1",
+                            perm = set(x[0] for x in c.execute(f"SELECT perm FROM perm WHERE user = ? AND perm IN ({','.join('?' * len(data.permissions))})", [tool.user_name_to_id(user)] + data.permissions).fetchall()))
 @app.route("/admin/captcha_test", methods = ["GET", "POST"])
 def captcha_test():
     if not tool.has_perm("config"):

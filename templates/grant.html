@@ -16,8 +16,8 @@
 </form>
 {% if validuser %}
 <form method="post" class="refresh-on-submit">
-    {% for p in grantable %}
-    <label>{{p}} <input type="checkbox" name="{{p}}"{% if p in perm %} checked{% endif %}></label><br>
+    {% for p, c in grantable %}
+    <label>{{p}} <input type="checkbox" name="{{p}}"{% if p in perm %} checked{% endif %}{% if not c %} disabled{% endif %}></label><br>
     {% endfor %}
     {% if ext_note %}
     <label>메모 : <input type="text" name="note"></label><br><br>
