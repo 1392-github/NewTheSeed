@@ -9,12 +9,10 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (75, 7)
+version = (76, 0)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
-    "get_api_key": "disabled",
-    "api_key_length": "64",
     "time_mode": "real",
     "time_format": "%Y-%m-%d %H:%M:%S",
     "wiki_name": "00위키",

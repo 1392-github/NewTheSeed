@@ -350,6 +350,8 @@ with app.app_context():
         if db_version < (68, 7):
             c.execute("UPDATE acl SET expire = 32503647600 WHERE expire > 32503647600")
             c.execute("UPDATE aclgroup_log SET end = 32503647600 WHERE end > 32503647600")
+        if db_version < (76, 0):
+            c.execute("DELETE FROM config WHERE name IN ('get_api_key', 'api_key_length', 'base_url', 'grantable_permission')")
         c.execute("""update config
         set value = ?
         where name = 'version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
