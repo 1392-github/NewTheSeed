@@ -9,7 +9,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (75, 4)
+version = (75, 5)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -70,7 +70,6 @@ default_config = {
     "email_wblist_public": "1",
     "email_limit": "1",
     "email_limit2": "",
-    "base_url": "127.0.0.1",
     "default_skin": "ntsds",
     "gravatar_default": "retro",
     "gravatar_rating": "g"

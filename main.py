@@ -613,7 +613,7 @@ def signup():
                     tool.email(email, title, tool.get_string_config("email_verification_signup_max").format(wiki_name = wiki_name, max = limit, ip = ip))
                 else:
                     c.execute("INSERT INTO signup_link (token, email, ip, expire) VALUES(?,?,?,?)", (token, email, ip, tool.get_utime() + 86400))
-                    tool.email(email, title, tool.get_string_config("email_verification_signup").format(wiki_name = wiki_name, link = tool.get_config("base_url") + url_for("signup2", token = token), ip = ip))
+                    tool.email(email, title, tool.get_string_config("email_verification_signup").format(wiki_name = wiki_name, link = url_for("signup2", token = token, _external = True), ip = ip))
                 return tool.rt("signup_email.html", title = "계정 만들기", email = email)
         else:
             return redirect(url_for("signup2", token = "0"))
@@ -1767,7 +1767,7 @@ def change_email():
                     tool.email(email, title, tool.get_string_config("email_verification_change_max").format(wiki_name = wiki_name, max = limit, ip = ip, user = username))
                 else:
                     c.execute("INSERT INTO change_email_link (token, user, email, ip, expire) VALUES(?,?,?,?,?)", (token, user, email, ip, tool.get_utime() + 86400))
-                    tool.email(email, title, tool.get_string_config("email_verification_change").format(wiki_name = wiki_name, link = tool.get_config("base_url") + url_for("change_email2", user = username, token = token), ip = ip, user = username))
+                    tool.email(email, title, tool.get_string_config("email_verification_change").format(wiki_name = wiki_name, link = url_for("change_email2", user = username, token = token, _external = True), ip = ip, user = username))
         return redirect(url_for("mypage"))
     return tool.rt("change_email.html", title = "이메일 변경", email = tool.get_user_config(user, "email", ""), wblist = tool.show_email_wblist())
 @app.route("/member/auth/<user>/<token>")
