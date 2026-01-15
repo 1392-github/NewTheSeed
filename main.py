@@ -1430,7 +1430,7 @@ def recent_changes():
     type = request.args.get("type", -1, type=int)
     with g.db.cursor() as c:
         return tool.rt("recent_changes.html", title = "최근 변경", recent = 
-            ((tool.get_doc_full_name(x[0]), x[1], None if x[2] == 0 and x[7] == "" else f"{x[7]} <i>{escape(history_msg(x[2], x[3], x[4]))}</i>", x[5], tool.time_to_str(x[6])) for x in
+            ((tool.get_doc_full_name(x[0]), x[1], None if x[2] == 0 and x[7] == "" else f"{escape(x[7])} <i>{escape(history_msg(x[2], x[3], x[4]))}</i>", x[5], tool.time_to_str(x[6])) for x in
             c.execute(f"SELECT doc_id, length, type, content2, content3, author, ? - datetime, edit_comment FROM history{'' if type == -1 else ' WHERE type = ?'} ORDER BY datetime DESC, rev DESC LIMIT 100", (tool.get_utime(),) if type == -1 else (tool.get_utime(),type)).fetchall()), menu2 = [[
             tool.Menu("전체", url_for("recent_changes"), "menu2-selected" if type == -1 else ""),
             tool.Menu("일반", url_for("recent_changes"), "menu2-selected" if type == 0 else ""),
