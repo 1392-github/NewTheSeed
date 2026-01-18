@@ -43,3 +43,4 @@ class ACLGroupElementNotExistsError(Exception):
         return f"ACLGroup Element #{self.id} does not exist"
 class MaximumTimeExceedError(Exception): pass
 class InvalidUserError(Exception): pass
+class DocumentContentEqualError(Exception): pass

@@ -153,8 +153,6 @@ def rt(t, **k):
         k["uid"] = None
     k["uid"] = user
     k["gravatar"] = f"https://secure.gravatar.com/avatar/{gravatar_hash}?d={get_config('gravatar_default')}&r={get_config('gravatar_rating')}"
-    if t == "error.html" and "title" not in k:
-        k["title"] = "오류"
     func = []
     for i in data.special_function:
         if not has_perm(i.perm):
@@ -949,9 +947,9 @@ def get_skin(user = None):
     return s
 def get_skin_config(key, default = None):
     return get_config(f"skin.{get_skin()}.{key}", default)
-def error(msg, code = 400):
-    return rt("error.html", error = msg), code
-def edit(docid, content, edit_comment = "", user = None, check_acl = True, history = True):
+def error(msg, code = 400, title = "오류"):
+    return rt("error.html", title = title, error = msg), code
+def edit(docid, content, edit_comment = "", user = None, check_acl = True, history = True, check_equal = True):
     if user is None:
         user = ipuser()
     if check_acl:
@@ -959,7 +957,10 @@ def edit(docid, content, edit_comment = "", user = None, check_acl = True, histo
         acl = check_document_acl(docid, doc_name[0], "edit", doc_name[1], user)
         if acl[0] == 0:
             raise exceptions.ACLDeniedError(acl[1])
-    if history: old = get_doc_data(docid)
+    if history or check_equal: old = get_doc_data(docid)
+    if check_equal:
+        if content == old:
+            raise exceptions.DocumentContentEqualError()
     with g.db.cursor() as c:
         c.execute("UPDATE data SET value = ? WHERE id = ?", (content, docid))
     if history:

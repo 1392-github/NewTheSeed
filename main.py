@@ -390,6 +390,9 @@ def errorhandler_500(e):
 @app.errorhandler(exceptions.ACLDeniedError)
 def errorhandler_acl(e):
     return tool.error(str(e), 403)
+@app.errorhandler(exceptions.DocumentContentEqualError)
+def errorhandler_equal(e):
+    return tool.error("문서 내용이 같습니다.", 409)
 @app.before_request
 def before_request():
     g.db = tool.getdb()
@@ -1855,6 +1858,8 @@ def api_edit(document):
                 rev = tool.edit(docid, json["text"], json.get("log", ""), user)
         except exceptions.ACLDeniedError as e:
             return {"status": str(e)}, 403
+        except exceptions.DocumentContentEqualError:
+            return {"status": "문서 내용이 같습니다."}, 409
         return {"status": "success", "rev": rev}
     acl = tool.check_document_acl(docid, ns, "read", name, user)
     if acl[0] == 0:
