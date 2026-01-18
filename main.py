@@ -2023,6 +2023,31 @@ def api_login():
     session["id"] = user
     session["api"] = True
     return {"status": "success"}
+@app.route("/api/all_document")
+def api_all_document():
+    namespaces = request.args.get("namespaces", None)
+    if namespaces == "" or namespaces == "-":
+        namespaces = None
+    with g.db.cursor() as c:
+        if namespaces is None:
+            p = c.execute("SELECT N.namespace, N.name FROM doc_name N JOIN data D ON (N.id = D.id) WHERE D.value IS NOT NULL").fetchall()
+        else:
+            if namespaces[0] == "-":
+                black = True
+                namespaces = namespaces[1:]
+            else:
+                black = False
+            ns = []
+            for i,v in enumerate(namespaces.split(",")):
+                v2 = tool.ns_name_to_id(v)
+                if v2 is None:
+                    return {"status": f'{v} 이름공간은 존재하지 않습니다.'}, 400
+                ns.append(v2)
+            p = c.execute(f"SELECT N.namespace, N.name FROM doc_name N JOIN data D ON (N.id = D.id) WHERE D.value IS NOT NULL AND N.namespace{' NOT' if black else ''} IN ({','.join('?' * len(ns))})", ns).fetchall()
+    r = []
+    for i in p:
+        r.append(tool.cat_namespace(*i))
+    return r
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:

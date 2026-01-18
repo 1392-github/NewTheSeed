@@ -642,7 +642,16 @@ def cat_namespace(namespace, name):
         return r
 def id_to_ns_name(id):
     with g.db.cursor() as c:
-        return c.execute("SELECT name FROM namespace WHERE id = ?", (id,)).fetchone()[0]
+        f = c.execute("SELECT name FROM namespace WHERE id = ?", (id,)).fetchone()
+        if f is None:
+            return None
+        return f[0]
+def ns_name_to_id(name):
+    with g.db.cursor() as c:
+        f = c.execute("SELECT id FROM namespace WHERE name = ?", (name,)).fetchone()
+        if f is None:
+            return None
+        return f[0]
 def render_thread(slug):
     from render import render_set
     with g.db.cursor() as c:
