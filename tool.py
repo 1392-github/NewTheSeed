@@ -667,6 +667,8 @@ def write_thread_comment(slug, type, text = None, text2 = None):
     with g.db.cursor() as c:
         t = get_utime()
         u = ipuser()
+        if text is not None: text = text.replace("\r\n", "\n").replace("\r", "\n")
+        if text2 is not None: text2 = text2.replace("\r\n", "\n").replace("\r", "\n")
         c.execute("""INSERT INTO thread_comment (slug, no, type, text, text2, author, time, admin)
 SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), ?2, ?3, ?4, ?5, ?6, ?7""", (slug, type, text, text2, u, t, has_perm("admin", u)))
         c.execute("UPDATE discuss SET seq = seq + 1, last = ? WHERE slug = ?", (t, slug))
@@ -958,6 +960,7 @@ def edit(docid, content, edit_comment = "", user = None, check_acl = True, histo
         if acl[0] == 0:
             raise exceptions.ACLDeniedError(acl[1])
     if history or check_equal: old = get_doc_data(docid)
+    content = content.replace("\r\n", "\n").replace("\r", "\n")
     if check_equal:
         if content == old:
             raise exceptions.DocumentContentEqualError()
