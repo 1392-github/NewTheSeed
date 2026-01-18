@@ -327,6 +327,8 @@ def has_perm(perm, user = None, basedoc = None, docname = None):
             return False
         if perm != "developer" and has_perm("developer", user) and perm not in get_config("ignore_developer_perm").split(","):
             return True
+        if perm == "weak_hide_thread_comment" and has_perm("hide_thread_comment", user):
+            return True
         return c.execute("SELECT EXISTS (SELECT 1 FROM perm WHERE user = ? AND perm = ?)", (user, perm)).fetchone()[0] == 1
 def captcha(action):
     mode = get_config("captcha_mode")
