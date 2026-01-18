@@ -1839,7 +1839,7 @@ def api_token():
         tool.set_user_config(user, "api_token", hashlib.sha3_512(token).hexdigest())
         return tool.rt("api_token_2.html", title = "API Token 발급", token = token.decode("ascii"))
     return tool.rt("api_token.html", title = "API Token 발급")
-@app.route("/api/edit/<document>", methods = ["GET", "POST", "KOREA"])
+@app.route("/api/edit/<path:document>", methods = ["GET", "POST", "KOREA"])
 def api_edit(document):
     user = tool.check_api_token()
     if user is None:
