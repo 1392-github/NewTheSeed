@@ -11,3 +11,5 @@ __pycache__/
 /file/*
 !/file/.gitkeep
 /INSTALL_STATUS
+/extensions/*
+!/extensions/list.txt

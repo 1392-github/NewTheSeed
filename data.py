@@ -9,7 +9,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (78, 0)
+version = (78, 1)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -190,7 +190,7 @@ skins = []
 skin_info = {}
 skin_git = set()
 skin_commit = {}
-allow_skin_id = re.compile("[a-zA-Z0-9_]+")
+allow_skin_ext_id = re.compile("[a-zA-Z0-9_]+")
 skin_config_css = {}
 skin_config_js = {}
 revert_available = {0, 1, 5}
@@ -204,3 +204,8 @@ permissions_order = {}
 for i,v in enumerate(permissions):
     permissions_order[v] = i
 ignore_grant_has_check = ["disable_two_factor_login"]
+extensions = []
+extension_info = {}
+extension_git = set()
+extension_commit = {}
+extension_module = {}

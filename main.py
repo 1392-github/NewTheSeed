@@ -7,12 +7,12 @@ import types
 import os
 import shutil
 import subprocess
-import ipaddress
 import cssutils
 import json
 import traceback
 import stat
 import base64
+import importlib
 
 from flask import Flask, request, redirect, session, send_file, send_from_directory, abort, Response, url_for, g
 from jinja2 import ChoiceLoader, FileSystemLoader
@@ -24,6 +24,7 @@ import werkzeug.exceptions
 
 import data
 import exceptions
+import hooks
 import tool
 from render import render_set
 
@@ -33,6 +34,37 @@ if sys.version_info < (3, 10):
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 os.environ["GIT_TERMINAL_PROMPT"]="0"
+
+for i in os.scandir("extensions"):
+    if i.is_dir():
+        try:
+            with open(os.path.join(i.path, "info.json"), "r", encoding="utf-8") as f:
+                j = json.load(f)
+        except FileNotFoundError:
+            print(f'"{i.name}" extension does not have info.json')
+            continue
+        except json.JSONDecodeError as e:
+            print(f'"{i.name}" extension\'s info.json is invalid JSON: {e}')
+            continue
+        id = j["id"]
+        if id in data.extension_info:
+            print(f"The following extension ID is duplicated: {id}")
+            sys.exit()
+        if id != i.name:
+            shutil.move(i.path, os.path.join("extensions", id))
+        data.extension_info[id] = j
+with open(os.path.join("extensions", "list.txt"), encoding="utf-8") as f:
+    for i in f:
+        i = i.strip()
+        if not i or i[0] == "#":
+            continue
+        try:
+            ext = importlib.import_module(f"extensions.{i}.main")
+        except ModuleNotFoundError:
+            print(f"{i} extension hasn't main.py")
+            continue
+        data.extension_module[i] = ext
+        data.extensions.append(i)
 for i in os.scandir("skins"):
     if i.is_dir():
         try:
@@ -40,6 +72,9 @@ for i in os.scandir("skins"):
                 j = json.load(f)
         except FileNotFoundError:
             print(f'"{i.name}" skin does not have info.json')
+            continue
+        except json.JSONDecodeError as e:
+            print(f'"{i.name}" Skin\'s info.json is invalid JSON: {e}')
             continue
         id = j["id"]
         if id in data.skin_info:
@@ -52,6 +87,7 @@ for i in os.scandir("skins"):
             j["version"] = j["version_name"]
         data.skin_info[id] = j
         data.skins.append(id)
+hooks.Start1()
 try:
     repo = Repo(".", search_parent_directories=False)
 except InvalidGitRepositoryError:
@@ -76,6 +112,7 @@ app = Flask(__name__)
 with app.app_context():
     g.db = tool.getdb()
     tool.run_sqlscript("db_stu.sql") # DB 구조 만들기
+    hooks.Start2(app)
     with g.db.cursor() as c:
         for k in data.default_config:
             if c.execute("select exists (select 1 from config where name = ?)", (k,)).fetchone()[0] == 0:
@@ -367,6 +404,7 @@ with app.app_context():
                     c.execute("INSERT INTO config (name, value) VALUES(?,?)", (k, cf["default"]))
     tool.reload_config(app)
     g.db.close()
+    hooks.Start3()
 if not os.getenv("SECRET_KEY"):
     key = secrets.token_hex(32)
     dotenv.set_key(".env", "SECRET_KEY", secrets.token_hex(32))
@@ -455,7 +493,8 @@ def history_msg(type, text2, text3):
     return f"(type {type}, {text2}, {text3})"
 app.jinja_loader = ChoiceLoader([
     FileSystemLoader("skins"),
-    FileSystemLoader("templates")
+    FileSystemLoader("templates"),
+    FileSystemLoader("extensions")
 ])
 app.jinja_env.globals["has_perm"] = tool.has_perm
 app.jinja_env.globals["history_msg"] = history_msg
@@ -1790,7 +1829,7 @@ def change_email2(user, token):
         return tool.rt("change_email_completed.html", title = "인증 완료", user = user)
 @app.route("/skins/<skin>/<path:path>")
 def skin_static(skin, path):
-    if data.allow_skin_id.fullmatch(skin):
+    if data.allow_skin_ext_id.fullmatch(skin):
         return send_from_directory(f"skins/{skin}/static", path)
     else:
         abort(404)
@@ -2053,6 +2092,7 @@ def api_all_document():
     for i in p:
         r.append(tool.cat_namespace(*i))
     return r
+hooks.Start4()
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
     if DEBUG:

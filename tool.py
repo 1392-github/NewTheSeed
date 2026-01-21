@@ -17,6 +17,7 @@ import smtplib
 
 import data
 import exceptions
+import hooks
 
 init = not os.path.exists("data.db")
 
@@ -291,6 +292,9 @@ def has_perm(perm, user = None, basedoc = None, docname = None):
     with g.db.cursor() as c:
         if user is None:
             user = ipuser(False)
+        r = hooks.HasPerm(perm, user, basedoc, docname)
+        if r is not None:
+            return r
         if perm == "any":
             return True
         if perm == "ip":
