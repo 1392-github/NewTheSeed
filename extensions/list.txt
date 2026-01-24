@@ -1,4 +1,0 @@
-# This file contains a list of enabled extensions.
-# Lines beginning with # (comments) and blank lines are ignored.
-# Please list the extension IDs, one per line.
-# Extensions will be executed in the order listed.
