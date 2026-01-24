@@ -12,4 +12,4 @@ __pycache__/
 !/file/.gitkeep
 /INSTALL_STATUS
 /extensions/*
-!/extensions/list.txt
+!/extensions/list.example.txt
