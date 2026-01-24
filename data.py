@@ -204,6 +204,7 @@ permissions_order = {}
 for i,v in enumerate(permissions):
     permissions_order[v] = i
 ignore_grant_has_check = ["disable_two_factor_login"]
+all_extensions = []
 extensions = []
 extension_info = {}
 extension_git = set()

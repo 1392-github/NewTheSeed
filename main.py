@@ -53,10 +53,14 @@ for i in os.scandir("extensions"):
         if id != i.name:
             shutil.move(i.path, os.path.join("extensions", id))
         data.extension_info[id] = j
+        data.all_extensions.append(id)
 with open(os.path.join("extensions", "list.txt"), encoding="utf-8") as f:
     for i in f:
         i = i.strip()
         if not i or i[0] == "#":
+            continue
+        if i not in data.all_extensions:
+            print(f"{i} extension doesn't exists")
             continue
         try:
             ext = importlib.import_module(f"extensions.{i}.main")
@@ -105,6 +109,14 @@ for i in data.skins:
         srepo.close()
     except InvalidGitRepositoryError:
         data.skin_commit[i] = "0000000"
+for i in data.all_extensions:
+    try:
+        erepo = Repo(os.path.join("extensions", i), search_parent_directories=False)
+        data.extension_git.add(i)
+        data.extension_commit[i] = erepo.commit().hexsha[:7]
+        erepo.close()
+    except InvalidGitRepositoryError:
+        data.extension_commit[i] = "0000000"
 if not os.path.exists(".env"):
     shutil.copy(".env.example", ".env")
 dotenv.load_dotenv()
@@ -1469,6 +1481,61 @@ def install_skin():
     if os.getenv("DISABLE_SYSMAN") == "1":
         return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     return tool.rt("update_result.html", title = "설치 결과", result = subprocess.Popen(["git", "clone", request.form["git"], os.path.join("skins", str(tool.get_utime()))], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].decode("utf-8"))
+@app.route("/admin/sysman/extension")
+def manage_extension():
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
+    with open(os.path.join("extensions", "list.txt"), "r", encoding = "utf-8") as f:
+        list = f.read()
+    return tool.rt("manage_extension.html", title = "확장 프로그램 관리",
+                   extensions = ((x, f"{data.extension_info[x]['version_name']} ({data.extension_commit[x]})", x not in data.extension_git, x not in data.extensions) for x in data.all_extensions),
+                   list = list)
+@app.route("/admin/sysman/extension/update", methods = ["POST"])
+def update_extension():
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
+    extension = request.form["extension"]
+    if extension not in data.extension_git:
+        return tool.error("존재하지 않거나 git로 다운로드 되지 않은 확장 프로그램입니다.")
+    return tool.rt("update_result.html", title = "업데이트 결과", result = subprocess.Popen(["git", "-C", os.path.join("extensions", extension), "pull"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].decode("utf-8"))
+@app.route("/admin/sysman/extension/delete", methods = ["POST"])
+def delete_extension():
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
+    extension = request.form["extension"]
+    if extension not in data.extensions:
+        return tool.error("존재하지 않는 확장 프로그램입니다.")
+    data.extensions.remove(extension)
+    path = os.path.join("extensions", extension)
+    for root, dirs, files in os.walk(path):
+        for i in dirs:
+            os.chmod(os.path.join(root, i), stat.S_IWRITE)
+        for i in files:
+            os.chmod(os.path.join(root, i), stat.S_IWRITE)
+    shutil.rmtree(path)
+    return redirect(url_for("restart"))
+@app.route("/admin/sysman/extension/install", methods = ["POST"])
+def install_extension():
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
+    return tool.rt("update_result.html", title = "설치 결과", result = subprocess.Popen(["git", "clone", request.form["git"], os.path.join("extensions", str(tool.get_utime()))], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].decode("utf-8"))
+@app.route("/admin/sysman/extension/list", methods = ["POST"])
+def extension_list():
+    if not tool.has_perm("developer"):
+        abort(403)
+    if os.getenv("DISABLE_SYSMAN") == "1":
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
+    with open(os.path.join("extensions", "list.txt"), "w", encoding="utf-8") as f:
+        f.write(request.form["list"].replace("\r\n", "\n").replace("\r", "\n"))
+    return redirect(url_for("manage_extension"))
 @app.route("/RecentChanges")
 def recent_changes():
     type = request.args.get("type", -1, type=int)
