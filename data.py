@@ -9,7 +9,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (79, 0)
+version = (80, 0)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -152,6 +152,7 @@ special_function = [
     SpecialFunction("[관리] 권한 부여", "grant", "grant"),
     SpecialFunction("[관리] ACLGroup", "aclgroup", "admin"),
     SpecialFunction("[관리] 로그인 내역 조회", "login_history", "login_history"),
+    SpecialFunction("[관리] 계정 관리", "manage_account", "manage_account"),
     SpecialFunction("[관리] Config", "config", "config"),
     SpecialFunction("[관리] SQL 덤프", "sqldump", "developer"),
     SpecialFunction("[관리] SQL 셀", "sqlshell", "developer"),

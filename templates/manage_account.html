@@ -1,0 +1,50 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+{% if error is defined %}
+<div class="error">
+    <strong>[오류!]</strong> {{ error }}
+</div>
+{% endif %}
+<form>
+    <label>UID <input type="number" min="1" name="uid" value="{{ uid2 }}"></label><br><br>
+    <input type="submit" class="ok" value="확인">
+</form>
+{% if validuser %}
+<h2>{{ user2 }}</h2>
+Email:
+<form action="{{ url_for('manage_account_change_email') }}" method="post" class="refresh-on-submit">
+    <input type="hidden" name="uid" value="{{ uid2 }}">
+    <input type="email" name="email" value="{{ email }}">
+    <input type="submit" class="ok" value="변경">
+</form>
+<h3>계정명 변경</h3>
+<form action="{{ url_for('manage_account_change_name') }}" method="post" class="refresh-on-submit">
+    <input type="hidden" name="uid" value="{{ uid2 }}">
+    <label>
+        새 계정명<br>
+        <input name="name">
+    </label><br><br>
+    <input type="submit" class="ok" value="변경">
+</form>
+<h3>계정 삭제</h3>
+<form action="{{ url_for('manage_account_withdraw') }}" method="post" class="refresh-on-submit confirm">
+    <input type="hidden" name="uid" value="{{ uid2 }}">
+    <input type="submit" class="danger" value="삭제">
+</form>
+<h3>기타</h3>
+이름 변경 시간 제한 해제는 이름 변경 때까지 유지됩니다.
+<form action="{{ url_for('manage_account_unlock_change_name_cooltime') }}" method="post">
+    <input type="hidden" name="uid" value="{{ uid2 }}">
+    <input type="submit" class="ok" value="이름 변경 시간 제한 해제">
+</form>
+{% endif %}
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

@@ -2161,6 +2161,54 @@ def api_all_document():
     for i in p:
         r.append(tool.cat_namespace(*i))
     return r
+@app.route("/admin/manage_account")
+def manage_account():
+    if not tool.has_perm("manage_account"):
+        abort(403)
+    uid = request.args.get("uid", None, type=int)
+    if uid is None:
+        return tool.rt("manage_account.html", title = "계정 관리")
+    if not tool.has_user_id(uid):
+        return tool.rt("manage_account.html", title = "계정 관리", error = "존재하지 않는 사용자입니다.")
+    if tool.isip(uid):
+        return tool.rt("manage_account.html", title = "계정 관리", error = "IP 사용자입니다.")
+    name = tool.id_to_user_name(uid)
+    if name is None:
+        return tool.rt("manage_account.html", title = "계정 관리", error = "삭제된 사용자입니다.")
+    return tool.rt("manage_account.html", title = "계정 관리", user2 = name, uid2 = uid, validuser = True, email = tool.get_user_config(uid, "email", ""))
+@app.route("/admin/manage_account/change_email", methods = ["POST"])
+def manage_account_change_email():
+    email = request.form["email"]
+    if email == "":
+        tool.del_user_config(int(request.form["uid"]), "email")
+    else:
+        tool.set_user_config(int(request.form["uid"]), "email", email)
+    return "", 204
+@app.route("/admin/manage_account/change_name", methods = ["POST"])
+def manage_account_change_name():
+    if not tool.has_perm("manage_account"):
+        abort(403)
+    name = request.form["name"]
+    if tool.has_user(name, True):
+        return tool.error_400("이미 존재하는 사용자 이름입니다.")
+    tool.change_name(int(request.form["uid"]), name)
+    return "", 204
+@app.route("/admin/manage_account/withdraw", methods = ["POST"])
+def manage_account_withdraw():
+    if not tool.has_perm("manage_account"):
+        abort(403)
+    tool.delete_user(int(request.form["uid"]))
+    return "", 204
+@app.route("/admin/manage_account/unlock_change_name_cooltime", methods = ["POST"])
+def manage_account_unlock_change_name_cooltime():
+    if not tool.has_perm("manage_account"):
+        abort(403)
+    tool.del_user_config(int(request.form["uid"]), "change_name")
+    return "", 204
+"""@app.route("/admin/manage_account/unlock_withdraw_cooltime", methods = ["POST"])
+def manage_account_unlock_withdraw_cooltime():
+    if not tool.has_perm("manage_account"):
+        abort(403)"""
 hooks.Start4()
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"
