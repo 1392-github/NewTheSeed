@@ -1,3 +1,4 @@
+## 기본 규칙
  * 익명 기여는 허용되지 않습니다.
   * author.email에는 실제로 연락 가능한 이메일을 적어야 합니다. example@example.com, anonymous@1392year.pythonanywhere.com 등의 익명 이메일, 임시 이메일, 110650515+1392-github@users.noreply.github.com 등의 noreply 이메일을 이용한 커밋은 반려됩니다.
  * DB 구조는 ```sql_script/db_stu.sql```에 정의합니다.

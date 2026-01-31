@@ -647,7 +647,7 @@ def user():
             return tool.rt("user.html", user_name = tool.getip(), login=False)
 @app.route("/member/login")
 def login():
-    return tool.rt("login.html", req_captcha = tool.is_required_captcha("login"))
+    return tool.rt("login.html", title = "로그인", req_captcha = tool.is_required_captcha("login"))
 @app.route("/member/signup", methods = ["GET", "POST"])
 def signup():
     if request.method == "POST":
@@ -2209,6 +2209,9 @@ def manage_account_unlock_change_name_cooltime():
 def manage_account_unlock_withdraw_cooltime():
     if not tool.has_perm("manage_account"):
         abort(403)"""
+@app.route("/member/recover_password")
+def recover_password():
+    return "아직구현안함", 404
 hooks.Start4()
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"

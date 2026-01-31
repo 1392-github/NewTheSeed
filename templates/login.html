@@ -7,18 +7,21 @@
 {% block content %}
 <form action="/login_form" method="post">
     <label>
-        아이디 <input type="text" name="id">
+        Username<br>
+        <input type="text" name="id">
     </label>
     <br>
     <label>
-        비밀번호 <input type="password" name="pw">
+        Password<br>
+        <input type="password" name="pw">
     </label>
     <br>
-    <label>로그인 상태 유지 <input type="checkbox" name="keep"></label><br>
+    <a href="{{ url_for('recover_password') }}">비밀번호를 잊으셨나요?</a><br>
+    <label><input type="checkbox" name="keep"></label> 자동 로그인<br>
     {% if req_captcha %}
     <div class="g-recaptcha" data-sitekey="{{ sitekey }}" data-callback="onCaptchaCompleted"></div>
     {% endif %}
-    <input type="submit" class="ok" value="로그인"{% if req_captcha %} id="on-captcha" style="display: none;"{% endif %}>
+    <a href="{{ url_for('signup') }}"><button type="button" class="normal">회원가입</button></a><input type="submit" class="ok" value="로그인"{% if req_captcha %} id="on-captcha" style="display: none;"{% endif %}>
 </form>
 {% endblock %}
 
