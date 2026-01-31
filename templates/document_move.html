@@ -48,7 +48,7 @@
     {% if req_captcha %}
     <div class="g-recaptcha" data-sitekey="{{ sitekey }}" data-callback="onCaptchaCompleted"></div>
     {% endif %}
-    <input type="submit" class="ok" value="이동"{% if req_captcha %} id="on-captcha" style="display: none;"{% endif %}>
+    <input type="submit" class="ok" value="이동"{% if req_captcha %} id="on-captcha" hidden{% endif %}>
 </form>
 {% endblock %}
 

@@ -21,7 +21,7 @@
     {% if req_captcha %}
     <div class="g-recaptcha" data-sitekey="{{ sitekey }}" data-callback="onCaptchaCompleted"></div>
     {% endif %}
-    <a href="{{ url_for('signup') }}"><button type="button" class="normal">회원가입</button></a><input type="submit" class="ok" value="로그인"{% if req_captcha %} id="on-captcha" style="display: none;"{% endif %}>
+    <a href="{{ url_for('signup') }}"><button type="button" class="normal">회원가입</button></a><input type="submit" class="ok" value="로그인"{% if req_captcha %} id="on-captcha" hidden{% endif %}>
 </form>
 {% endblock %}
 

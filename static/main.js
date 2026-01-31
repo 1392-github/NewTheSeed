@@ -7,7 +7,7 @@ function openModal(id) {
     document.getElementById("modal_background").style.display = "block";
 }
 function onCaptchaCompleted(token) {
-    document.getElementById("on-captcha").style.display = "block";
+    document.getElementById("on-captcha").hidden = false;
 }
 function callapi(href, body, then) {
     fetch(href, {"method": "post",
