@@ -16,7 +16,9 @@
         <input type="password" name="pw">
     </label>
     <br>
+    {% if get_config("email_verification_level") != "0" %}
     <a href="{{ url_for('recover_password') }}">비밀번호를 잊으셨나요?</a><br>
+    {% endif %}
     <label><input type="checkbox" name="keep"></label> 자동 로그인<br>
     {% if req_captcha %}
     <div class="g-recaptcha" data-sitekey="{{ sitekey }}" data-callback="onCaptchaCompleted"></div>

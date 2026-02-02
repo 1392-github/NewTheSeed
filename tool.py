@@ -925,6 +925,9 @@ def delete_expired_signup_link():
 def delete_expired_change_email_link():
     with g.db.cursor() as c:
         c.execute("DELETE FROM change_email_link WHERE expire < ?", (get_utime(),))
+def delete_expired_recover_password_link():
+    with g.db.cursor() as c:
+        c.execute("DELETE FROM recover_password_link WHERE expire < ?", (get_utime(),))
 def show_email_wblist(ignore_public_flag = False):
     if len(data.email_wblist) == 0: return None
     if not ignore_public_flag and get_config("email_wblist_public") == "0": return None

@@ -514,6 +514,7 @@ app.jinja_env.globals["has_perm"] = tool.has_perm
 app.jinja_env.globals["history_msg"] = history_msg
 app.jinja_env.globals["range"] = range
 app.jinja_env.globals["get_skin_config"] = tool.get_skin_config
+app.jinja_env.globals["get_config"] = tool.get_config
 app.jinja_env.filters["user"] = render_username
 app.jinja_env.filters["time"] = tool.utime_to_str
 app.jinja_env.policies['json.dumps_kwargs']['ensure_ascii'] = False
@@ -2209,9 +2210,43 @@ def manage_account_unlock_change_name_cooltime():
 def manage_account_unlock_withdraw_cooltime():
     if not tool.has_perm("manage_account"):
         abort(403)"""
-@app.route("/member/recover_password")
+@app.route("/member/recover_password", methods = ["GET", "POST"])
 def recover_password():
-    return "아직구현안함", 404
+    if tool.get_config("email_verification_level") == "0":
+        return tool.error("이 기능이 비활성화되어 있습니다.", 501)
+    if request.method == "POST":
+        with g.db.cursor() as c:
+            email = request.form["email"]
+            f = c.execute("SELECT user FROM user_config WHERE name = 'email' and value = ?", (email,)).fetchone()
+            if f is not None:
+                user = f[0]
+                token = secrets.token_hex(64)
+                wiki_name = tool.get_config("wiki_name")
+                ip = tool.getip()
+                username = tool.id_to_user_name(user)
+                title = tool.get_string_config("email_verification_recover_password_title").format(wiki_name = wiki_name, user = username)
+                c.execute("INSERT INTO recover_password_link (token, user, ip, expire) VALUES(?,?,?,?)", (token, user, ip, tool.get_utime() + 86400))
+                tool.email(email, title, tool.get_string_config("email_verification_recover_password").format(wiki_name = wiki_name, link = url_for("recover_password2", user = username, token = token, _external = True), ip = ip, user = username))
+        return tool.rt("recover_password_email.html", title = "계정 찾기", email = email)
+    return tool.rt("recover_password.html", title = "계정 찾기")
+@app.route("/member/recover_password/auth/<user>/<token>", methods = ["GET", "POST"])
+def recover_password2(user, token):
+    tool.delete_expired_recover_password_link()
+    with g.db.cursor() as c:
+        user1 = tool.user_name_to_id(user)
+        f = c.execute("SELECT ip FROM recover_password_link WHERE token = ? AND user = ?", (token, user1)).fetchone()
+        if f is None:
+            return tool.error("인증 요청이 만료되었거나 올바르지 않습니다.")
+        ip = f[0]
+        if ip != tool.getip():
+            return tool.error("보안 상의 이유로 요청한 아이피 주소와 현재 아이피 주소가 같아야 합니다.")
+        if request.method == "POST":
+            if request.form["pw"] != request.form["pw2"]:
+                return tool.error("패스워드 확인이 올바르지 않습니다.")
+            c.execute("UPDATE user SET password = ? WHERE id = ?", (hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest(), user))
+            c.execute("DELETE FROM recover_password_link WHERE token = ?", (token,))
+            return redirect(url_for("login"))
+        return tool.rt("recover_password2.html", title = "계정 찾기")
 hooks.Start4()
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"

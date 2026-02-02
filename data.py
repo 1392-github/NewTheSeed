@@ -9,7 +9,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (80, 6)
+version = (80, 7)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -98,6 +98,13 @@ default_string_config = {
     "email_verification_change_max": '''안녕하세요. {wiki_name}입니다.<br><br>
 {user}님의 이메일 변경 인증 메일입니다.<br>
 이 이메일로 이메일 변경을 시도했지만 이미 이 이메일로 계정 생성을 할 수 있는 최대 횟수({max}번)를 초과해서 더 이상 계정을 생성할 수 없습니다.<br><br>
+요청 아이피 : {ip}''',
+    "email_verification_recover_password_title": "[{wiki_name}] {user}님의 아이디/비밀번호 찾기 메일 입니다.",
+    "email_verification_recover_password": '''안녕하세요. {wiki_name}입니다.<br><br>
+{user}님의 아이디/비밀번호 찾기 메일입니다.<br>
+해당 계정의 비밀번호를 찾으시려면 아래 링크를 클릭해주세요.<br>
+<a href="{link}">[인증]</a><br><br>
+이 메일은 24시간동안 유효합니다.<br>
 요청 아이피 : {ip}'''
 }
 captcha_bypass_cnt = {}
