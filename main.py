@@ -656,7 +656,7 @@ def signup():
             return tool.captcha_failed()
         if tool.get_config("email_verification_level") == "3" or tool.has_perm("bypass_email_verify"):
             with g.db.cursor() as c:
-                token = secrets.token_hex(64)
+                token = secrets.token_hex(32)
                 email = tool.sanitize_email(request.form["email"])
                 if email is None:
                     return tool.error("이메일의 값을 형식에 맞게 입력해주세요.")
@@ -1870,7 +1870,7 @@ def change_email():
         if evm == "1" or tool.has_perm("bypass_email_verify"):
             tool.set_user_config(user, "email", email)
         else:
-            token = secrets.token_hex(64)
+            token = secrets.token_hex(32)
             wiki_name = tool.get_config("wiki_name")
             ip = tool.getip()
             username = tool.id_to_user_name(user)
@@ -2220,7 +2220,7 @@ def recover_password():
             f = c.execute("SELECT user FROM user_config WHERE name = 'email' and value = ?", (email,)).fetchone()
             if f is not None:
                 user = f[0]
-                token = secrets.token_hex(64)
+                token = secrets.token_hex(32)
                 wiki_name = tool.get_config("wiki_name")
                 ip = tool.getip()
                 username = tool.id_to_user_name(user)
