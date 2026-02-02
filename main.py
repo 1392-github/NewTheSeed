@@ -2207,6 +2207,16 @@ def manage_account_unlock_change_name_cooltime():
         abort(403)
     tool.del_user_config(int(request.form["uid"]), "change_name")
     return "", 204
+@app.route("/admin/manage_account/get_recover_password_link/<uid>", methods = ["POST"])
+def manage_account_get_recover_password_link(uid):
+    if not tool.has_perm("manage_account"):
+        abort(403)
+    if not tool.has_user_id(uid): return tool.error_400("계정이 존재하지 않습니다.")
+    if tool.isip(uid) == 1: return tool.error_400("IP 계정입니다.")
+    token = secrets.token_hex(32)
+    with g.db.cursor() as c:
+        c.execute("INSERT INTO recover_password_link (token, user, expire) VALUES(?,?,?)", (token, uid, tool.get_utime() + 86400))
+    return url_for("recover_password2", user = tool.id_to_user_name(uid), token = token, _external = True)
 """@app.route("/admin/manage_account/unlock_withdraw_cooltime", methods = ["POST"])
 def manage_account_unlock_withdraw_cooltime():
     if not tool.has_perm("manage_account"):
@@ -2239,7 +2249,7 @@ def recover_password2(user, token):
         if f is None:
             return tool.error("인증 요청이 만료되었거나 올바르지 않습니다.")
         ip = f[0]
-        if ip != tool.getip():
+        if ip is not None and ip != tool.getip():
             return tool.error("보안 상의 이유로 요청한 아이피 주소와 현재 아이피 주소가 같아야 합니다.")
         if request.method == "POST":
             if request.form["pw"] != request.form["pw2"]:
