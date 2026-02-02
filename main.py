@@ -1886,6 +1886,7 @@ def change_email():
     return tool.rt("change_email.html", title = "이메일 변경", email = tool.get_user_config(user, "email", ""), wblist = tool.show_email_wblist())
 @app.route("/member/auth/<user>/<token>")
 def change_email2(user, token):
+    tool.delete_expired_change_email_link()
     with g.db.cursor() as c:
         user1 = tool.user_name_to_id(user)
         f = c.execute("SELECT email, ip FROM change_email_link WHERE token = ? AND user = ?", (token, user1)).fetchone()
