@@ -578,7 +578,7 @@ def doc_raw(doc_title):
         docid = tool.get_docid(ns, name)
         acl = tool.check_document_acl(docid, ns, "read", name)
         if acl[0] == 0:
-            return tool.rt("error.html", error = acl[1]), 403
+            return tool.error(acl[1], 403)
         rev = request.args.get('rev')
         if rev is None:
             d = c.execute("SELECT value FROM data WHERE id = ?", (docid,)).fetchone()
@@ -594,7 +594,7 @@ def doc_edit(doc_title):
         docid = tool.get_docid(ns, name)
         acl = tool.check_document_acl(docid, ns, "read", name)
         if acl[0] == 0:
-            return tool.rt("error.html", error = acl[1]), 403
+            return tool.error(acl[1], 403)
         acl = tool.check_document_acl(docid, ns, "edit", name)
         d = c.execute("select value from data where id = ?", (docid,)).fetchone()
         d = "" if d is None else d[0]
@@ -778,7 +778,7 @@ def delete(doc_name):
     docid = tool.get_docid(ns, name)
     acl = tool.check_document_acl(docid, ns, "delete", name)
     if acl[0] == 0:
-        return tool.rt("error.html", error = acl[1]), 403
+        return tool.error(acl[1], 403)
     if request.method == "POST":
         data = tool.get_doc_data(docid)
         if data == None: return tool.error("문서를 찾을 수 없습니다.")
@@ -795,7 +795,7 @@ def move(doc_name):
     docid = tool.get_docid(ns, name)
     acl = tool.check_document_acl(docid, ns, "move", name)
     if acl[0] == 0:
-        return tool.rt("error.html", error = acl[1]), 403
+        return tool.error(acl[1], 403)
     if docid == -1:
         return tool.error("문서를 찾을 수 없습니다.", 404)
     if request.method == "POST":
@@ -821,7 +821,7 @@ def move(doc_name):
                 return tool.error("문서가 이미 존재합니다.", 409)
             acl = tool.check_document_acl(-1, tons, "move", toname)
             if acl[0] == 0:
-                return tool.rt("error.html", error = acl[1]), 403
+                return tool.error(acl[1], 403)
             with g.db.cursor() as c:
                 c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (tons, toname, docid))
             tool.record_history(docid, 3, tool.get_doc_data(docid), doc_name, to, tool.ipuser(), request.form["note"], 0)
@@ -1226,11 +1226,11 @@ def discuss(doc):
         docid = tool.get_docid(ns, name)
         acl = tool.check_document_acl(docid, ns, "read", name)
         if acl[0] == 0:
-            return tool.rt("error.html", error = acl[1]), 403
+            return tool.error(acl[1], 403)
         if request.method == "POST":
             acl = tool.check_document_acl(docid, ns, "create_thread", name)
             if acl[0] == 0:
-                return tool.rt("error.html", error = acl[1]), 403
+                return tool.error(acl[1], 403)
             if docid == -1: docid = tool.get_docid(ns, name, True)
             time = tool.get_utime()
             c.execute("INSERT INTO discuss (doc_id, topic, last) VALUES(?,?,?)", (docid, request.form["topic"], time))
@@ -1257,7 +1257,7 @@ def thread(slug):
         fullname = tool.cat_namespace(ns, name)
         acl = tool.check_document_acl(docid, ns, "read", name)
         if acl[0] == 0:
-            return tool.rt("error.html", error = acl[1]), 403
+            return tool.error(acl[1], 403)
         if request.method == "POST":
             opcode = request.form.get("opcode")
             if opcode == "status":
@@ -1602,7 +1602,7 @@ def upload():
                 file.seek(0, 2)
                 max_size = int(tool.get_config("max_file_size"))
                 if file.tell() > max_size:
-                    return tool.rt("error.html", error = f"파일 최대 용량({max_size} 바이트)을 초과합니다."), 413
+                    return tool.error(f"파일 최대 용량({max_size} 바이트)을 초과합니다.", 413)
                 file.seek(0)
             ns, name = tool.split_ns(request.form["name"])
             if ns not in data.file_namespace:
@@ -1611,10 +1611,10 @@ def upload():
                 return tool.error("이미 해당 이름의 문서가 존재합니다.")
             acl = tool.check_document_acl(-1, ns, "edit", name)
             if acl[0] == 0:
-                return tool.rt("error.html", error = acl[1]), 403
+                return tool.error(acl[1], 403)
             ext = os.path.splitext(request.form["name"])[1][1:]
             if ext not in data.allow_file_extension:
-                return tool.rt("error.html", error = f"{ext} 확장자는 허용되지 않습니다."), 400
+                return tool.error(f"{ext} 확장자는 허용되지 않습니다.")
             docid = tool.get_docid(ns, name, True)
             content = f'[include({tool.get_config("image_license")}{request.form["license"]})]\n[[{tool.get_namespace_name(int(tool.get_config("category_namespace")))}:{tool.get_config("file_category")}{request.form["category"]}]]\n{request.form["content"]}'
             c.execute("UPDATE data SET value = ? WHERE id = ?", (content, docid))
@@ -1886,7 +1886,7 @@ def change_email():
     return tool.rt("change_email.html", title = "이메일 변경", email = tool.get_user_config(user, "email", ""), wblist = tool.show_email_wblist())
 @app.route("/member/auth/<user>/<token>")
 def change_email2(user, token):
-    tool.delete_expired_change_email_link()
+    tool.delete_expired_change_email_link
     with g.db.cursor() as c:
         user1 = tool.user_name_to_id(user)
         f = c.execute("SELECT email, ip FROM change_email_link WHERE token = ? AND user = ?", (token, user1)).fetchone()

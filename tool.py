@@ -406,7 +406,7 @@ def is_required_captcha(action):
     else:
         return False
 def captcha_failed():
-    return rt("error.html", error = "CAPTCHA 인증이 실패하였습니다.")
+    return error("CAPTCHA 인증이 실패하였습니다.")
 def get_max_captcha_bypass_count():
     if has_perm("no_force_captcha"):
         return int(get_config("captcha_bypass_count_nfc")) if has_config("captcha_bypass_count_nfc") else float("inf")
