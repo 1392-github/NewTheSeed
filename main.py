@@ -403,6 +403,8 @@ with app.app_context():
             c.execute("UPDATE aclgroup_log SET end = 32503647600 WHERE end > 32503647600")
         if db_version < (76, 0):
             c.execute("DELETE FROM config WHERE name IN ('get_api_key', 'api_key_length', 'base_url', 'grantable_permission')")
+        if db_version < (81, 1):
+            c.execute("UPDATE user SET password = '$4$$' || password")
         c.execute("""update config
         set value = ?
         where name = 'version'""", (str(data.version[0]),)) # 변환 후 버전 재설정
@@ -646,8 +648,33 @@ def user():
                 return tool.rt("user.html", user_name = tool.getip(), login=False)
         else:
             return tool.rt("user.html", user_name = tool.getip(), login=False)
-@app.route("/member/login")
+@app.route("/member/login", methods = ["GET", "POST"])
 def login():
+    if request.method == "POST":
+        if not tool.captcha("login"):
+            return tool.captcha_failed()
+        id = tool.user_name_to_id(request.form["id"], True)
+        if id == -1:
+            return tool.error("계정이 존재하지 않습니다.")
+        password = request.form["pw"]
+        if not tool.check_password(id, password):
+            return tool.error("비밀번호가 일치하지 않습니다.")
+        if tool.check_needs_rehash(id):
+            with g.db.cursor() as c:
+                c.execute("UPDATE user SET password = ? WHERE id = ?", (tool.hash_password(password), id))
+        if "keep" in request.form:
+            session.permanent = True
+        session["id"] = id
+        with g.db.cursor() as c:
+            if tool.has_perm("hideip", id):
+                c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,'127.0.0.1','<hideip>','<hideip>')", (id, tool.get_utime()))
+            else:
+                uach = []
+                for i,v in request.headers:
+                    if not i.startswith("Sec-Ch-Ua"): continue
+                    uach.append(i + "=" + v)
+                c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,?,?,?)", (id, tool.get_utime(), tool.getip(), request.user_agent.string, ",".join(uach)))
+        return redirect("/")
     return tool.rt("login.html", title = "로그인", req_captcha = tool.is_required_captcha("login"))
 @app.route("/member/signup", methods = ["GET", "POST"])
 def signup():
@@ -707,31 +734,6 @@ def signup2(token):
         session["id"] = u
         return tool.rt("signup_completed.html", title = "계정 만들기", user = request.form["name"])
     return tool.rt("signup2.html", title = "계정 만들기", email = email)
-@app.route("/login_form", methods=['POST'])
-def login_form():
-    with g.db.cursor() as c:
-        if not tool.captcha("login"):
-            return tool.captcha_failed()
-        f = c.execute('''select id
-        from user
-        where name = ?
-        and password = ?
-        and isip = 0''', (request.form['id'], hashlib.sha3_512(request.form['pw'].encode()).hexdigest())).fetchone()
-        if f == None:
-            return tool.error("아이디나 비밀번호가 일치하지 않습니다.")
-        if "keep" in request.form:
-            session.permanent = True
-        id = f[0]
-        session['id'] = id
-        if tool.has_perm("hideip", id):
-            c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,'127.0.0.1','<hideip>','<hideip>')", (id, tool.get_utime()))
-        else:
-            uach = []
-            for i,v in request.headers:
-                if not i.startswith("Sec-Ch-Ua"): continue
-                uach.append(i + "=" + v)
-            c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,?,?,?)", (id, tool.get_utime(), tool.getip(), request.user_agent.string, ",".join(uach)))
-        return redirect('/')
 @app.route("/member/logout")
 def logout():
     session.clear()
@@ -1764,7 +1766,7 @@ def change_password():
                 return tool.error("패스워드가 올바르지 않습니다.")
             if request.form["pw"] != request.form["pw2"]:
                 return tool.error("패스워드 확인이 올바르지 않습니다.")
-            c.execute("UPDATE user SET password = ? WHERE id = ?", (hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest(), user))
+            c.execute("UPDATE user SET password = ? WHERE id = ?", (tool.hash_password(request.form["pw"]), user))
             return redirect("/")
     return tool.rt("change_password.html", title="비밀번호 변경")
 @app.route("/member/change_name", methods = ["GET", "POST"])
@@ -2254,7 +2256,7 @@ def recover_password2(user, token):
         if request.method == "POST":
             if request.form["pw"] != request.form["pw2"]:
                 return tool.error("패스워드 확인이 올바르지 않습니다.")
-            c.execute("UPDATE user SET password = ? WHERE id = ?", (hashlib.sha3_512(request.form["pw"].encode("utf-8")).hexdigest(), user))
+            c.execute("UPDATE user SET password = ? WHERE id = ?", (tool.hash_password(request.form["pw"]), user))
             c.execute("DELETE FROM recover_password_link WHERE token = ?", (token,))
             return redirect(url_for("login"))
         return tool.rt("recover_password2.html", title = "계정 찾기")

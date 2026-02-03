@@ -5,8 +5,9 @@ import datetime
 import time
 import ipaddress
 import os
-import stat
+import secrets
 import hashlib
+import argon2
 from email.mime.text import MIMEText
 
 from dataclasses import dataclass
@@ -189,9 +190,9 @@ def get_string_config(key, default = None):
             return c.execute("SELECT value FROM string_config WHERE name = ?", (key,)).fetchone()[0]
         else:
             return default
-def user_name_to_id(name):
+def user_name_to_id(name, noip = False):
     with g.db.cursor() as c:
-        f = c.execute("SELECT id FROM user WHERE name = ?", (name,)).fetchone()
+        f = c.execute("SELECT id FROM user WHERE name = ? AND isip = 0" if noip else "SELECT id FROM user WHERE name = ?", (name,)).fetchone()
         if f is None:
             return -1
         else:
@@ -370,6 +371,12 @@ def reload_config(app):
     email_wblist = get_config("email_wblist")
     data.email_wblist = email_wblist.split(",") if email_wblist else []
     data.email_wblist_type = get_config("email_wblist_type") == "white"
+    if get_config("password_hashing_type") == "a":
+        argon2_parameter = get_config("argon2_parameter").split(",")
+        data.argon2_password_hasher = argon2.PasswordHasher(int(argon2_parameter[1]), int(argon2_parameter[2]), int(argon2_parameter[3]), int(argon2_parameter[4]),
+                                                            int(get_config("salt_length")), type = data.argon2_types[argon2_parameter[0]])
+    else:
+        data.argon2_password_hasher = argon2.PasswordHasher()
     app.permanent_session_lifetime = datetime.timedelta(seconds = int(get_config("keep_login_time")))
     with g.db.cursor() as c:
         exp = int(get_config("keep_login_history"))
@@ -940,9 +947,37 @@ def check_email_wblist(email):
     i = email.find("@")
     if i == -1: raise ValueError("Wrong email address")
     return (email[i+1:] in data.email_wblist) == data.email_wblist_type
+def hash_password(password):
+    type = get_config("password_hashing_type") # 1: sha256, 2: sha512, 3: sha3_256, 4: sha3_512, a: argon2
+    if type == "a":
+        return data.argon2_password_hasher.hash(password)
+    else:
+        salt = secrets.token_hex(int(get_config("salt_length")))
+        return f"${type}${salt}${data.hash_functions[type]((password + salt).encode('utf-8')).hexdigest()}"
 def check_password(user, password):
     with g.db.cursor() as c:
-        return bool(c.execute("SELECT EXISTS (SELECT 1 FROM user WHERE id = ? AND password = ?)", (user, hashlib.sha3_512(password.encode("utf-8")).hexdigest())).fetchone()[0])
+        current = c.execute("SELECT password FROM user WHERE id = ?", (user,)).fetchone()[0]
+    if current.startswith("$argon2"):
+        try:
+            data.argon2_password_hasher.verify(current, password)
+            return True
+        except argon2.exceptions.VerifyMismatchError:
+            return False
+    else:
+        _, type, salt, hash = current.split("$")
+        return data.hash_functions[type]((password + salt).encode("utf-8")).hexdigest() == hash
+def check_needs_rehash(user):
+    if get_config("enable_rehash") == "0":
+        return False
+    with g.db.cursor() as c:
+        hash = c.execute("SELECT password FROM user WHERE id = ?", (user,)).fetchone()[0]
+    type = get_config("password_hashing_type")
+    if hash[1] != type:
+        return True
+    if type == "a":
+        return data.argon2_password_hasher.check_needs_rehash(hash)
+    else:
+        return len(hash.split("$")[2]) == int(get_config("salt_length")) * 2
 def get_skin(user = None):
     if not is_login():
         return get_config("default_skin")

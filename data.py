@@ -1,5 +1,6 @@
 import re
-import random
+import argon2
+import hashlib
 
 from dataclasses import dataclass
 @dataclass
@@ -9,7 +10,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (81, 0)
+version = (81, 1)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -70,7 +71,11 @@ default_config = {
     "email_limit2": "",
     "default_skin": "ntsds",
     "gravatar_default": "retro",
-    "gravatar_rating": "g"
+    "gravatar_rating": "g",
+    "password_hashing_type": "a",
+    "salt_length": "16",
+    "argon2_parameter": "id,3,65536,4,32",
+    "enable_rehash": "1"
 }
 default_string_config = {
     "document_license": '이 저작물은 <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>에 따라 이용할 수 있습니다. (단, 라이선스가 명시된 일부 문서 및 삽화 제외)<br>기여하신 문서의 저작권은 각 기여자에게 있으며, 각 기여자는 기여하신 부분의 저작권을 갖습니다.',
@@ -218,3 +223,6 @@ extension_info = {}
 extension_git = set()
 extension_commit = {}
 extension_module = {}
+argon2_password_hasher: argon2.PasswordHasher | None = None
+hash_functions = {"1": hashlib.sha256, "2": hashlib.sha512, "3": hashlib.sha3_256, "4": hashlib.sha3_512}
+argon2_types = {"i": argon2.Type.I, "d": argon2.Type.D, "id": argon2.Type.ID}
