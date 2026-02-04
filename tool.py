@@ -1075,3 +1075,15 @@ def can_grant(perm):
     if perm in data.ignore_grant_has_check: return True
     if has_perm("developer"): return True
     return has_perm(perm)
+def add_login_history():
+    if not is_login(): raise exceptions.NotLoginError()
+    id = ipuser()
+    with g.db.cursor() as c:
+        if has_perm("hideip", id):
+            c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,'127.0.0.1','<hideip>','<hideip>')", (id, get_utime()))
+        else:
+            uach = []
+            for i,v in request.headers:
+                if not i.startswith("Sec-Ch-Ua"): continue
+                uach.append(i + "=" + v)
+            c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,?,?,?)", (id, get_utime(), getip(), request.user_agent.string, ",".join(uach)))

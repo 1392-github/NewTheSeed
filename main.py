@@ -665,15 +665,7 @@ def login():
         if "keep" in request.form:
             session.permanent = True
         session["id"] = id
-        with g.db.cursor() as c:
-            if tool.has_perm("hideip", id):
-                c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,'127.0.0.1','<hideip>','<hideip>')", (id, tool.get_utime()))
-            else:
-                uach = []
-                for i,v in request.headers:
-                    if not i.startswith("Sec-Ch-Ua"): continue
-                    uach.append(i + "=" + v)
-                c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,?,?,?)", (id, tool.get_utime(), tool.getip(), request.user_agent.string, ",".join(uach)))
+        tool.add_login_history()
         return redirect("/")
     return tool.rt("login.html", title = "로그인", req_captcha = tool.is_required_captcha("login"))
 @app.route("/member/signup", methods = ["GET", "POST"])
@@ -732,6 +724,7 @@ def signup2(token):
                 tool.set_user_config(u, "email", email)
                 c.execute("DELETE FROM signup_link WHERE email = ?", (email,))
         session["id"] = u
+        tool.add_login_history()
         return tool.rt("signup_completed.html", title = "계정 만들기", user = request.form["name"])
     return tool.rt("signup2.html", title = "계정 만들기", email = email)
 @app.route("/member/logout")
@@ -2139,6 +2132,7 @@ def api_login():
         return data.json_403
     session["id"] = user
     session["api"] = True
+    tool.add_login_history()
     return {"status": "success"}
 @app.route("/api/all_document")
 def api_all_document():

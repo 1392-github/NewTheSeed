@@ -44,3 +44,4 @@ class ACLGroupElementNotExistsError(Exception):
 class MaximumTimeExceedError(Exception): pass
 class InvalidUserError(Exception): pass
 class DocumentContentEqualError(Exception): pass
+class NotLoginError(Exception): pass
