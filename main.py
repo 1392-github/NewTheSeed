@@ -772,7 +772,7 @@ def sqlshell():
                 result = str(c.execute(request.form["sql"]).fetchall())
         except Exception as e:
             result = str(e)
-        return tool.rt("sql_shell.html", prev_sql = request.form["prev"] + "\n" + request.form["sql"], result = result)
+        return tool.rt("sql_shell.html", title = "SQL Shell", prev_sql = request.form["prev"] + "\n" + request.form["sql"], result = result)
 @app.route("/delete/<path:doc_name>", methods = ["GET", "POST"])
 def delete(doc_name):
     i = tool.ipuser(create = request.method == "POST")

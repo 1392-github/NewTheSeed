@@ -10,7 +10,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (81, 1)
+version = (81, 2)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
