@@ -899,7 +899,7 @@ def email(to, subject, text):
         smtp.send_message(msg)
 def signup(name, password = None, userdoc = True):
     with g.db.cursor() as c:
-        c.execute("INSERT INTO user (name, password, isip) VALUES (?,?,0)", (name, hashlib.sha3_512(password.encode("utf-8")).hexdigest()))
+        c.execute("INSERT INTO user (name, password, isip) VALUES (?,?,0)", (name, hash_password(password)))
         u = c.lastrowid
         time = get_utime()
         if userdoc:
