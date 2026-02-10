@@ -516,9 +516,10 @@ def check_cond(cond, value, value2, user, ip, basedoc = None, docname = None):
     elif cond == "perm":
         return has_perm(value, user, basedoc, docname), None
     elif cond == "aclgroup":
-        t = user_in_aclgroup(value2, user)
-        if t:
-            return True, t
+        if user != -1:
+            t = user_in_aclgroup(value2, user)
+            if t:
+                return True, t
         t = user_in_aclgroup(value2, ip)
         if t:
             return True, t
