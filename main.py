@@ -632,7 +632,7 @@ def doc_edit_form():
         if prev_content is None:
             new_document = True
             prev_content = ""
-        tool.record_history(docid, int(new_document), value, None, None, tool.ipuser(), request.form["edit_comment"], len(value) - len(prev_content))
+        tool.record_history(docid, int(new_document), value, None, None, tool.get_user(), request.form["edit_comment"], len(value) - len(prev_content))
         c.execute("UPDATE data SET value = ? WHERE id = ?", (value, docid))"""
         tool.edit_or_new(ns, name, value, request.form["edit_comment"])
         return redirect(f"/w/{doc_name}")
@@ -645,7 +645,7 @@ def user():
     with g.db.cursor() as c:
         if tool.is_login():
             try:
-                return tool.rt("user.html", user_name = tool.id_to_user_name(tool.ipuser()), login=True)
+                return tool.rt("user.html", user_name = tool.id_to_user_name(tool.get_user()), login=True)
             except:
                 session.pop("id", None)
                 return tool.rt("user.html", user_name = tool.getip(), login=False)
@@ -770,7 +770,7 @@ def sqlshell():
         return tool.rt("sql_shell.html", title = "SQL Shell", prev_sql = request.form["prev"] + "\n" + request.form["sql"], result = result)
 @app.route("/delete/<path:doc_name>", methods = ["GET", "POST"])
 def delete(doc_name):
-    i = tool.ipuser(create = request.method == "POST")
+    i = tool.get_user(create = request.method == "POST")
     ns, name = tool.split_ns(doc_name)
     docid = tool.get_docid(ns, name)
     acl = tool.check_document_acl(docid, ns, "delete", name)
@@ -810,8 +810,8 @@ def move(doc_name):
             with g.db.cursor() as c:
                 c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (tons, toname, docid))
                 c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (ns, name, todocid))
-            tool.record_history(docid, 3, tool.get_doc_data(docid), doc_name, to, tool.ipuser(), request.form["note"], 0)
-            tool.record_history(todocid, 3, tool.get_doc_data(todocid), to, doc_name, tool.ipuser(), request.form["note"], 0)
+            tool.record_history(docid, 3, tool.get_doc_data(docid), doc_name, to, tool.get_user(), request.form["note"], 0)
+            tool.record_history(todocid, 3, tool.get_doc_data(todocid), to, doc_name, tool.get_user(), request.form["note"], 0)
         else:
             # 일반 문서 이동
             if tool.get_docid(tons, toname) != -1:
@@ -821,7 +821,7 @@ def move(doc_name):
                 return tool.error(acl[1], 403)
             with g.db.cursor() as c:
                 c.execute("UPDATE doc_name SET namespace = ?, name = ? WHERE id = ?", (tons, toname, docid))
-            tool.record_history(docid, 3, tool.get_doc_data(docid), doc_name, to, tool.ipuser(), request.form["note"], 0)
+            tool.record_history(docid, 3, tool.get_doc_data(docid), doc_name, to, tool.get_user(), request.form["note"], 0)
         return redirect(url_for("doc_read", doc_title = to))
     return tool.rt("document_move.html", title = tool.render_docname(ns, name), subtitle = "이동")
 @app.route("/acl/<path:doc_name>", methods = ["GET", "POST"])
@@ -915,7 +915,7 @@ def acl(doc_name):
                 c.execute(f"""INSERT INTO {acl_t} ({id_col}, acltype, idx, condtype, value{"2" if ty2 else ""}, no, action, expire, otherns)
                                 SELECT ?1,?2,(SELECT COALESCE(MAX(idx), 0) + 1 FROM {acl_t} WHERE {id_col} = ?1 AND acltype = ?2),?3,?4,?5,?6,?7,?8""",
                             (id, type2, condtype, cond, no, action, end, ons[0] if action == "gotootherns" else None))
-                if not nsacl: tool.record_history(docid, 4, tool.get_doc_data(docid), f'insert,{type2},{action},{"not:" if no else ""}{condtype}:{cond2 if condtype == "aclgroup" or condtype == "user" else cond}', None, tool.ipuser(), "", 0)
+                if not nsacl: tool.record_history(docid, 4, tool.get_doc_data(docid), f'insert,{type2},{action},{"not:" if no else ""}{condtype}:{cond2 if condtype == "aclgroup" or condtype == "user" else cond}', None, tool.get_user(), "", 0)
             elif opcode == "delete":
                 idx = json["index"]
                 if not isinstance(idx, int):
@@ -929,7 +929,7 @@ def acl(doc_name):
                     v = c.execute("SELECT name FROM aclgroup WHERE id = ?", (f[2],)).fetchone()[0]
                 else:
                     v = f[1]
-                if not nsacl: tool.record_history(docid, 4, tool.get_doc_data(docid), f'delete,{type2},{f[4]},{"not:" if f[3] else ""}{f[0]}:{v}', None, tool.ipuser(), "", 0)
+                if not nsacl: tool.record_history(docid, 4, tool.get_doc_data(docid), f'delete,{type2},{f[4]},{"not:" if f[3] else ""}{f[0]}:{v}', None, tool.get_user(), "", 0)
                 c.execute(f"DELETE FROM {acl_t} WHERE {id_col} = ? AND acltype = ? AND idx = ?", (id, type2, idx))
                 c.execute(f"UPDATE {acl_t} SET idx = idx - 1 WHERE {id_col} = ? AND acltype = ? AND idx > ?", (id, type2, idx))
             elif opcode == "move":
@@ -1035,7 +1035,7 @@ def aclgroup():
                 c.execute("INSERT INTO aclgroup_log (gid, ip, note, start, end) VALUES(?, ?, ?, ?, ?)",
                         (gid, ip, request.form["note"], t, None if dur == 0 else t + dur))
                 c.execute("INSERT INTO block_log (type, operator, target_ip, id, gid, date, duration, note) VALUES(1, ?, ?, ?, ?, ?, ?, ?)",
-                        (tool.ipuser(), ip, c.lastrowid, gid, t, dur, request.form["note"]))
+                        (tool.get_user(), ip, c.lastrowid, gid, t, dur, request.form["note"]))
             else:
                 if not tool.has_user(request.form["value"]):
                     return tool.error_400("사용자 이름이 올바르지 않습니다.")
@@ -1046,7 +1046,7 @@ def aclgroup():
                 c.execute("INSERT INTO aclgroup_log (gid, user, note, start, end) VALUES(?, (SELECT id FROM user WHERE name = ?), ?, ?, ?)",
                         (gid, request.form["value"], request.form["note"], t, None if dur == 0 else t + dur))
                 c.execute("INSERT INTO block_log (type, operator, target, id, gid, date, duration, note) VALUES(1, ?, (SELECT id FROM user WHERE name = ?), ?, ?, ?, ?, ?)",
-                        (tool.ipuser(), request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))"""
+                        (tool.get_user(), request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))"""
             mode = request.form["mode"]
             if mode == "user":
                 user = tool.user_name_to_id(request.form["value"])
@@ -1194,7 +1194,7 @@ def grant():
                             c.execute("DELETE FROM perm WHERE user =  ? AND perm = ?", (user, p))
                             logstr.append("-" + p)
             if len(logstr) != 0: c.execute("INSERT INTO block_log (type, operator, target, date, grant_perm, note) VALUES(3,?,?,?,?,?)",
-                    (tool.ipuser(), user, tool.get_utime(), " ".join(logstr), request.form["note"] if tool.get_config("ext_note") == "1" else ""))
+                    (tool.get_user(), user, tool.get_utime(), " ".join(logstr), request.form["note"] if tool.get_config("ext_note") == "1" else ""))
             return '', 204
         else:
             user = request.args.get("username", "")
@@ -1232,7 +1232,7 @@ def discuss(doc):
             time = tool.get_utime()
             c.execute("INSERT INTO discuss (doc_id, topic, last) VALUES(?,?,?)", (docid, request.form["topic"], time))
             slug = c.lastrowid
-            #c.execute("INSERT INTO thread_comment (slug, no, text, type, author, time) VALUES(?,1,?,0,?,?)", (slug, request.form["content"], tool.ipuser(), time))
+            #c.execute("INSERT INTO thread_comment (slug, no, text, type, author, time) VALUES(?,1,?,0,?,?)", (slug, request.form["content"], tool.get_user(), time))
             tool.write_thread_comment(slug, 0, request.form["content"])
             return redirect(url_for("thread", slug = slug))
         else:
@@ -1291,7 +1291,7 @@ def thread(slug):
                     return acl[1], 403, {"Content-Type": "text/plain"}
                 tool.write_thread_comment(slug, 0, request.form["value"])
             #c.execute("""INSERT INTO thread_comment (slug, no, type, text, author, time)
-#SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), 0, ?2, ?3, ?4""", (slug, request.form["value"], tool.ipuser(), tool.get_utime()))
+#SELECT ?1, (SELECT seq FROM discuss WHERE slug = ?1), 0, ?2, ?3, ?4""", (slug, request.form["value"], tool.get_user(), tool.get_utime()))
             #c.execute("UPDATE discuss SET seq = seq + 1 WHERE slug = ?", (slug,))
             return "", 204
         #html, js = tool.render_thread(slug)
@@ -1377,7 +1377,7 @@ def hide_thread_comment(slug, no, type):
         if not tool.has_perm("weak_hide_thread_comment"): return "", 403
         if (type == 2 or status == 2) and not tool.has_perm("hide_thread_comment"): return "", 403
         if type == 0: c.execute("UPDATE thread_comment SET blind = 0, blind_operator = NULL WHERE slug = ? AND no = ?", (slug, no))
-        else: c.execute("UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no = ?", (type, tool.ipuser(), slug, no))
+        else: c.execute("UPDATE thread_comment SET blind = ?, blind_operator = ? WHERE slug = ? AND no = ?", (type, tool.get_user(), slug, no))
         return "", 204
 @app.route("/topic/<int:slug>")
 def topic_redirect(slug):
@@ -1583,7 +1583,7 @@ def login_history():
             id = tool.user_name_to_id(user)
             if id == -1:
                 return tool.error("invalid_username")
-            c.execute("INSERT INTO block_log (type, operator, target, date, note) VALUES(4,?,?,?,?)", (tool.ipuser(), id, tool.get_utime(), request.args["note"] if tool.get_config("ext_note") == "1" else ""))
+            c.execute("INSERT INTO block_log (type, operator, target, date, note) VALUES(4,?,?,?,?)", (tool.get_user(), id, tool.get_utime(), request.args["note"] if tool.get_config("ext_note") == "1" else ""))
             return tool.rt("login_history_1.html", title = f"{user} 로그인 내역", email = tool.get_user_config(id, "email", "(미설정)"), lh = c.execute("SELECT date, ip, ua, uach FROM login_history WHERE user = ? ORDER BY date DESC", (id,)).fetchall())
         else:
             return tool.rt("login_history.html", title = "로그인 내역", ext_note = tool.get_config("ext_note") == "1")
@@ -1615,7 +1615,7 @@ def upload():
             docid = tool.get_docid(ns, name, True)
             content = f'[include({tool.get_config("image_license")}{request.form["license"]})]\n[[{tool.get_namespace_name(int(tool.get_config("category_namespace")))}:{tool.get_config("file_category")}{request.form["category"]}]]\n{request.form["content"]}'
             c.execute("UPDATE data SET value = ? WHERE id = ?", (content, docid))
-            tool.record_history(docid, 1, content, None, None, tool.ipuser(), request.form["note"], len(content))
+            tool.record_history(docid, 1, content, None, None, tool.get_user(), request.form["note"], len(content))
             file.save(os.path.join("file", str(docid)))
             return redirect(url_for("doc_read", doc_title = request.form["name"]))
     temp_docid = tool.get_docid(*tool.split_ns(tool.get_config("image_upload_templete")))
@@ -1704,7 +1704,7 @@ def batch_blind():
     if type == 2 and not htc: abort(403)
     slug = int(request.form["slug"])
     comments = request.form["comments"].strip().splitlines()
-    user = tool.ipuser()
+    user = tool.get_user()
     with g.db.cursor() as c:
         c.execute("BEGIN")
         for i in comments:
@@ -1733,7 +1733,7 @@ def self_remove():
         gid, ip, user = f
         if ip is None:
             if not tool.is_login(): return tool.error("aclgroup_not_found")
-            user2 = tool.ipuser(False)
+            user2 = tool.get_user(False)
             if user != user2: return tool.error("aclgroup_not_found")
         else:
             if not tool.ip_in_cidr(tool.getip(), ip): return tool.error("aclgroup_not_found")
@@ -1744,7 +1744,7 @@ def self_remove():
 def mypage():
     if not tool.is_login(): return redirect("/")
     with g.db.cursor() as c:
-        user = tool.ipuser()
+        user = tool.get_user()
         l = len(data.permissions)
         return tool.rt("mypage.html", title="내 정보", user = tool.id_to_user_name(user), use_email = tool.get_config("email_verification_level") != "0",
                        email = tool.get_user_config(user, "email", "(미설정)"), change_name = tool.get_config("change_name_enable") == "1",
@@ -1755,7 +1755,7 @@ def mypage():
 def change_password():
     if not tool.is_login(): return redirect("/")
     if request.method == "POST":
-        user = tool.ipuser()
+        user = tool.get_user()
         with g.db.cursor() as c:
             if not tool.check_password(user, request.form["cpw"]):
                 return tool.error("패스워드가 올바르지 않습니다.")
@@ -1768,7 +1768,7 @@ def change_password():
 def change_name():
     if tool.get_config("change_name_enable") == "0": return tool.error("이름 변경이 비활성화되어 있습니다.", 501)
     if not tool.is_login(): return redirect("/")
-    user = tool.ipuser()
+    user = tool.get_user()
     cooltime = int(tool.get_user_config(user, "change_name", 0)) + int(tool.get_config("change_name_cooltime"))
     if cooltime <= tool.get_utime():
         cooltime = None
@@ -1797,17 +1797,17 @@ def change_skin():
     if not tool.is_login(): return redirect("/")
     skin = request.form["skin"]
     if skin == "":
-        tool.del_user_config(tool.ipuser(), "skin")
+        tool.del_user_config(tool.get_user(), "skin")
         return redirect(url_for("mypage"))
     if skin not in data.skins:
         return tool.error("invalid_skin")
-    tool.set_user_config(tool.ipuser(), "skin", skin)
+    tool.set_user_config(tool.get_user(), "skin", skin)
     return redirect(url_for("mypage"))
 @app.route("/member/withdraw", methods = ["GET", "POST"])
 def withdraw():
     if tool.get_config("withdraw_enable") == "0": return tool.error("계정 삭제가 비활성화되어 있습니다.", 501)
     if not tool.is_login(): return redirect("/")
-    user = tool.ipuser()
+    user = tool.get_user()
     with g.db.cursor() as c:
         withdraw_block = None
         wait = int(tool.get_config("withdraw_cooltime"))
@@ -1848,7 +1848,7 @@ def change_email():
     if not tool.is_login(): return redirect("/")
     evm = tool.get_config("email_verification_level")
     if evm == "0": return tool.error("이 기능이 비활성화되어 있습니다.", 501)
-    user = tool.ipuser()
+    user = tool.get_user()
     if request.method == "POST":
         if not tool.check_password(user, request.form["pw"]):
             return tool.error("패스워드가 올바르지 않습니다.")
@@ -1943,7 +1943,7 @@ def revert(doc):
 def api_token():
     if not tool.is_login(): return redirect("/")
     if request.method == "POST":
-        user = tool.ipuser()
+        user = tool.get_user()
         if not tool.check_password(user, request.form["pw"]):
             return tool.error("패스워드가 올바르지 않습니다.")
         token = base64.b64encode(secrets.token_bytes(128))
@@ -2268,7 +2268,7 @@ def mark_troll_revision(doc):
     if not tool.has_perm("mark_troll_revision"):
         abort(403)
     with g.db.cursor() as c:
-        c.execute("UPDATE history SET troll = ? WHERE doc_id = ? AND rev = ?", (tool.ipuser(), tool.get_docid(*tool.split_ns(doc)), request.args.get("rev", type=int)))
+        c.execute("UPDATE history SET troll = ? WHERE doc_id = ? AND rev = ?", (tool.get_user(), tool.get_docid(*tool.split_ns(doc)), request.args.get("rev", type=int)))
     return "", 204
 @app.route("/admin/unmark_troll_revision/<doc>", methods = ["POST"])
 def unmark_troll_revision(doc):
