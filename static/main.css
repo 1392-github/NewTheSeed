@@ -189,3 +189,7 @@ th, td
     cursor: not-allowed;
     opacity: 0.65;
 }
+.troll
+{
+    font-size: 0.8rem;
+}

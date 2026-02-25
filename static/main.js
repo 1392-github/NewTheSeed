@@ -66,3 +66,18 @@ document.body.addEventListener("click", function (e) {
         target.hidden = !target.hidden;
     }
 })
+document.querySelectorAll(".post-refresh").forEach(function (e) {
+    e.addEventListener("click", function (e) {
+        e.preventDefault()
+        fetch(this.href, {method: "post"}).then(function (r) {
+            if (r.ok) {
+                location.reload()
+            }
+            else {
+                throw new Error(`Request failed with status code ${r.status}`)
+            }
+        }).catch(function (e) {
+            alert(e.message)
+        })
+    })
+})

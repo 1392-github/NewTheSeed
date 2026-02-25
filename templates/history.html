@@ -16,14 +16,18 @@
 {% endblock %}
 
 {% block content %}
+{% set mark_troll_revision = has_perm("mark_troll_revision") %}
 <ul>
     {% for h in history %}
-    <li>
-        {{ h[7]}} (<a href="/w/{{ raw_doc_name }}?rev={{ h[0] }}">보기</a> | <a href="/raw/{{ raw_doc_name }}?rev={{ h[0] }}">RAW</a> | <a href="/revert/{{ raw_doc_name }}?rev={{ h[0] }}">이 리버전으로 되돌리기</a>)
+    <li{% if h[9] != -1 %} class="troll"{% endif %}>
+        {{ h[7]|time }} (<a href="/w/{{ raw_doc_name }}?rev={{ h[0] }}">보기</a> | <a href="/raw/{{ raw_doc_name }}?rev={{ h[0] }}">RAW</a>{% if h[9] == -1 %} | <a href="/revert/{{ raw_doc_name }}?rev={{ h[0] }}">이 리버전으로 되돌리기</a>{% endif %}{% if mark_troll_revision %} | {% if h[9] == -1 %}<a href="{{ url_for('mark_troll_revision', doc = raw_doc_name, rev = h[0]) }}" class="post-refresh">[ADMIN] 반달로 표시</a>{% else %}<a href="{{ url_for('unmark_troll_revision', doc = raw_doc_name, rev = h[0]) }}" class="post-refresh">[ADMIN] 반달표시 해제</a>{% endif %}{% endif %})
         <i>{{ history_msg(h[1], h[3], h[4]) }}</i>
         <span style="font-weight: 700;">r{{h[0]}}</span> ({% if h[8] == 0 %}<span class="history-zero">0</span>{% elif h[8] > 0 %}<span class="history-plus">+{{ h[8] }}</span>{% else %}<span class="history-minus">{{ h[8] }}</span>{% endif %})
         {{ h[5]|user }}
         (<span style="color: gray;">{{ h[6] }}</span>)
+        {% if h[9] != -1 %}
+        [{{h[9]|user}} 사용자에 의해 반달로 표시됨]
+        {% endif %}
     </li>
     {% endfor %}
 </ul>

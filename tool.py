@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 
 from dataclasses import dataclass
 from flask import request, session, Response, render_template, g, has_app_context, url_for
+from flask.ctx import _AppCtxGlobals
 from markupsafe import escape
 from requests import post
 import smtplib
@@ -49,7 +50,8 @@ class Cursor2(sqlite3.Cursor):
         if et: self.connection.rollback()
         else: self.connection.commit()
         self.close()
-
+class MyGlobals(_AppCtxGlobals):
+    db: Connection2
 def getdb():
     return sqlite3.connect("data.db", check_same_thread = False, factory = Connection2)
 def run_sqlscript(filename):
@@ -1026,7 +1028,7 @@ def edit_or_new(ns, name, content, edit_comment = "", user = None, check_acl = T
             docid = get_docid(ns, name, True)
             edit(docid, content, edit_comment, user, check_acl, False)
             return record_history(docid, 1, content, None, None, user, edit_comment, len(content))
-def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history = True):
+def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history = True, check_troll = True):
     if user is None:
         user = ipuser()
     if check_acl:
@@ -1037,12 +1039,14 @@ def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history
     with g.db.cursor() as c:
         if not has_document(docid):
             raise exceptions.DocumentNotExistError(docid)
-        f = c.execute("SELECT type, content, content2 FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
+        f = c.execute("SELECT type, content, content2, troll FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
         if f is None:
             raise exceptions.RevisionNotExistError(docid)
-        type, content, content2 = f
+        type, content, content2, troll = f
         if type not in data.revert_available:
             raise exceptions.CannotRevertRevisionError(rev)
+        if troll != -1:
+            raise exceptions.TrollRevisionError()
         if history:
             old = get_doc_data(docid)
         edit(docid, content, edit_comment, user, False, False)

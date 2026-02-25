@@ -13,8 +13,10 @@ import traceback
 import stat
 import base64
 import importlib
+from typing import cast
 
-from flask import Flask, request, redirect, session, send_file, send_from_directory, abort, Response, url_for, g
+from flask import Flask, request, redirect, session, send_file, send_from_directory, abort, Response, url_for
+from flask import g as _g
 from jinja2 import ChoiceLoader, FileSystemLoader
 from git import Repo, InvalidGitRepositoryError
 from markupsafe import escape, Markup
@@ -123,6 +125,7 @@ if not os.path.exists(".env"):
     shutil.copy(".env.example", ".env")
 dotenv.load_dotenv()
 app = Flask(__name__)
+g = cast(tool.MyGlobals, _g)
 with app.app_context():
     g.db = tool.getdb()
     tool.run_sqlscript("db_stu.sql") # DB 구조 만들기
@@ -738,9 +741,8 @@ def history(doc_name):
         docid = tool.get_docid(ns, name)
         if docid == -1:
             return tool.error("문서를 찾을 수 없습니다.", 404)
-        c.execute("""SELECT rev, type, content, content2, content3, author, edit_comment, datetime, length FROM history WHERE doc_id = ? ORDER BY rev DESC""", (docid,))
-        history = [(x[0], x[1], x[2], x[3], x[4], x[5], x[6], tool.utime_to_str(x[7]), x[8]) for x in c.fetchall()]
-        return tool.rt("history.html", history=history, title=tool.render_docname(ns, name), subtitle="역사", raw_doc_name=doc_name)
+        return tool.rt("history.html", history=c.execute("""SELECT rev, type, content, content2, content3, author, edit_comment, datetime, length, troll FROM history WHERE doc_id = ? ORDER BY rev DESC""", (docid,)).fetchall(),
+                       title=tool.render_docname(ns, name), subtitle="역사", raw_doc_name=doc_name)
 @app.route("/sql")
 def sqldump():
     if not tool.has_perm("developer"):
@@ -1920,18 +1922,22 @@ def revert(doc):
             return tool.error("해당 리버전이 존재하지 않습니다.")
         except exceptions.CannotRevertRevisionError:
             return tool.error("이 리버전으로 되돌릴 수 없습니다.")
+        except exceptions.TrollRevisionError:
+            return tool.error("이 리비전은 반달로 표시되었기 때문에 되돌릴 수 없습니다.")
         return redirect(url_for("doc_read", doc_title = doc))
     acl = tool.check_document_acl(docid, ns, "edit", name)
     if acl[0] == 0:
         return tool.error(acl[1], 403)
     rev = int(request.args["rev"])
     with g.db.cursor() as c:
-        f = c.execute("SELECT type, content FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
+        f = c.execute("SELECT type, content, troll FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
         if f is None:
             return tool.error("해당 리버전이 존재하지 않습니다.")
-        type, content = f
+        type, content, troll = f
         if type not in data.revert_available:
             return tool.error("이 리버전으로 되돌릴 수 없습니다.")
+        if troll != -1:
+            return tool.error("이 리비전은 반달로 표시되었기 때문에 되돌릴 수 없습니다.")
         return tool.rt("revert.html", title = tool.render_docname(ns, name), subtitle = f"r{rev}로 되돌리기", content = content)
 @app.route("/member/api_token", methods = ["GET", "POST"])
 def api_token():
@@ -2254,6 +2260,23 @@ def recover_password2(user, token):
             c.execute("DELETE FROM recover_password_link WHERE token = ?", (token,))
             return redirect(url_for("login"))
         return tool.rt("recover_password2.html", title = "계정 찾기")
+@app.route("/admin/batch_revert", methods = ["GET", "POST"])
+def batch_revert():
+    return "이제 곧 나옴", 404
+@app.route("/admin/mark_troll_revision/<doc>", methods = ["POST"])
+def mark_troll_revision(doc):
+    if not tool.has_perm("mark_troll_revision"):
+        abort(403)
+    with g.db.cursor() as c:
+        c.execute("UPDATE history SET troll = ? WHERE doc_id = ? AND rev = ?", (tool.ipuser(), tool.get_docid(*tool.split_ns(doc)), request.args.get("rev", type=int)))
+    return "", 204
+@app.route("/admin/unmark_troll_revision/<doc>", methods = ["POST"])
+def unmark_troll_revision(doc):
+    if not tool.has_perm("mark_troll_revision"):
+        abort(403)
+    with g.db.cursor() as c:
+        c.execute("UPDATE history SET troll = -1 WHERE doc_id = ? AND rev = ?", (tool.get_docid(*tool.split_ns(doc)), request.args.get("rev", type=int)))
+    return "", 204
 hooks.Start4()
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG") == "1"

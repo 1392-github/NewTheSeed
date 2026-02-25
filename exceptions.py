@@ -45,3 +45,4 @@ class MaximumTimeExceedError(Exception): pass
 class InvalidUserError(Exception): pass
 class DocumentContentEqualError(Exception): pass
 class NotLoginError(Exception): pass
+class TrollRevisionError(Exception): pass
