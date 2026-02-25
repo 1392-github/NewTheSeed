@@ -68,7 +68,7 @@ def getip():
         return request.headers.get("X-Real-IP", request.remote_addr)
     else:
         return request.remote_addr
-def ipuser(create = True):
+def user(create = True):
     with g.db.cursor() as c:
         if 'id' in session:
             id = session['id']
@@ -104,7 +104,7 @@ where name = ?''',(name,)).fetchone()[0]
         policy = 1
     if key is None:
         if policy == 0:
-            return ipuser()
+            return user()
         else:
             return None
     if c.execute('''select exists (
@@ -143,7 +143,7 @@ def rt(t, **k):
         k["raw_title"] = k["title"]
     login = is_login()
     k["login"] = login
-    user = ipuser(False)
+    user = user(False)
     if login:
         k["user"] = id_to_user_name(user)
         email = get_user_config(user, "email")
@@ -270,7 +270,7 @@ def user_in_aclgroup(group, user = None):
     with g.db.cursor() as c:
         delete_expired_aclgroup()
         if user is None:
-            user = ipuser()
+            user = user()
         ip = None
         if isinstance(user, str):
             ip = user
@@ -294,7 +294,7 @@ def isip(user):
 def has_perm(perm, user = None, basedoc = None, docname = None):
     with g.db.cursor() as c:
         if user is None:
-            user = ipuser(False)
+            user = user(False)
         r = hooks.HasPerm(perm, user, basedoc, docname)
         if r is not None:
             return r
@@ -554,7 +554,7 @@ def check_acl(acl, type = None, user = None, basedoc = None, docname = None, got
     # condtype, value, value2, not, action, otherns 순으로 입력
     # 0 : 거부, 1 : 허용, 2 : 이름공간ACL 실행
     if gotootherns_already is None: gotootherns_already = set()
-    if user is None: user = ipuser(False)
+    if user is None: user = user(False)
     for i in acl:
         c = check_cond(i[0], i[1], i[2], user, getip(), basedoc, docname)
         if c[0] ^ i[3]:
@@ -682,7 +682,7 @@ def render_thread(slug):
 def write_thread_comment(slug, type, text = None, text2 = None):
     with g.db.cursor() as c:
         t = get_utime()
-        u = ipuser()
+        u = user()
         if text is not None: text = text.replace("\r\n", "\n").replace("\r", "\n")
         if text2 is not None: text2 = text2.replace("\r\n", "\n").replace("\r", "\n")
         c.execute("""INSERT INTO thread_comment (slug, no, type, text, text2, author, time, admin)
@@ -711,7 +711,7 @@ def check_aclgroup_flag(gid, name, user = None):
     return False
 def aclgroup_insert(gid, mode, user, note = "", duration = 0, operator = None, log = True, note_required_check = True, max_duration_check = True, max_cidr_check = True, flags_check = True):
     if operator is None:
-        operator = ipuser()
+        operator = user()
     delete_expired_aclgroup()
     if duration < 0:
         raise ValueError("negative duration is not allowed")
@@ -783,7 +783,7 @@ def aclgroup_delete(id, note = "", operator = None, log = True, note_required_ch
             raise exceptions.NoteRequiredError()
         if log:
             c.execute("INSERT INTO block_log (type, operator, target_ip, target, id, gid, date, note) SELECT 2, ?1, ip, user, ?2, gid, ?3, ?4 FROM aclgroup_log WHERE id = ?2",
-                (ipuser() if operator is None else operator, id, get_utime(), note))
+                (user() if operator is None else operator, id, get_utime(), note))
         c.execute("DELETE FROM aclgroup_log WHERE id = ?", (id,))
 def is_login():
     if "id" in session:
@@ -985,7 +985,7 @@ def get_skin(user = None):
     if not is_login():
         return get_config("default_skin")
     if user is None:
-        user = ipuser(False)
+        user = user(False)
     if isip(user):
         return get_config("default_skin")
     s = get_user_config(user, "skin")
@@ -1000,7 +1000,7 @@ def error(msg, code = 400, title = "오류"):
     return rt("error.html", title = title, error = msg), code
 def edit(docid, content, edit_comment = "", user = None, check_acl = True, history = True, check_equal = True):
     if user is None:
-        user = ipuser()
+        user = user()
     if check_acl:
         doc_name = get_doc_name(docid)
         acl = check_document_acl(docid, doc_name[0], "edit", doc_name[1], user)
@@ -1020,7 +1020,7 @@ def has_document(docid):
         return bool(c.execute("SELECT EXISTS (SELECT 1 FROM doc_name WHERE id = ?)", (docid,)).fetchone()[0])
 def edit_or_new(ns, name, content, edit_comment = "", user = None, check_acl = True, history = True):
     if user is None:
-        user = ipuser()
+        user = user()
     with g.db.cursor() as c:
         if c.execute("SELECT EXISTS (SELECT 1 FROM doc_name WHERE namespace = ? AND name = ?)", (ns, name)).fetchone()[0]:
             return edit(get_docid(ns, name), content, edit_comment, user, check_acl, history)
@@ -1030,7 +1030,7 @@ def edit_or_new(ns, name, content, edit_comment = "", user = None, check_acl = T
             return record_history(docid, 1, content, None, None, user, edit_comment, len(content))
 def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history = True, check_troll = True):
     if user is None:
-        user = ipuser()
+        user = user()
     if check_acl:
         doc_name = get_doc_name(docid)
         acl = check_document_acl(docid, doc_name[0], "edit", doc_name[1], user)
@@ -1082,7 +1082,7 @@ def can_grant(perm):
     return has_perm(perm)
 def add_login_history():
     if not is_login(): raise exceptions.NotLoginError()
-    id = ipuser()
+    id = user()
     with g.db.cursor() as c:
         if has_perm("hideip", id):
             c.execute("INSERT INTO login_history (user, date, ip, ua, uach) VALUES(?,?,'127.0.0.1','<hideip>','<hideip>')", (id, get_utime()))
