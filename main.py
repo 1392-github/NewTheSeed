@@ -1919,9 +1919,9 @@ def revert(doc):
         try:
             tool.revert(docid, int(request.args["rev"]), request.form["note"])
         except (exceptions.DocumentNotExistError, exceptions.RevisionNotExistError):
-            return tool.error("해당 리버전이 존재하지 않습니다.")
+            return tool.error("해당 리비전이 존재하지 않습니다.")
         except exceptions.CannotRevertRevisionError:
-            return tool.error("이 리버전으로 되돌릴 수 없습니다.")
+            return tool.error("이 리비전으로 되돌릴 수 없습니다.")
         except exceptions.TrollRevisionError:
             return tool.error("이 리비전은 반달로 표시되었기 때문에 되돌릴 수 없습니다.")
         return redirect(url_for("doc_read", doc_title = doc))
@@ -1932,10 +1932,10 @@ def revert(doc):
     with g.db.cursor() as c:
         f = c.execute("SELECT type, content, troll FROM history WHERE doc_id = ? AND rev = ?", (docid, rev)).fetchone()
         if f is None:
-            return tool.error("해당 리버전이 존재하지 않습니다.")
+            return tool.error("해당 리비전이 존재하지 않습니다.")
         type, content, troll = f
         if type not in data.revert_available:
-            return tool.error("이 리버전으로 되돌릴 수 없습니다.")
+            return tool.error("이 리비전으로 되돌릴 수 없습니다.")
         if troll != -1:
             return tool.error("이 리비전은 반달로 표시되었기 때문에 되돌릴 수 없습니다.")
         return tool.rt("revert.html", title = tool.render_docname(ns, name), subtitle = f"r{rev}로 되돌리기", content = content)
