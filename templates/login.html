@@ -5,19 +5,20 @@
 {% endblock %}
 
 {% block content %}
-<form method="post">
-    <label>
-        Username<br>
-        <input type="text" name="id">
-    </label>
-    <br>
-    <label>
-        Password<br>
-        <input type="password" name="pw">
-    </label>
+<form method="post" class="form-width">
+    <div class="form-item">
+        <label for="id-input">Username</label>
+        <input id="id-input" type="text" name="id" class="modern-input">
+    </div>
+    <div class="form-item">
+        <label for="password-input">Password</label>
+        <input id="password-input" type="password" name="pw" class="modern-input">
+    </div>
     <br>
     {% if get_config("email_verification_level") != "0" %}
-    <a href="{{ url_for('recover_password') }}">비밀번호를 잊으셨나요?</a><br>
+    <div class="form-item">
+        <a href="{{ url_for('recover_password') }}">비밀번호를 잊으셨나요?</a>
+    </div>
     {% endif %}
     <label><input type="checkbox" name="keep"></label> 자동 로그인<br>
     {% if req_captcha %}

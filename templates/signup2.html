@@ -5,13 +5,25 @@
 {% endblock %}
 
 {% block content %}
-<form method="post" style="max-width: 40rem;">
+<form method="post" class="form-width">
     {% if email is not none %}
-    <label>이메일<br><input value="{{ email }}" class="fullwidth" disabled></label><br>
+    <div class="form-item">
+        <label>이메일</label>
+        <input value="{{ email }}" class="fullwidth" disabled>
+    </div>
     {% endif %}
-    <label>사용자 이름<br><input name="name" class="fullwidth"></label><br>
-    <label>암호<br><input type="password" name="pw" class="fullwidth"></label><br>
-    <label>암호 확인<br><input type="password" name="pw2" class="fullwidth"></label><br><br>
+    <div class="form-item">
+        <label for="name-input">사용자 이름</label>
+        <input id="name-input" name="name" class="modern-input">
+    </div>
+    <div class="form-item">
+        <label for="pw-input">암호</label>
+        <input id="pw-input" type="password" name="pw" class="modern-input">
+    </div>
+    <div class="form-item">
+        <label for="pw2-input">암호 확인</label>
+        <input id="pw2-input" type="password" name="pw2" class="modern-input">
+    </div>
     <input type="submit" value="가입" class="ok">
 </form>
 {% endblock %}
