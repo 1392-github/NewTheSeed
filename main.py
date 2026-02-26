@@ -2298,7 +2298,7 @@ def batch_revert():
             user_namespace = int(tool.get_config("user_namespace"))
             if edit_revert:
                 for d, in c.execute("SELECT DISTINCT doc_id FROM history WHERE author = ? AND datetime >= ?", (uid, timelimit)).fetchall():
-                    ns, name2 = tool.get_doc_full_name(d)
+                    ns, name2 = tool.get_doc_name(d)
                     if ns == user_namespace:
                         continue
                     name = tool.cat_namespace(ns, name2)
