@@ -466,8 +466,9 @@ def teardown_request(exc):
     g.db.close()
 def render_username(user, bold = 0):
     name = tool.id_to_user_name(user)
+    ip = tool.isip(user)
     if bold == 0:
-        b = False if name is None else not tool.isip(user)
+        b = False if name is None else not ip
     elif bold == 1:
         b = True
     elif bold == 2:
@@ -490,7 +491,7 @@ def render_username(user, bold = 0):
                     if tool.user_in_aclgroup(gr[0], user):
                         for p in cssutils.parseStyle(gr[1]):
                             css.setProperty(p.name, p.value, p.priority)
-            r = f'<a href="{url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + escape(name))}" style="{css.cssText}">{escape(name)}</a>'
+            r = f'<a href="{url_for("ip_contribution", ip = name) if ip else url_for("doc_read", doc_title = tool.id_to_ns_name(int(tool.get_config("user_namespace"))) + ":" + escape(name))}" style="{css.cssText}">{escape(name)}</a>'
         g.username_cache[user] = r
         if b:
             return Markup(f"<b>{r}</b>")
