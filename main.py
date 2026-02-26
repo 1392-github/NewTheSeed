@@ -2330,14 +2330,14 @@ def batch_revert():
             c.execute("INSERT INTO block_log (type, operator, target, date, note) VALUES(5,?,?,?,?)", (operator, uid, tool.get_utime(), request.form["reason"]))
         return tool.rt("batch_revert.html", title = "일괄 되돌리기", result = result, fails = fails)
     return tool.rt("batch_revert.html", title = "일괄 되돌리기")
-@app.route("/admin/mark_troll_revision/<doc>", methods = ["POST"])
+@app.route("/admin/mark_troll_revision/<path:doc>", methods = ["POST"])
 def mark_troll_revision(doc):
     if not tool.has_perm("mark_troll_revision"):
         abort(403)
     with g.db.cursor() as c:
         c.execute("UPDATE history SET troll = ? WHERE doc_id = ? AND rev = ?", (tool.get_user(), tool.get_docid(*tool.split_ns(doc)), request.args.get("rev", type=int)))
     return "", 204
-@app.route("/admin/unmark_troll_revision/<doc>", methods = ["POST"])
+@app.route("/admin/unmark_troll_revision/<path:doc>", methods = ["POST"])
 def unmark_troll_revision(doc):
     if not tool.has_perm("mark_troll_revision"):
         abort(403)
