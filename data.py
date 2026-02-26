@@ -10,7 +10,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (86, 0)
+version = (86, 1)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -163,6 +163,7 @@ special_function = [
     SpecialFunction("라이선스", "license"),
     SpecialFunction("[관리] 권한 부여", "grant", "grant"),
     SpecialFunction("[관리] ACLGroup", "aclgroup", "admin"),
+    SpecialFunction("[관리] 일괄 되돌리기", "batch_revert", "batch_revert"),
     SpecialFunction("[관리] 로그인 내역 조회", "login_history", "login_history"),
     SpecialFunction("[관리] 계정 관리", "manage_account", "manage_account"),
     SpecialFunction("[관리] Config", "config", "config"),

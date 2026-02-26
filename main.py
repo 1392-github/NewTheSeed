@@ -770,20 +770,18 @@ def sqlshell():
         return tool.rt("sql_shell.html", title = "SQL Shell", prev_sql = request.form["prev"] + "\n" + request.form["sql"], result = result)
 @app.route("/delete/<path:doc_name>", methods = ["GET", "POST"])
 def delete(doc_name):
-    i = tool.get_user(create = request.method == "POST")
     ns, name = tool.split_ns(doc_name)
     docid = tool.get_docid(ns, name)
-    acl = tool.check_document_acl(docid, ns, "delete", name)
-    if acl[0] == 0:
-        return tool.error(acl[1], 403)
     if request.method == "POST":
-        data = tool.get_doc_data(docid)
-        if data == None: return tool.error("문서를 찾을 수 없습니다.")
-        tool.record_history(docid, 2, None, None, None, i, request.form["note"], -len(data))
-        with g.db.cursor() as c:
-            c.execute("UPDATE data SET value = NULL WHERE id = ?", (docid,))
+        try:
+            tool.delete(docid, request.form["note"])
+        except exceptions.DocumentNotExistError:
+            return tool.error("문서를 찾을 수 없습니다.", 404)
         return redirect(url_for("doc_read", doc_title = doc_name))
     else:
+        acl = tool.check_document_acl(docid, ns, "delete", name)
+        if acl[0] == 0:
+            return tool.error(acl[1], 403)
         return tool.rt("document_delete.html", title = tool.render_docname(ns, name), subtitle = "삭제")
 @app.route("/move/<path:doc_name>", methods = ["GET", "POST"])
 def move(doc_name):
@@ -2262,7 +2260,71 @@ def recover_password2(user, token):
         return tool.rt("recover_password2.html", title = "계정 찾기")
 @app.route("/admin/batch_revert", methods = ["GET", "POST"])
 def batch_revert():
-    return "이제 곧 나옴", 404
+    if not tool.has_perm("batch_revert"):
+        abort(403)
+    if request.method == "POST":
+        uid = request.form.get("uid", type=int)
+        duration = request.form.get("duration", type=int)
+        reason = request.form.get("reason", "")
+        weak_hide_thread_comment = "weak_hide_thread_comment" in request.form and tool.has_perm("weak_hide_thread_comment")
+        hide_thread_comment = "hide_thread_comment" in request.form and tool.has_perm("hide_thread_comment")
+        if hide_thread_comment: weak_hide_thread_comment = False
+        close_thread = "close_thread" in request.form and tool.has_perm("update_thread_status")
+        edit_revert = "edit_revert" in request.form
+        mark_troll_revision = "mark_troll_revision" in request.form and tool.has_perm("mark_troll_revision")
+        fails = []
+        operator = tool.get_user()
+        time = tool.get_utime()
+        timelimit = time - duration
+        result = [0,0,0,0]
+        with g.db.cursor() as c:
+            if weak_hide_thread_comment:
+                c.execute("UPDATE thread_comment SET blind = 1, blind_operator = ? WHERE author = ? AND blind = 0 AND time >= ?", (operator, uid, timelimit))
+                result[0] = c.rowcount
+            if hide_thread_comment:
+                c.execute("UPDATE thread_comment SET blind = 2, blind_operator = ? WHERE author = ? AND blind <= 1 AND time >= ?", (operator, uid, timelimit))
+                result[0] = c.rowcount
+            if close_thread:
+                for s,d in c.execute("SELECT T.slug, D.doc_id FROM thread_comment T JOIN discuss D on (T.slug = D.slug) WHERE no = 1 AND author = ? AND time >= ?", (uid, timelimit)).fetchall():
+                    acl = tool.check_document_acl2(d, "read")
+                    if acl[0] == 0:
+                        fails.append(f"토론 {s}: {acl[1]}")
+                    else:
+                        c.execute("UPDATE discuss SET status = 'close' WHERE slug = ?", (s,))
+                        tool.write_thread_comment(s, 1, "close")
+                        result[1] += 1
+            if edit_revert:
+                for d, in c.execute("SELECT DISTINCT doc_id FROM history WHERE author = ? AND datetime >= ?", (uid, timelimit)).fetchall():
+                    name = tool.get_doc_full_name(d)
+                    rev = c.execute("SELECT max(rev) FROM history WHERE doc_id = ? AND (datetime < ? OR author != ?) AND type IN (0,1,2,5) AND troll = -1", (d, timelimit, uid)).fetchone()[0]
+                    try:
+                        if rev is None or c.execute("SELECT type FROM history WHERE doc_id = ? AND rev = ?", (d, rev)).fetchone()[0] == 2:
+                            tool.delete(d, reason)
+                        else:
+                            tool.revert(d, rev, reason)
+                    except exceptions.ACLDeniedError as e:
+                        fails.append(f"{name}: {e}")
+                    except exceptions.DocumentNotExistError:
+                        fails.append(f"{name}: 문서를 찾을 수 없습니다.")
+                    except exceptions.RevisionNotExistError:
+                        fails.append(f"{name}: 해당 리비전이 존재하지 않습니다.")
+                    except exceptions.CannotRevertRevisionError:
+                        fails.append(f"{name}: 이 리비전으로 되돌릴 수 없습니다.")
+                    except exceptions.TrollRevisionError:
+                        fails.append(f"{name}: 이 리비전은 반달로 표시되었기 때문에 되돌릴 수 없습니다.")
+                    except exceptions.RevisionNotExistError:
+                        fails.append(f"{name}: 존재하지 않는 리비전입니다.")
+                    except exceptions.RevisionNotExistError:
+                        fails.append(f"{name}: 존재하지 않는 리비전입니다.")
+                    except exceptions.DocumentContentEqualError:
+                        fails.append(f"{name}: 문서 내용이 같습니다.")
+                    result[2] += 1
+            if mark_troll_revision:
+                c.execute("UPDATE history SET troll = ? WHERE author = ? AND datetime >= ? AND troll = -1", (operator, uid, timelimit))
+                result[3] = c.rowcount
+            c.execute("INSERT INTO block_log (type, operator, target, date, note) VALUES(5,?,?,?,?)", (operator, uid, tool.get_utime(), request.form["reason"]))
+        return tool.rt("batch_revert.html", title = "일괄 되돌리기", result = result, fails = fails)
+    return tool.rt("batch_revert.html", title = "일괄 되돌리기")
 @app.route("/admin/mark_troll_revision/<doc>", methods = ["POST"])
 def mark_troll_revision(doc):
     if not tool.has_perm("mark_troll_revision"):

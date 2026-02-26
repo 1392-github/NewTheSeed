@@ -5,7 +5,47 @@
 {% endblock %}
 
 {% block content %}
-
+<form method="post" class="form-width">
+    <div class="form-item">
+        <label for="uid-input">UID</label>
+        <input id="uid-input" name="uid" type="number" min="1" class="modern-input">
+    </div>
+    <div class="form-item">
+        <label for="duration-input">Duration</label>
+        <input id="duration-input" name="duration" type="number" min="0" value="86400" class="modern-input">
+    </div>
+    <div class="form-item">
+        <label for="reason-input">Reason</label>
+        <input id="reason-input" name="reason" class="modern-input">
+    </div>
+    <div class="form-item">
+        <label><input type="checkbox" name="weak_hide_thread_comment"{% if not has_perm("weak_hide_thread_comment") %} disabled{% endif %}> 토론 댓글 부분 숨기기</label>
+        <label><input type="checkbox" name="hide_thread_comment"{% if not has_perm("hide_thread_comment") %} disabled{% endif %}> 토론 댓글 완전 숨기기</label>
+        <label><input type="checkbox" name="close_thread"{% if not has_perm("update_thread_status") %} disabled{% endif %}> 토론 닫기</label>
+        <label><input type="checkbox" name="edit_revert"> 편집 되돌리기</label>
+        <label><input type="checkbox" name="mark_troll_revision"{% if not has_perm("mark_troll_revision") %} disabled{% endif %}> 편집 반달로 표시</label>
+    </div>
+    <input type="submit" value="실행" class="ok">
+    {% if fails is defined %}
+    <div class="form-item">
+        <ul style="color: red;">
+            {% for i in fails %}
+            <li>{{ i }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    {% if result is defined %}
+    <div class="form-item">
+        <ul>
+            <li>숨긴 토론 댓글 수: {{result[0]}}</li>
+            <li>닫힌 토론 수: {{result[1]}}</li>
+            <li>되돌린 문서 수: {{result[2]}}</li>
+            <li>반달 표시한 리버전 수: {{result[3]}}</li>
+        </ul>
+    </div>
+    {% endif %}
+</form>
 {% endblock %}
 
 {% block js %}

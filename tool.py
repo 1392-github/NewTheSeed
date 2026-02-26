@@ -617,6 +617,9 @@ def check_document_acl(docid, ns, type, name, user = None, showmsg = True):
         if re == 2: return cns()
         if re == 0: return (0, r[1].format(type = data.acl_type.get(type, type), tab = tab)) if showmsg and r[1] is not None else 0
         return (1, None) if showmsg else 1
+def check_document_acl2(docid, type, user = None, showmsg = True):
+    ns, name = get_doc_name(docid)
+    return check_document_acl(docid, ns, type, name, user, showmsg)
 def nvl(a, b):
     return b if a is None else a
 def get_doc_data(docid, rev = None):
@@ -1028,6 +1031,19 @@ def edit_or_new(ns, name, content, edit_comment = "", user = None, check_acl = T
             docid = get_docid(ns, name, True)
             edit(docid, content, edit_comment, user, check_acl, False)
             return record_history(docid, 1, content, None, None, user, edit_comment, len(content))
+def delete(docid, edit_comment = "", user = None, check_acl = True, history = True):
+    if user is None:
+        user = get_user()
+    if check_acl:
+        acl = check_document_acl2(docid, "delete")
+        if acl[0] == 0:
+            raise exceptions.ACLDeniedError(acl[1])
+    data = get_doc_data(docid)
+    if data == None: raise exceptions.DocumentNotExistError(docid)
+    if history:
+        record_history(docid, 2, None, None, None, user, edit_comment, -len(data))
+    with g.db.cursor() as c:
+        c.execute("UPDATE data SET value = NULL WHERE id = ?", (docid,))
 def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history = True, check_troll = True):
     if user is None:
         user = get_user()
@@ -1045,7 +1061,7 @@ def revert(docid, rev, edit_comment = "", user = None, check_acl = True, history
         type, content, content2, troll = f
         if type not in data.revert_available:
             raise exceptions.CannotRevertRevisionError(rev)
-        if troll != -1:
+        if check_troll and troll != -1:
             raise exceptions.TrollRevisionError()
         if history:
             old = get_doc_data(docid)
