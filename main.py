@@ -2294,9 +2294,13 @@ def batch_revert():
                         c.execute("UPDATE discuss SET status = 'close' WHERE slug = ?", (s,))
                         tool.write_thread_comment(s, 1, "close")
                         result[1] += 1
+            user_namespace = int(tool.get_config("user_namespace"))
             if edit_revert:
                 for d, in c.execute("SELECT DISTINCT doc_id FROM history WHERE author = ? AND datetime >= ?", (uid, timelimit)).fetchall():
-                    name = tool.get_doc_full_name(d)
+                    ns, name2 = tool.get_doc_full_name(d)
+                    if ns == user_namespace:
+                        continue
+                    name = tool.cat_namespace(ns, name2)
                     rev = c.execute("SELECT max(rev) FROM history WHERE doc_id = ? AND (datetime < ? OR author != ?) AND type IN (0,1,2,5) AND troll = -1", (d, timelimit, uid)).fetchone()[0]
                     try:
                         if rev is None or c.execute("SELECT type FROM history WHERE doc_id = ? AND rev = ?", (d, rev)).fetchone()[0] == 2:
