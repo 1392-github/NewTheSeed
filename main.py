@@ -570,6 +570,7 @@ def doc_read(doc_title):
             tool.delete_expired_aclgroup()
             aclgroup = c.execute("SELECT A.name, L.id, L.start, L.end, L.note FROM aclgroup_log L JOIN aclgroup_config C ON (L.gid = C.gid) JOIN aclgroup A ON (L.gid = A.id) WHERE L.user = ? AND C.name = 'show_user_document' AND C.value = '1'", (user,)).fetchall()
             menu.append(tool.Menu("기여 목록", url_for("document_contribution", user = user)))
+            menu.append(tool.Menu("UID 복사", f'javascript:navigator.clipboard.writeText("{user}")'))
         else:
             admin_userdoc = False
             aclgroup = []
