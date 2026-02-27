@@ -1619,6 +1619,10 @@ def quick_login_history():
                     if i != 0:
                         n += 1
                 cnt[ip] = n
+            time = tool.get_utime()
+            operator = tool.get_user()
+            for i in users:
+                c.execute("INSERT INTO block_log (type, operator, target, date, note) VALUES(4,?,?,?,?)", (operator, i, time, request.form["note"] if tool.get_config("ext_note") == "1" else ""))
             return tool.rt("login_history_quick_1.html", title = "빠른 로그인 내역", usernames = usernames, result = result, cnt = cnt)
         return tool.rt("login_history_quick.html", title = "빠른 로그인 내역", ext_note = tool.get_config("ext_note") == "1")
 @app.route("/Upload", methods=['GET','POST'])
