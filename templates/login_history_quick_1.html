@@ -1,0 +1,39 @@
+{% extends skin %}
+
+{% block css %}
+<style>
+    .multi
+    {
+        background-color: yellow;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<table class="border tablepadding">
+    <thead>
+        <tr>
+            <th>IP</th>
+            {% for i in usernames %}
+            <th>{{ i }}</th>
+            {% endfor %}
+            <th>사용한 계정 수</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for ip in result %}
+        <tr{% if cnt[ip] >= 2 %} class="multi"{% endif %}>
+            <td>{{ ip }}</td>
+            {% for i in result[ip] %}
+            <td>{{ i }}</td>
+            {% endfor %}
+            <td>{{ cnt[ip] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

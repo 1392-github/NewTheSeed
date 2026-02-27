@@ -1587,6 +1587,40 @@ def login_history():
             return tool.rt("login_history_1.html", title = f"{user} 로그인 내역", email = tool.get_user_config(id, "email", "(미설정)"), lh = c.execute("SELECT date, ip, ua, uach FROM login_history WHERE user = ? ORDER BY date DESC", (id,)).fetchall())
         else:
             return tool.rt("login_history.html", title = "로그인 내역", ext_note = tool.get_config("ext_note") == "1")
+@app.route("/admin/login_history/quick", methods = ["GET", "POST"])
+def quick_login_history():
+    if not tool.has_perm("login_history"): abort(403)
+    with g.db.cursor() as c:
+        exp = int(tool.get_config("keep_login_history"))
+        if exp == 0:
+            return tool.error("이 기능이 비활성화되어 있습니다.")
+        if exp != -1:
+            c.execute("DELETE FROM login_history WHERE date < ?", (tool.get_utime() - exp,))
+        if request.method == "POST":
+            usernames = request.form["users"].replace("\r\n", "\n").replace("\r", "\n").split("\n")
+            users = []
+            for i in usernames:
+                n = tool.user_name_to_id(i)
+                if n == -1:
+                    return tool.error(f'"{i}" 사용자는 존재하지 않습니다')
+                if n in users:
+                    return tool.error(f'"{i}" 사용자가 중복 지정되었습니다.')
+                users.append(n)
+            result = {}
+            for i,u in enumerate(users):
+                for ip, cnt in c.execute("SELECT ip, COUNT(*) FROM login_history WHERE user = ? GROUP BY ip", (u,)):
+                    if ip not in result:
+                        result[ip] = [0] * len(users)
+                    result[ip][i] = cnt
+            cnt = {}
+            for ip in result:
+                n = 0
+                for i in result[ip]:
+                    if i != 0:
+                        n += 1
+                cnt[ip] = n
+            return tool.rt("login_history_quick_1.html", title = "빠른 로그인 내역", usernames = usernames, result = result, cnt = cnt)
+        return tool.rt("login_history_quick.html", title = "빠른 로그인 내역", ext_note = tool.get_config("ext_note") == "1")
 @app.route("/Upload", methods=['GET','POST'])
 def upload():
     if request.method == "POST":

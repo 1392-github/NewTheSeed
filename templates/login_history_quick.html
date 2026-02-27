@@ -1,0 +1,25 @@
+{% extends skin %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<form method="post">
+    <div class="form-item">
+        <label for="users-input">조회할 사용자들(Enter로 구분)</label>
+        <textarea id="users-input" name="users" style="height: 30rem;"></textarea>
+    </div>
+    {% if ext_note %}
+    <div class="form-item">
+        <label for="note-input">메모</label>
+        <input id="note-input" name="note" class="modern-input">
+    </div>
+    {% endif %}
+    <input type="submit" value="확인" class="ok">
+</form>
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}
