@@ -2304,6 +2304,8 @@ def batch_revert():
         abort(403)
     if request.method == "POST":
         uid = request.form.get("uid", type=int)
+        if not tool.has_user_id(uid):
+            return tool.error("존재하지 않는 사용자입니다.")
         duration = request.form.get("duration", type=int)
         reason = request.form.get("reason", "")
         weak_hide_thread_comment = "weak_hide_thread_comment" in request.form and tool.has_perm("weak_hide_thread_comment")
