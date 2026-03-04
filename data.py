@@ -10,7 +10,7 @@ class SpecialFunction:
     perm: str = "any"
     urlfor: bool = True
 
-version = (90, 0)
+version = (90, 1)
 default_config = {
     "version": str(version[0]),
     "version2": str(version[1]),
@@ -42,7 +42,7 @@ default_config = {
     "frontpage": "FrontPage",
     "use_x_real_ip": "0",
     "update_local_change_commit": "Update local change commit",
-    "limit_acl": "3",
+    "limit_acl": "1",
     "keep_login_history": "0",
     "accept_ch": "Sec-CH-UA, Sec-CH-UA-Platform, Sec-CH-UA-Full-Version",
     "accept_ch_lifetime": "604800",
