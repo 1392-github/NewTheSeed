@@ -450,6 +450,9 @@ def errorhandler_acl(e):
 @app.errorhandler(exceptions.DocumentContentEqualError)
 def errorhandler_equal(e):
     return tool.error("문서 내용이 같습니다.", 409)
+@app.errorhandler(exceptions.EditComment255Error)
+def errorhandler_255(e):
+    return tool.error("요약의 값은 255글자 이하여야 합니다.")
 @app.before_request
 def before_request():
     g.db = tool.getdb()
@@ -597,6 +600,8 @@ def doc_raw(doc_title):
 @app.route("/edit/<path:doc_title>")
 def doc_edit(doc_title):
     with g.db.cursor() as c:
+        if len(doc_title) > 255:
+            return tool.error("문서 이름이 올바르지 않습니다.")
         ns, name = tool.split_ns(doc_title)
         docid = tool.get_docid(ns, name)
         acl = tool.check_document_acl(docid, ns, "read", name)
@@ -619,23 +624,10 @@ def doc_edit_form():
         if not tool.captcha("edit"):
             return tool.captcha_failed()
         doc_name = request.form["doc_name"]
+        if len(doc_name) > 255:
+            return tool.error("문서 이름이 올바르지 않습니다.")
         value = request.form["value"]
         ns, name = tool.split_ns(doc_name)
-        """docid = tool.get_docid(ns, name)
-        if tool.check_document_acl(docid, ns, "edit", name, showmsg=False) == 0:
-            abort(403)
-        if docid == -1:
-            if ns in data.file_namespace or ("/" not in name and ns == int(tool.get_config("user_namespace"))):
-                return tool.error("invalid_namespace")
-            docid = tool.get_docid(ns, name, True)
-        prev_content = c.execute("SELECT value FROM data WHERE id = ?", (docid,)).fetchone()
-        new_document = prev_content is None
-        prev_content = "" if new_document else prev_content[0]
-        if prev_content is None:
-            new_document = True
-            prev_content = ""
-        tool.record_history(docid, int(new_document), value, None, None, tool.get_user(), request.form["edit_comment"], len(value) - len(prev_content))
-        c.execute("UPDATE data SET value = ? WHERE id = ?", (value, docid))"""
         tool.edit_or_new(ns, name, value, request.form["edit_comment"])
         return redirect(f"/w/{doc_name}")
 @app.route("/license")

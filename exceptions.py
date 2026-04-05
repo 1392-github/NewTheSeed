@@ -46,3 +46,4 @@ class InvalidUserError(Exception): pass
 class DocumentContentEqualError(Exception): pass
 class NotLoginError(Exception): pass
 class TrollRevisionError(Exception): pass
+class EditComment255Error(Exception): pass

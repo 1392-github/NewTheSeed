@@ -959,9 +959,11 @@ def get_skin_config(key, default = None):
     return get_config(f"skin.{get_skin()}.{key}", default)
 def error(msg, code = 400, title = "오류"):
     return rt("error.html", title = title, error = msg), code
-def edit(docid, content, edit_comment = "", user = None, check_acl = True, history = True, check_equal = True):
+def edit(docid, content, edit_comment = "", user = None, check_acl = True, history = True, check_equal = True, check_255 = True):
     if user is None:
         user = get_user()
+    if check_255 and len(edit_comment) > 255:
+        raise exceptions.EditComment255Error()
     if check_acl:
         doc_name = get_doc_name(docid)
         acl = check_document_acl(docid, doc_name[0], "edit", doc_name[1], user)
