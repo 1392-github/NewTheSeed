@@ -9,11 +9,7 @@
 <form method="post">
     <label>
         브랜치 :
-        <select name="branch">
-            {% for i in branch %}
-            <option {% if i == "main" %}selected{% endif %}>{{ i }}</option>
-            {% endfor %}
-        </select>
+        <input name="branch" value="main">
     </label><br><br>
     <input type="submit" class="ok" value="업데이트">
 </form>

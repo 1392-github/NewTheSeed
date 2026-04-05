@@ -1348,13 +1348,16 @@ def update():
     if os.getenv("DISABLE_SYSMAN") == "1":
         return tool.error("이 기능이 비활성화되어 있습니다.", 501)
     if request.method == "POST":
-        p = subprocess.Popen(["git", "pull", "origin", "main"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        branch = request.form["branch"]
+        p = subprocess.Popen(["git", "switch", branch], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         r1 = p.communicate()[0]
+        p = subprocess.Popen(["git", "pull", "origin", branch], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        r2 = p.communicate()[0]
         try:
             p = subprocess.Popen([f"python{sys.version_info.major}.{sys.version_info.minor}", "-m", "pip", "install", "-r", "requirements.txt"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         except FileNotFoundError:
             p = subprocess.Popen(["python", "-m", "pip", "install", "-r", "requirements.txt"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        return tool.rt("update_result.html", title = "업데이트 결과", result = r1.decode("utf-8") + "\n" + p.communicate()[0].decode("utf-8"))
+        return tool.rt("update_result.html", title = "업데이트 결과", result = r1.decode("utf-8") + "\n" + r2.decode("utf-8") + "\n" + p.communicate()[0].decode("utf-8"))
     if repo is None:
         return tool.error("엔진이 git 저장소로 다운로드 되지 않았기 때문에 업데이트 기능을 사용할 수 없습니다.")
     else:
