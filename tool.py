@@ -84,45 +84,6 @@ def get_user(create = True):
                 return -1
         else:
             return f[0]
-
-# API 키 요구여부 확인 및 키에 연결된 사용자 가져오기
-# 유효하지 않은 키인경우 None 반환
-# API 키가 None인 경우, 키가 필요없으면 IP에 해당하는 ID 반환, 키가 필요하면 None 반환
-def key_req(name, key):
-    return None
-"""
-    16 버전에서는 API 임시 비활성화
-    try:
-        policy = c.execute('''select case value
-when 0 then 0
-when 1 then 1
-when 2 then 1
-end
-from api_policy
-where name = ?''',(name,)).fetchone()[0]
-    except:
-        policy = 1
-    if key is None:
-        if policy == 0:
-            return get_user()
-        else:
-            return None
-    if c.execute('''select exists (
-    select 1
-    from api_keys
-    where key = ?
-)''', (key,)).fetchone()[0]==0:
-        return None
-    perm = c.execute('''select value
-from api_key_perm
-where key = ?
-and name = ?''', (key, name)).fetchone()[0]
-    if perm == 0:
-        return None
-    return c.execute('''select user_id
-from api_keys
-where key = ?''', (key,)).fetchone()[0]
-"""
 def rt(t, **k):
     skin = get_skin()
     k["wiki_name"] = get_config("wiki_name")
@@ -177,9 +138,6 @@ def has_string_config(key):
         return c.execute("SELECT EXISTS (SELECT 1 FROM string_config WHERE name = ?)", (key,)).fetchone()[0] == 1
 def get_config(key, default = None):
     with g.db.cursor() as c:
-        # 16 버전에서는 임시로 API 비활성화
-        if key == "get_api_key":
-            return "disabled"
         if key == "email_verification_level" and not os.getenv("SMTP_SERVER"):
             return "0"
         if has_config(key):

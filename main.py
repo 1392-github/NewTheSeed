@@ -1013,40 +1013,6 @@ def aclgroup():
         gid = c.execute("SELECT id FROM aclgroup WHERE name = ? AND deleted = 0", (current,)).fetchone()[0]
         if request.method == "POST":
             dur = 0 if request.form["dur"] == "" else int(request.form["dur"])
-            """if not tool.check_aclgroup_flag(gid, "add_flags"):
-                abort(403)
-            t = tool.get_utime()
-            if tool.get_config("aclgroup_note_required") == "1" and request.form["note"] == "":
-                return tool.error_400("note의 값은 필수입니다.")
-            if request.form["mode"] == "ip":
-                ip = request.form["value"]
-                try:
-                    ipn = ipaddress.ip_network(ip)
-                    ip = str(ipn)
-                except:
-                    return tool.error_400("invalid_cidr")
-                max_cidr = "max_ipv4_cidr" if ipn.version == 4 else "max_ipv6_cidr"
-                max_cidr_value = int(tool.get_aclgroup_config(gid, max_cidr))
-                if ipn.prefixlen < max_cidr_value: return tool.error_400(f"{max_cidr}은 {max_cidr_value}입니다.")
-                max_duration = int(tool.get_aclgroup_config(gid, "max_duration_ip"))
-                if max_duration != 0 and dur > max_duration: return tool.error_400(f"max_duration_ip는 {max_duration}입니다.")
-                if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE ip = ? AND gid = ?)", (ip, gid)).fetchone()[0]:
-                    return tool.error_400("aclgroup_already_exists")
-                c.execute("INSERT INTO aclgroup_log (gid, ip, note, start, end) VALUES(?, ?, ?, ?, ?)",
-                        (gid, ip, request.form["note"], t, None if dur == 0 else t + dur))
-                c.execute("INSERT INTO block_log (type, operator, target_ip, id, gid, date, duration, note) VALUES(1, ?, ?, ?, ?, ?, ?, ?)",
-                        (tool.get_user(), ip, c.lastrowid, gid, t, dur, request.form["note"]))
-            else:
-                if not tool.has_user(request.form["value"]):
-                    return tool.error_400("사용자 이름이 올바르지 않습니다.")
-                max_duration = int(tool.get_aclgroup_config(gid, "max_duration_account"))
-                if max_duration != 0 and dur > max_duration: return tool.error_400(f"max_duration_account는 {max_duration}입니다.")
-                if c.execute("SELECT EXISTS (SELECT 1 FROM aclgroup_log WHERE user = (SELECT id FROM user WHERE name = ?) AND gid = ?)", (request.form["value"], gid)).fetchone()[0]:
-                    return tool.error_400("aclgroup_already_exists")
-                c.execute("INSERT INTO aclgroup_log (gid, user, note, start, end) VALUES(?, (SELECT id FROM user WHERE name = ?), ?, ?, ?)",
-                        (gid, request.form["value"], request.form["note"], t, None if dur == 0 else t + dur))
-                c.execute("INSERT INTO block_log (type, operator, target, id, gid, date, duration, note) VALUES(1, ?, (SELECT id FROM user WHERE name = ?), ?, ?, ?, ?, ?)",
-                        (tool.get_user(), request.form["value"], c.lastrowid, gid, t, dur, request.form["note"]))"""
             mode = request.form["mode"]
             if mode == "user":
                 user = tool.user_name_to_id(request.form["value"])
@@ -1055,7 +1021,7 @@ def aclgroup():
             else:
                 user = request.form["value"]
             try:
-                tool.aclgroup_insert(gid, mode, user, request.form["note"], dur)
+                tool.aclgroup_insert(gid, mode, user, request.form["note"], dur, log = not ("hidelog" in request.form and tool.has_perm("aclgroup_hidelog")))
             except exceptions.ACLGroupPermissionDeniedError:
                 return '', 403
             except exceptions.ACLGroupConfigError as e:
@@ -1079,7 +1045,7 @@ def aclgroup_delete():
     with g.db.cursor() as c:
         id = int(request.form["id"])
         try:
-            tool.aclgroup_delete(id, request.form["note"])
+            tool.aclgroup_delete(id, request.form["note"], log = not ("hidelog" in request.form and tool.has_perm("aclgroup_hidelog")))
         except exceptions.ACLGroupElementNotExistsError:
             return tool.error_400("aclgroup_not_found")
         except exceptions.NoteRequiredError:
@@ -1300,15 +1266,6 @@ def thread(slug):
             tool.Menu("토론 목록", url_for("discuss", doc = fullname)),
             tool.Menu("ACL", url_for("acl", doc_name = fullname))
         ])
-"""@app.route("/api/render_thread/<int:slug>")
-def render_thread(slug):
-    with g.db.cursor() as c:
-        ns, name, docid = c.execute("SELECT namespace, name, doc_id FROM discuss JOIN doc_name ON (doc_id = id) WHERE slug = ?", (slug,)).fetchone()
-        acl = tool.check_document_acl(docid, ns, "read", name)
-        if acl[0] == 0:
-            return "", 403
-        html, js = tool.render_thread(slug)
-        return {"html": html, "js": js}"""
 @app.route("/api/thread_comment_internal/<int:slug>/<int:no>/<int:type1>")
 def api_thread_comment_internal(slug, no, type1):
     with g.db.cursor() as c:
